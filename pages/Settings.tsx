@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useContext, useEffect, useMemo } from 'react';
 import { Plus, X, Save, Download, Upload, AlertTriangle, CheckCircle, Pencil, History, Sparkles, Shield, User, Trash2, Eye, EyeOff, Key, Database, HardDrive, Info } from 'lucide-react';
 import { AppState, LocalizedString, UserAccount } from '../types';
@@ -53,8 +52,9 @@ const Settings: React.FC<SettingsProps> = ({
       p.designHistory?.forEach(eco => eco.imageUrls?.forEach(url => totalBytes += countBytes(url)));
       p.durabilityTests?.forEach(test => test.attachmentUrls?.forEach(url => totalBytes += countBytes(url)));
       p.ergoProjects?.forEach(proj => {
-        Object.values(proj.tasks).flat().forEach(task => {
-          task.ngReasons.forEach(ng => ng.attachmentUrls?.forEach(url => totalBytes += countBytes(url)));
+        // Fix: Explicitly cast to any[] to avoid "unknown" type error on task variable
+        (Object.values(proj.tasks).flat() as any[]).forEach(task => {
+          task.ngReasons.forEach((ng: any) => ng.attachmentUrls?.forEach((url: string) => totalBytes += countBytes(url)));
         });
       });
     });

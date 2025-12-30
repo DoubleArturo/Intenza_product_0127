@@ -1,8 +1,10 @@
 
-import React, { useState, createContext, useCallback } from 'react';
+import React, { useState, createContext, useCallback, useEffect } from 'react';
 import { Routes, Route } from 'react-router-dom';
 import { MOCK_PRODUCTS, MOCK_SHIPMENTS, MOCK_TESTERS } from './services/mockData';
-import { ProductModel, Language, LocalizedString, Tester, ShipmentData, DEFAULT_SERIES, UserAccount } from './types';
+import { ProductModel, Language, LocalizedString, Tester, ShipmentData, DEFAULT_SERIES, UserAccount, AppState } from './types';
+import { api } from './services/api';
+import { Cloud, CloudCheck, CloudOff, Loader2, CheckCircle, AlertCircle } from 'lucide-react';
 
 // Importing pages
 import { Dashboard } from './pages/Dashboard';
@@ -13,20 +15,12 @@ import TesterDatabase from './pages/TesterDatabase';
 import Sidebar from './components/Sidebar';
 import Login from './components/Login';
 
-/**
- * Fix: Define and export LanguageContextType to provide strong typing for the context.
- * This resolves the errors where 't' and 'language' are not found on the context object.
- */
 export interface LanguageContextType {
   language: Language;
   setLanguage: (lang: Language) => void;
   t: (str: LocalizedString) => string;
 }
 
-/**
- * Fix: Export LanguageContext so it can be consumed by other components via named import.
- * Initialized with default values to prevent property access errors in TypeScript.
- */
 export const LanguageContext = createContext<LanguageContextType>({
   language: 'zh',
   setLanguage: () => {},
@@ -43,14 +37,60 @@ const App = () => {
   const [showAiInsights, setShowAiInsights] = useState(true);
   const [maxHistorySteps, setMaxHistorySteps] = useState(10);
 
-  /**
-   * Fix: Centralized translation helper that handles multi-language support based on current state.
-   */
+  // Sync Status State
+  const [syncStatus, setSyncStatus] = useState<'idle' | 'saving' | 'success' | 'error'>('idle');
+
   const t = useCallback((str: any) => {
     if (!str) return '';
     if (typeof str === 'string') return str;
     return str[language] || str.en || str.zh || '';
   }, [language]);
+
+  /**
+   * 將資料同步至雲端
+   */
+  const handleSyncToCloud = useCallback(async () => {
+    if (syncStatus === 'saving') return;
+    
+    setSyncStatus('saving');
+    const state: AppState = {
+      products,
+      seriesList: DEFAULT_SERIES,
+      shipments,
+      testers,
+      users,
+      language,
+      showAiInsights,
+      maxHistorySteps
+    };
+
+    try {
+      await api.saveData(state);
+      setSyncStatus('success');
+      setTimeout(() => setSyncStatus('idle'), 3000);
+    } catch (error) {
+      console.error('Cloud Sync Error:', error);
+      setSyncStatus('error');
+      setTimeout(() => setSyncStatus('idle'), 5000);
+    }
+  }, [products, shipments, testers, users, language, showAiInsights, maxHistorySteps, syncStatus]);
+
+  /**
+   * 快捷鍵監聽 Ctrl+S / Cmd+S
+   */
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+        e.preventDefault();
+        if (isLoggedIn) {
+          handleSyncToCloud();
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isLoggedIn, handleSyncToCloud]);
 
   const handleAddProduct = async (p: any) => {
     const newProduct: ProductModel = { 
@@ -97,7 +137,7 @@ const App = () => {
 
   return (
     <LanguageContext.Provider value={{ language, setLanguage, t }}>
-      <div className="flex min-h-screen bg-slate-50">
+      <div className="flex min-h-screen bg-slate-50 relative">
         <Sidebar />
         <main className="flex-1 overflow-y-auto">
           <Routes>
@@ -159,6 +199,32 @@ const App = () => {
             } />
           </Routes>
         </main>
+
+        {/* Global Sync Status Notification */}
+        {syncStatus !== 'idle' && (
+          <div className="fixed bottom-6 right-6 z-[100] animate-slide-up">
+            <div className={`flex items-center gap-3 px-5 py-3 rounded-2xl shadow-2xl border backdrop-blur-md ${
+              syncStatus === 'saving' ? 'bg-slate-900/90 text-white border-slate-700' :
+              syncStatus === 'success' ? 'bg-emerald-500/90 text-white border-emerald-400' :
+              'bg-red-500/90 text-white border-red-400'
+            }`}>
+              {syncStatus === 'saving' && <Loader2 size={18} className="animate-spin" />}
+              {syncStatus === 'success' && <CheckCircle size={18} />}
+              {syncStatus === 'error' && <AlertCircle size={18} />}
+              
+              <div className="flex flex-col">
+                <span className="text-sm font-bold leading-tight">
+                  {syncStatus === 'saving' ? '正在同步至雲端...' :
+                   syncStatus === 'success' ? '雲端同步成功' : '同步失敗'}
+                </span>
+                <span className="text-[10px] opacity-80 font-medium">
+                  {syncStatus === 'saving' ? '請稍候，正在更新資料庫' :
+                   syncStatus === 'success' ? '所有變更已儲存' : '請檢查網路連線或稍後再試'}
+                </span>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </LanguageContext.Provider>
   );
