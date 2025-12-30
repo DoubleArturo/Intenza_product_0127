@@ -1,3 +1,4 @@
+
 {
   "name": "intenza-ergonomic-quality-tracker",
   "private": true,
@@ -20,6 +21,7 @@
     "@vercel/blob": "latest"
   },
   "devDependencies": {
+    "@vercel/node": "^5.5.16",
     "@types/node": "^22.14.0",
     "@vitejs/plugin-react": "^5.0.0",
     "typescript": "latest",

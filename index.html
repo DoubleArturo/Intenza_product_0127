@@ -1,9 +1,10 @@
+
 <!DOCTYPE html>
-<html lang="en">
+<html lang="zh-TW">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>INTENZA Design Quality Tracker</title>
+    <title>INTENZA 產品品質追蹤系統</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
       tailwind.config = {
@@ -13,76 +14,44 @@
               intenza: {
                 50: '#fff1f0',
                 100: '#ffdfdc',
-                200: '#ffc5c0',
-                300: '#ff9d97',
-                400: '#ff645b',
-                500: '#f63e32', // Brand Red/Orange
+                500: '#f63e32',
                 600: '#e3261b',
-                700: '#bf1b12',
-                800: '#9e1913',
-                900: '#831a15',
-              },
-              slate: {
-                850: '#151e2e',
-                900: '#0f172a',
-                950: '#020617',
               }
-            },
-            fontFamily: {
-              sans: ['Inter', 'sans-serif'],
-            },
-            keyframes: {
-              fadeIn: {
-                '0%': { opacity: '0' },
-                '100%': { opacity: '1' },
-              },
-              slideUp: {
-                '0%': { transform: 'translateY(20px)', opacity: '0' },
-                '100%': { transform: 'translateY(0)', opacity: '1' },
-              }
-            },
-            animation: {
-              'fade-in': 'fadeIn 0.5s ease-out',
-              'slide-up': 'slideUp 0.4s ease-out',
             }
           }
         }
       }
     </script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
     <style>
       body { font-family: 'Inter', sans-serif; background-color: #f8fafc; }
-      /* Custom Scrollbar */
-      ::-webkit-scrollbar { width: 8px; height: 8px; }
-      ::-webkit-scrollbar-track { background: transparent; }
-      ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
-      ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+      .glass { background: rgba(255, 255, 255, 0.8); backdrop-filter: blur(10px); }
     </style>
-  <script type="importmap">
+    <script type="importmap">
 {
   "imports": {
-    "react/": "https://aistudiocdn.com/react@^19.2.0/",
-    "react": "https://aistudiocdn.com/react@^19.2.0",
-    "lucide-react": "https://aistudiocdn.com/lucide-react@^0.554.0",
-    "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.0/",
-    "@google/genai": "https://aistudiocdn.com/@google/genai@^1.30.0",
-    "react-router-dom": "https://aistudiocdn.com/react-router-dom@^7.9.6",
-    "recharts": "https://aistudiocdn.com/recharts@^3.5.0",
-    "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.1/package/xlsx.mjs",
-    "@vitejs/plugin-react": "https://esm.sh/@vitejs/plugin-react@^5.1.2",
-    "vite": "https://esm.sh/vite@^7.3.0",
+    "react": "https://esm.sh/react@^19.0.0",
+    "react-dom": "https://esm.sh/react-dom@^19.0.0",
+    "react-router-dom": "https://esm.sh/react-router-dom@^7.0.0",
+    "@google/genai": "https://esm.sh/@google/genai@^1.30.0",
+    "lucide-react": "https://esm.sh/lucide-react@latest",
+    "react-dom/": "https://esm.sh/react-dom@^19.2.3/",
+    "react/": "https://esm.sh/react@^19.2.3/",
     "path": "https://esm.sh/path@^0.12.7",
     "url": "https://esm.sh/url@^0.11.4",
-    "@vercel/blob": "https://esm.sh/@vercel/blob@^2.0.0",
+    "vite": "https://esm.sh/vite@^7.3.0",
+    "@vitejs/plugin-react": "https://esm.sh/@vitejs/plugin-react@^5.1.2",
     "@vercel/postgres": "https://esm.sh/@vercel/postgres@^0.10.0",
-    "@vercel/node": "https://esm.sh/@vercel/node@^5.5.16"
+    "@vercel/node": "https://esm.sh/@vercel/node@^5.5.16",
+    "@vercel/blob": "https://esm.sh/@vercel/blob@^2.0.0",
+    "recharts": "https://esm.sh/recharts@^3.6.0",
+    "xlsx": "https://esm.sh/xlsx@^0.18.5"
   }
 }
 </script>
-<link rel="stylesheet" href="/index.css">
-</head>
+  </head>
   <body>
     <div id="root"></div>
-  <script type="module" src="/index.tsx"></script>
-</body>
+    <script type="module" src="/index.tsx"></script>
+  </body>
 </html>
