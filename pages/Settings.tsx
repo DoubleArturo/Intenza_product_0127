@@ -1,6 +1,6 @@
 
-import React, { useState, useRef, useContext, useEffect } from 'react';
-import { Plus, X, Save, Download, Upload, AlertTriangle, CheckCircle, Pencil, History, Sparkles, Shield, User, Trash2, Eye, EyeOff, Key } from 'lucide-react';
+import React, { useState, useRef, useContext, useEffect, useMemo } from 'react';
+import { Plus, X, Save, Download, Upload, AlertTriangle, CheckCircle, Pencil, History, Sparkles, Shield, User, Trash2, Eye, EyeOff, Key, Database, HardDrive, Info } from 'lucide-react';
 import { AppState, LocalizedString, UserAccount } from '../types';
 import { LanguageContext } from '../App';
 
@@ -29,18 +29,49 @@ const Settings: React.FC<SettingsProps> = ({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [notification, setNotification] = useState<{msg: string, type: 'success' | 'error'} | null>(null);
 
-  // Deletion State
+  // --- 容量計算邏輯 ---
+  const storageStats = useMemo(() => {
+    // 1. Postgres 列數估算 (Vercel Postgres Hobby 限制約為 256MB/效能考量建議列數)
+    const rowCount = 
+      (currentAppState.products?.length || 0) + 
+      (currentAppState.shipments?.length || 0) + 
+      (currentAppState.testers?.length || 0) + 
+      (currentAppState.users?.length || 0);
+    const rowLimit = 10000; // 模擬上限
+    const rowPercent = Math.min(100, (rowCount / rowLimit) * 100);
+
+    // 2. Blob 儲存空間估算 (Vercel Blob Hobby 限制為 250MB)
+    // 遍歷所有產品圖片與測試附件進行大小估算 (以 Base64 字串長度換算)
+    let totalBytes = 0;
+    const countBytes = (str?: string) => {
+      if (!str || !str.startsWith('data:')) return 0;
+      return (str.length * 3) / 4; // Base64 粗略換算
+    };
+
+    currentAppState.products?.forEach(p => {
+      totalBytes += countBytes(p.imageUrl);
+      p.designHistory?.forEach(eco => eco.imageUrls?.forEach(url => totalBytes += countBytes(url)));
+      p.durabilityTests?.forEach(test => test.attachmentUrls?.forEach(url => totalBytes += countBytes(url)));
+      p.ergoProjects?.forEach(proj => {
+        Object.values(proj.tasks).flat().forEach(task => {
+          task.ngReasons.forEach(ng => ng.attachmentUrls?.forEach(url => totalBytes += countBytes(url)));
+        });
+      });
+    });
+
+    const mbUsed = totalBytes / (1024 * 1024);
+    const mbLimit = 250; // Vercel Blob Hobby Limit
+    const mbPercent = Math.min(100, (mbUsed / mbLimit) * 100);
+
+    return { rowCount, rowLimit, rowPercent, mbUsed, mbLimit, mbPercent };
+  }, [currentAppState]);
+
+  // --- 其他狀態 ---
   const [deletingIndex, setDeletingIndex] = useState<number | null>(null);
   const [confirmText, setConfirmText] = useState('');
-
-  // Editing State
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
   const [editValue, setEditValue] = useState('');
-  
-  // History Settings
   const [localMaxHistory, setLocalMaxHistory] = useState(currentAppState.maxHistorySteps || 10);
-
-  // User Management State
   const [isUserModalOpen, setIsUserModalOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<UserAccount | null>(null);
   const [showPasswordMap, setShowPasswordMap] = useState<Record<string, boolean>>({});
@@ -135,7 +166,6 @@ const Settings: React.FC<SettingsProps> = ({
       showNotification('History settings updated', 'success');
   };
 
-  // --- User Modal Logic ---
   const togglePasswordVisibility = (id: string) => {
     setShowPasswordMap(prev => ({ ...prev, [id]: !prev[id] }));
   };
@@ -292,8 +322,61 @@ const Settings: React.FC<SettingsProps> = ({
           </section>
         </div>
 
-        {/* Right Column: Global Settings */}
+        {/* Right Column: Global Settings & Capacity */}
         <div className="space-y-8">
+           {/* Capacity Monitoring Section */}
+           <section className="bg-white rounded-2xl border border-slate-200 p-8 shadow-sm">
+              <h2 className="text-xl font-bold text-slate-900 mb-2">Storage & Database</h2>
+              <p className="text-sm text-slate-500 mb-6">Monitoring Vercel resources usage.</p>
+              
+              <div className="space-y-6">
+                {/* Postgres Stats */}
+                <div className="space-y-2">
+                  <div className="flex justify-between items-center text-xs font-bold uppercase tracking-wider">
+                    <div className="flex items-center gap-2 text-slate-500">
+                      <Database size={14} className="text-indigo-500" />
+                      Postgres (Metadata)
+                    </div>
+                    <span className={storageStats.rowPercent > 80 ? 'text-amber-600' : 'text-slate-400'}>
+                      {storageStats.rowCount.toLocaleString()} / {storageStats.rowLimit.toLocaleString()} Rows
+                    </span>
+                  </div>
+                  <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
+                    <div 
+                      className={`h-full transition-all duration-1000 ${storageStats.rowPercent > 80 ? 'bg-amber-500' : 'bg-indigo-500'}`} 
+                      style={{ width: `${storageStats.rowPercent}%` }}
+                    ></div>
+                  </div>
+                </div>
+
+                {/* Blob Stats */}
+                <div className="space-y-2">
+                  <div className="flex justify-between items-center text-xs font-bold uppercase tracking-wider">
+                    <div className="flex items-center gap-2 text-slate-500">
+                      <HardDrive size={14} className="text-emerald-500" />
+                      Blob (Attachments)
+                    </div>
+                    <span className={storageStats.mbPercent > 80 ? 'text-amber-600' : 'text-slate-400'}>
+                      {storageStats.mbUsed.toFixed(2)} MB / {storageStats.mbLimit} MB
+                    </span>
+                  </div>
+                  <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
+                    <div 
+                      className={`h-full transition-all duration-1000 ${storageStats.mbPercent > 80 ? 'bg-amber-500' : 'bg-emerald-500'}`} 
+                      style={{ width: `${storageStats.mbPercent}%` }}
+                    ></div>
+                  </div>
+                </div>
+
+                <div className="bg-blue-50 border border-blue-100 rounded-xl p-3 flex items-start gap-3">
+                  <Info size={16} className="text-blue-500 mt-0.5 shrink-0" />
+                  <p className="text-[10px] text-blue-700 leading-relaxed italic">
+                    Capacity values are calculated based on current Hobby tier limits. Exceeding 250MB Blob storage may require a plan upgrade on Vercel Dashboard.
+                  </p>
+                </div>
+              </div>
+           </section>
+
            <section className="bg-white rounded-2xl border border-slate-200 p-8 shadow-sm">
               <h2 className="text-xl font-bold text-slate-900 mb-2">AI & Interface</h2>
               <div className="flex items-center justify-between p-4 bg-slate-50 rounded-xl border border-slate-100">
@@ -360,7 +443,7 @@ const Settings: React.FC<SettingsProps> = ({
           isOpen={isUserModalOpen}
           onClose={() => setIsUserModalOpen(false)}
           onSave={(data) => {
-            if (editingUser) onAddUser ? onUpdateUser({ ...editingUser, ...data } as any) : null;
+            if (editingUser) onUpdateUser({ ...editingUser, ...data } as any);
             else onAddUser(data as any);
             setIsUserModalOpen(false);
           }}
