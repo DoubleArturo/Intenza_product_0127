@@ -91,12 +91,11 @@ export const Dashboard: React.FC<DashboardProps> = ({ products, seriesList, onAd
     if (file) {
       try {
         setIsUploading(true);
-        // 符合 V01 標準：上傳至 Vercel Blob 並儲存 URL
         const blobUrl = await api.uploadImage(file);
         setFormData({ ...formData, imageUrl: blobUrl });
       } catch (err) {
         console.error("Image upload failed", err);
-        alert("圖片上傳失敗，請檢查網路連線");
+        alert(t({ en: "Image upload failed, check connection", zh: "圖片上傳失敗，請檢查網路連線" }));
       } finally {
         setIsUploading(false);
       }
@@ -246,7 +245,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ products, seriesList, onAd
                        onChange={handleImageUpload}
                      />
                    </div>
-                   {isUploading && <p className="text-xs text-intenza-600 mt-2 animate-pulse font-bold">正在上傳至雲端儲存空間...</p>}
+                   {isUploading && <p className="text-xs text-intenza-600 mt-2 animate-pulse font-bold">{t({ en: "Uploading to cloud...", zh: "正在上傳至雲端儲存空間..." })}</p>}
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -396,14 +395,14 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onClick, onEdit, onT
               <button
                   onClick={(e) => { e.stopPropagation(); onMove('left'); }}
                   className="w-7 h-7 bg-white/80 backdrop-blur-sm rounded-full flex items-center justify-center text-slate-500 hover:text-slate-900 hover:bg-white"
-                  title="Move Left"
+                  title={t({ en: "Move Left", zh: "向左移動" })}
               >
                   <ArrowLeft size={14} />
               </button>
               <button
                   onClick={(e) => { e.stopPropagation(); onMove('right'); }}
                   className="w-7 h-7 bg-white/80 backdrop-blur-sm rounded-full flex items-center justify-center text-slate-500 hover:text-slate-900 hover:bg-white"
-                  title="Move Right"
+                  title={t({ en: "Move Right", zh: "向右移動" })}
               >
                   <ArrowRight size={14} />
               </button>
@@ -417,7 +416,7 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onClick, onEdit, onT
           <Star size={16} fill={product.isWatched ? "currentColor" : "none"} />
         </button>
         
-        <div className="absolute top-4 right-16 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+        <div className="absolute top-4 right-16 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-10">
             <button
             onClick={onEdit}
             className="w-9 h-9 bg-white/80 backdrop-blur-sm rounded-full flex items-center justify-center text-slate-500 hover:text-slate-900 hover:bg-white transition-all scale-90 group-hover:scale-100"
@@ -434,7 +433,7 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onClick, onEdit, onT
         </div>
 
         <div className="absolute bottom-4 right-4 bg-black/70 backdrop-blur-md px-3 py-1 rounded-full text-xs font-medium text-white flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-          Details <ChevronRight size={12} />
+          {t({ en: "Details", zh: "查看詳情" })} <ChevronRight size={12} />
         </div>
       </div>
       
@@ -452,7 +451,7 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onClick, onEdit, onT
         
         <div className="mt-auto pt-4 border-t border-slate-50 flex items-center justify-between">
           <div className="flex flex-col">
-             <span className="text-slate-400 text-xs">Current Ver</span>
+             <span className="text-slate-400 text-xs">{t({ en: "Current Ver", zh: "當前版本" })}</span>
              <span className="font-semibold text-slate-700">
                 {product.currentVersion}
                 {currentVerEco?.implementationDate && 
@@ -461,10 +460,10 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onClick, onEdit, onT
              </span>
           </div>
           <div className="flex flex-col items-end">
-             <span className="text-slate-400 text-xs">Issues</span>
+             <span className="text-slate-400 text-xs">{t({ en: "Issues", zh: "異常項" })}</span>
              <div className={`flex items-baseline gap-1 font-semibold ${activeIssues > 0 ? 'text-amber-500' : 'text-green-500'}`}>
                <span className="text-4xl font-bold leading-none">{activeIssues}</span>
-               <span className="text-sm">Active</span>
+               <span className="text-sm">{t({ en: "Active", zh: "項待處理" })}</span>
              </div>
           </div>
         </div>

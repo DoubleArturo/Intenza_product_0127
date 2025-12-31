@@ -6,7 +6,6 @@ import { ProductModel, Language, LocalizedString, Tester, ShipmentData, DEFAULT_
 import { api } from './services/api';
 import { Cloud, CloudCheck, CloudOff, Loader2, CheckCircle, AlertCircle } from 'lucide-react';
 
-// Using React.lazy for route-based code splitting
 const Dashboard = lazy(() => import('./pages/Dashboard').then(module => ({ default: module.Dashboard })));
 const ProductDetail = lazy(() => import('./pages/ProductDetail'));
 const Analytics = lazy(() => import('./pages/Analytics'));
@@ -36,17 +35,20 @@ const PageLoader = () => (
 );
 
 const App = () => {
-  const [language, setLanguage] = useState<Language>('en'); // Default to English
+  const [language, setLanguage] = useState<Language>('en');
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [currentUser, setCurrentUser] = useState<{username: string, role: 'admin' | 'user'} | null>(null);
   
   const [products, setProducts] = useState<ProductModel[]>(MOCK_PRODUCTS);
   const [seriesList, setSeriesList] = useState<LocalizedString[]>(DEFAULT_SERIES);
-  const [shipments, setShipments] = useState<ShipmentData[]>(MOCK_SHIPMENTS);
+  const [shipments, setShipments] = useState<ShipmentData[]>([]); 
   const [testers, setTesters] = useState<Tester[]>(MOCK_TESTERS);
   const [users, setUsers] = useState<UserAccount[]>([]);
-  const [showAiInsights, setShowAiInsights] = useState(false); // 預設關閉 AI
+  const [showAiInsights, setShowAiInsights] = useState(false);
   const [maxHistorySteps, setMaxHistorySteps] = useState(10);
+  const [searchDisplayFields, setSearchDisplayFields] = useState<Record<string, boolean>>({
+    sn: true, pn: true, pi: true, deliveryNo: true, buyer: true, shipDate: true, variant: true, version: true
+  });
 
   const [syncStatus, setSyncStatus] = useState<'idle' | 'saving' | 'success' | 'error'>('idle');
   const [errorDetail, setErrorDetail] = useState<string>('');
@@ -68,14 +70,11 @@ const App = () => {
 
   const handleSyncToCloud = useCallback(async (isAutoSync = false) => {
     if (isSyncingRef.current || !isLoggedIn) return;
-    
     isSyncingRef.current = true;
     setSyncStatus('saving');
-    
     const state: AppState = {
-      products, seriesList, shipments, testers, users, language, showAiInsights, maxHistorySteps
+      products, seriesList, shipments, testers, users, language, showAiInsights, maxHistorySteps, searchDisplayFields
     };
-
     try {
       await api.saveData(state);
       setSyncStatus('success');
@@ -88,13 +87,12 @@ const App = () => {
       setErrorDetail(error.message || 'Connection Error');
       isSyncingRef.current = false;
     }
-  }, [products, seriesList, shipments, testers, users, language, showAiInsights, maxHistorySteps, isLoggedIn]);
+  }, [products, seriesList, shipments, testers, users, language, showAiInsights, maxHistorySteps, searchDisplayFields, isLoggedIn]);
 
   const handleLoadFromCloud = useCallback(async () => {
     if (isSyncingRef.current) return;
     setSyncStatus('saving');
     isSyncingRef.current = true;
-    
     try {
       const cloudData = await api.loadData();
       if (cloudData) {
@@ -105,6 +103,7 @@ const App = () => {
         if (cloudData.users) setUsers(cloudData.users);
         if (cloudData.language) setLanguage(cloudData.language);
         if (cloudData.showAiInsights !== undefined) setShowAiInsights(cloudData.showAiInsights);
+        if (cloudData.searchDisplayFields) setSearchDisplayFields(cloudData.searchDisplayFields);
         setSyncStatus('success');
       }
       initialLoadDone.current = true;
@@ -117,15 +116,13 @@ const App = () => {
     }
   }, []);
 
-  // 自動同步：僅在初始載入完成後，且資料發生變動時觸發
   useEffect(() => {
     if (isLoggedIn && initialLoadDone.current) {
       const timer = setTimeout(() => handleSyncToCloud(true), 2000);
       return () => clearTimeout(timer);
     }
-  }, [users, seriesList, products, testers, shipments, isLoggedIn, handleSyncToCloud]);
+  }, [users, seriesList, products, testers, shipments, searchDisplayFields, isLoggedIn, handleSyncToCloud]);
 
-  // 登入後執行初次載入
   useEffect(() => {
     if (isLoggedIn && !initialLoadDone.current) {
       handleLoadFromCloud();
@@ -173,7 +170,7 @@ const App = () => {
                   <ProductDetail products={products} testers={testers} onUpdateProduct={async (p) => setProducts(products.map(old => old.id === p.id ? p : old))} showAiInsights={showAiInsights} />
                 } />
                 <Route path="/analytics" element={
-                  <Analytics products={products} shipments={shipments} testers={testers} onImportData={(data) => setShipments([...shipments, ...data])} onBatchAddProducts={(newPs) => setProducts([...products, ...newPs])} showAiInsights={showAiInsights} />
+                  <Analytics products={products} shipments={shipments} testers={testers} onImportData={(data) => setShipments([...shipments, ...data])} onBatchAddProducts={(newPs) => setProducts([...products, ...newPs])} showAiInsights={showAiInsights} searchDisplayFields={searchDisplayFields} />
                 } />
                 <Route path="/settings" element={
                   currentUser?.role === 'admin' ? (
@@ -184,18 +181,20 @@ const App = () => {
                           newList[idx] = { ...newList[idx], [language]: name };
                           setSeriesList(newList);
                       }}
-                      currentAppState={{ products, seriesList, shipments, testers, users, language, showAiInsights, maxHistorySteps }}
+                      currentAppState={{ products, seriesList, shipments, testers, users, language, showAiInsights, maxHistorySteps, searchDisplayFields }}
                       onLoadProject={(state) => {
                           if (state.products) setProducts(state.products);
                           if (state.seriesList) setSeriesList(state.seriesList);
                           if (state.shipments) setShipments(state.shipments);
                           if (state.testers) setTesters(state.testers);
                           if (state.users) setUsers(state.users);
+                          if (state.searchDisplayFields) setSearchDisplayFields(state.searchDisplayFields);
                       }}
                       onUpdateMaxHistory={setMaxHistorySteps} onToggleAiInsights={setShowAiInsights}
                       onAddUser={(u) => setUsers([...users, { ...u, id: Date.now().toString() }])}
                       onUpdateUser={(u) => setUsers(users.map(old => old.id === u.id ? u : old))}
                       onDeleteUser={(id) => setUsers(users.filter(u => u.id !== id))}
+                      onUpdateSearchDisplayFields={setSearchDisplayFields}
                       onSyncCloud={handleSyncToCloud} onLogout={handleLogout} syncStatus={syncStatus}
                     />
                   ) : <Navigate to="/" />
@@ -206,21 +205,6 @@ const App = () => {
               </Routes>
             </Suspense>
           </main>
-
-          {syncStatus !== 'idle' && (
-            <div className="fixed bottom-6 right-6 z-[100] animate-slide-up">
-              <div className={`flex items-center gap-3 px-5 py-3 rounded-2xl shadow-2xl border backdrop-blur-md ${
-                syncStatus === 'saving' ? 'bg-slate-900/90 text-white border-slate-700' :
-                syncStatus === 'success' ? 'bg-emerald-500/90 text-white border-emerald-400' :
-                'bg-red-500/90 text-white border-red-400'
-              }`}>
-                {syncStatus === 'saving' && <Loader2 size={18} className="animate-spin" />}
-                {syncStatus === 'success' && <CheckCircle size={18} />}
-                {syncStatus === 'error' && <AlertCircle size={18} />}
-                <span className="text-sm font-bold">{syncStatus === 'saving' ? t({en: 'Syncing', zh: '同步中'}) : syncStatus === 'success' ? t({en: 'Cloud Updated', zh: '雲端已更新'}) : t({en: 'Sync Error', zh: '同步異常'})}</span>
-              </div>
-            </div>
-          )}
         </div>
       )}
     </LanguageContext.Provider>
