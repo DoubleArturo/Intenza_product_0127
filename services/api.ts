@@ -31,7 +31,7 @@ export const api = {
       return response.json();
     } catch (err) {
       console.warn('Could not load data from cloud:', err);
-      return null;
+      throw err;
     }
   },
 
@@ -41,12 +41,18 @@ export const api = {
   saveData: async (state: AppState): Promise<void> => {
     const response = await fetch('/api/workspace', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 
+        'Content-Type': 'application/json'
+      },
       body: JSON.stringify(state),
     });
+
     if (!response.ok) {
-        const errorMsg = await response.text();
-        throw new Error(`Sync Failed (${response.status}): ${errorMsg}`);
+        if (response.status === 413) {
+           throw new Error('資料體積過大 (圖片過多)，請減少附件數量再試。');
+        }
+        const errorText = await response.text();
+        throw new Error(`同步失敗 (${response.status}): ${errorText.substring(0, 50)}`);
     }
   }
 };

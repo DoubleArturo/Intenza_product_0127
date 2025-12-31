@@ -28,7 +28,6 @@ export const LanguageContext = createContext<LanguageContextType>({
   t: (str) => (str ? (str.zh || str.en || '') : ''),
 });
 
-// Loading Fallback Component
 const PageLoader = () => (
   <div className="flex-1 flex flex-col items-center justify-center bg-slate-50 min-h-[60vh]">
     <Loader2 size={40} className="text-intenza-600 animate-spin mb-4" />
@@ -40,14 +39,15 @@ const App = () => {
   const [language, setLanguage] = useState<Language>('zh');
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [products, setProducts] = useState<ProductModel[]>(MOCK_PRODUCTS);
+  const [seriesList, setSeriesList] = useState<LocalizedString[]>(DEFAULT_SERIES);
   const [shipments, setShipments] = useState<ShipmentData[]>(MOCK_SHIPMENTS);
   const [testers, setTesters] = useState<Tester[]>(MOCK_TESTERS);
   const [users, setUsers] = useState<UserAccount[]>([]);
   const [showAiInsights, setShowAiInsights] = useState(true);
   const [maxHistorySteps, setMaxHistorySteps] = useState(10);
 
-  // Sync Status State
   const [syncStatus, setSyncStatus] = useState<'idle' | 'saving' | 'success' | 'error'>('idle');
+  const [errorDetail, setErrorDetail] = useState<string>('');
 
   const t = useCallback((str: any) => {
     if (!str) return '';
@@ -57,26 +57,37 @@ const App = () => {
 
   const handleLoadFromCloud = useCallback(async () => {
     try {
+      setSyncStatus('saving');
       const cloudData = await api.loadData();
       if (cloudData) {
         if (cloudData.products) setProducts(cloudData.products);
+        if (cloudData.seriesList) setSeriesList(cloudData.seriesList);
         if (cloudData.shipments) setShipments(cloudData.shipments);
         if (cloudData.testers) setTesters(cloudData.testers);
         if (cloudData.users) setUsers(cloudData.users);
         if (cloudData.language) setLanguage(cloudData.language);
         if (cloudData.showAiInsights !== undefined) setShowAiInsights(cloudData.showAiInsights);
+        setSyncStatus('success');
+      } else {
+        setSyncStatus('idle');
       }
     } catch (error) {
       console.error('Failed to load cloud data:', error);
+      setSyncStatus('error');
+      setErrorDetail('無法從雲端獲取最新資料');
+    } finally {
+      setTimeout(() => setSyncStatus('idle'), 2000);
     }
   }, []);
 
   const handleSyncToCloud = useCallback(async () => {
     if (syncStatus === 'saving') return;
     setSyncStatus('saving');
+    setErrorDetail('');
+    
     const state: AppState = {
       products,
-      seriesList: DEFAULT_SERIES,
+      seriesList,
       shipments,
       testers,
       users,
@@ -84,16 +95,18 @@ const App = () => {
       showAiInsights,
       maxHistorySteps
     };
+
     try {
       await api.saveData(state);
       setSyncStatus('success');
       setTimeout(() => setSyncStatus('idle'), 3000);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Cloud Sync Error:', error);
       setSyncStatus('error');
-      setTimeout(() => setSyncStatus('idle'), 5000);
+      setErrorDetail(error.message || '連線錯誤');
+      setTimeout(() => setSyncStatus('idle'), 6000);
     }
-  }, [products, shipments, testers, users, language, showAiInsights, maxHistorySteps, syncStatus]);
+  }, [products, seriesList, shipments, testers, users, language, showAiInsights, maxHistorySteps, syncStatus]);
 
   useEffect(() => {
     if (isLoggedIn) {
@@ -105,9 +118,7 @@ const App = () => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.key === 's') {
         e.preventDefault();
-        if (isLoggedIn) {
-          handleSyncToCloud();
-        }
+        if (isLoggedIn) handleSyncToCloud();
       }
     };
     window.addEventListener('keydown', handleKeyDown);
@@ -128,7 +139,7 @@ const App = () => {
               <Route path="/" element={
                 <Dashboard 
                   products={products} 
-                  seriesList={DEFAULT_SERIES} 
+                  seriesList={seriesList} 
                   onAddProduct={async (p) => setProducts([...products, { ...p, id: `p-${Date.now()}`, ergoProjects: [], customerFeedback: [], designHistory: [], ergoTests: [], durabilityTests: [], isWatched: false, customSortOrder: products.length, uniqueFeedbackTags: {} } as any])}
                   onUpdateProduct={async (p) => setProducts(products.map(old => old.id === p.id ? p : old))}
                   onToggleWatch={(id) => setProducts(products.map(p => p.id === id ? { ...p, isWatched: !p.isWatched } : p))}
@@ -164,13 +175,18 @@ const App = () => {
               } />
               <Route path="/settings" element={
                 <Settings 
-                  seriesList={DEFAULT_SERIES}
-                  onAddSeries={async (name) => {}}
-                  onUpdateSeriesList={() => {}}
-                  onRenameSeries={() => {}}
-                  currentAppState={{ products, seriesList: DEFAULT_SERIES, shipments, testers, users, language, showAiInsights, maxHistorySteps }}
+                  seriesList={seriesList}
+                  onAddSeries={async (name) => setSeriesList([...seriesList, { en: name, zh: name }])}
+                  onUpdateSeriesList={(list) => setSeriesList(list)}
+                  onRenameSeries={(idx, name) => {
+                      const newList = [...seriesList];
+                      newList[idx] = { ...newList[idx], [language]: name };
+                      setSeriesList(newList);
+                  }}
+                  currentAppState={{ products, seriesList, shipments, testers, users, language, showAiInsights, maxHistorySteps }}
                   onLoadProject={(state) => {
                       if (state.products) setProducts(state.products);
+                      if (state.seriesList) setSeriesList(state.seriesList);
                       if (state.shipments) setShipments(state.shipments);
                       if (state.testers) setTesters(state.testers);
                   }}
@@ -193,6 +209,7 @@ const App = () => {
           </Suspense>
         </main>
 
+        {/* Global Sync Status Notification */}
         {syncStatus !== 'idle' && (
           <div className="fixed bottom-6 right-6 z-[100] animate-slide-up">
             <div className={`flex items-center gap-3 px-5 py-3 rounded-2xl shadow-2xl border backdrop-blur-md ${
@@ -209,8 +226,7 @@ const App = () => {
                    syncStatus === 'success' ? '雲端同步成功' : '同步失敗'}
                 </span>
                 <span className="text-[10px] opacity-80 font-medium">
-                  {syncStatus === 'saving' ? '請稍候，正在更新資料庫' :
-                   syncStatus === 'success' ? '所有變更已儲存' : '伺服器未響應或連線錯誤'}
+                  {syncStatus === 'error' ? errorDetail : '所有變更已儲存'}
                 </span>
               </div>
             </div>
