@@ -146,7 +146,7 @@ const Analytics: React.FC<AnalyticsProps> = ({ products, shipments, testers = []
         const ngRate = total === 0 ? 0 : 100 - passRate;
 
         return {
-            name: c,
+            name: t({ en: c, zh: c === 'Strength Curve' ? '強度曲線' : c === 'Experience' ? '操作體驗' : c === 'Stroke' ? '運動行程' : '其他建議' }),
             passRate: passRate,
             ngRate: ngRate,
             passCount: pass,
@@ -489,7 +489,7 @@ const Analytics: React.FC<AnalyticsProps> = ({ products, shipments, testers = []
                   <p className="font-bold text-slate-900 text-sm leading-tight mb-1">{dataPoint.fullName || label}</p>
                   {dataPoint.sku && <p className="text-xs text-slate-500 font-mono mb-2 bg-slate-50 px-1 py-0.5 rounded w-fit">{dataPoint.sku}</p>}
                   <p className="text-intenza-600 font-bold text-xl flex items-baseline gap-1">
-                      {payload[0].value.toLocaleString()} <span className="text-xs text-slate-400 font-normal">units</span>
+                      {payload[0].value.toLocaleString()} <span className="text-xs text-slate-400 font-normal">{t({en: 'units', zh: '台'})}</span>
                   </p>
               </div>
           );
@@ -498,7 +498,7 @@ const Analytics: React.FC<AnalyticsProps> = ({ products, shipments, testers = []
   };
 
   const renderSingleChart = (data: any[], title?: string, palette: string[] = COLORS) => {
-    if (data.length === 0) return <div className="h-full flex flex-col items-center justify-center text-slate-300"><BarIcon size={32} className="mb-2 opacity-20" /><p className="text-sm">No data</p></div>;
+    if (data.length === 0) return <div className="h-full flex flex-col items-center justify-center text-slate-300"><BarIcon size={32} className="mb-2 opacity-20" /><p className="text-sm">{t({ en: 'No data', zh: '暫無數據' })}</p></div>;
     const total = data.reduce((acc, cur) => acc + (cur.value || 0), 0);
 
     const RenderCustomTick = (tickProps: any) => {
@@ -578,10 +578,10 @@ const Analytics: React.FC<AnalyticsProps> = ({ products, shipments, testers = []
                             {drillPath.length > 0 && <button onClick={handleBack} className="p-2 hover:bg-slate-100 rounded-full transition-colors"><ArrowLeft size={18} className="text-slate-600"/></button>}
                             <div>
                                 <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
-                                    {drillPath.length === 0 ? 'Global Overview' : drillPath[drillPath.length-1].label}
-                                    {drillPath.length > 0 && <span className="text-xs font-normal text-slate-400 bg-slate-50 px-2 py-0.5 rounded-full border border-slate-200">Filtered</span>}
+                                    {drillPath.length === 0 ? t({ en: 'Global Overview', zh: '全球出貨概覽' }) : drillPath[drillPath.length-1].label}
+                                    {drillPath.length > 0 && <span className="text-xs font-normal text-slate-400 bg-slate-50 px-2 py-0.5 rounded-full border border-slate-200">{t({ en: 'Filtered', zh: '已篩選' })}</span>}
                                 </h2>
-                                <p className="text-xs text-slate-400">Level: <span className="font-semibold text-intenza-600">{currentLevel}</span></p>
+                                <p className="text-xs text-slate-400">{t({ en: 'Level:', zh: '層級：' })} <span className="font-semibold text-intenza-600">{currentLevel}</span></p>
                             </div>
                         </div>
                         <div className="flex bg-slate-100 rounded-lg p-1">
@@ -595,16 +595,16 @@ const Analytics: React.FC<AnalyticsProps> = ({ products, shipments, testers = []
                          <div className="flex gap-2">
                              {(['PRODUCT', 'CUSTOMER', 'COUNTRY'] as ViewDimension[]).map(d => (
                                  <button key={d} onClick={() => handleDimensionChange(d)} className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-all ${viewDimension === d ? 'bg-white shadow text-slate-900' : 'text-slate-500 hover:text-slate-700'}`}>
-                                     {d === 'PRODUCT' ? 'By Product' : d === 'CUSTOMER' ? 'By Customer' : 'By Country'}
+                                     {d === 'PRODUCT' ? t({ en: 'By Product', zh: '依產品' }) : d === 'CUSTOMER' ? t({ en: 'By Customer', zh: '依客戶' }) : t({ en: 'By Country', zh: '依國家' })}
                                  </button>
                              ))}
                          </div>
                          {/* View Mode (Model Level only) */}
                          {viewDimension === 'PRODUCT' && currentLevel === 'MODEL' && (
                              <div className="flex gap-2">
-                                 <button onClick={() => setDisplayMode('NAME')} className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-all ${displayMode === 'NAME' ? 'bg-white shadow text-slate-900' : 'text-slate-400'}`}>Standard</button>
-                                 <button onClick={() => setDisplayMode('SKU')} className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-all ${displayMode === 'SKU' ? 'bg-white shadow text-slate-900' : 'text-slate-400'}`}>SKU</button>
-                                 <button onClick={() => setDisplayMode('COLOR_SPLIT')} className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-all ${displayMode === 'COLOR_SPLIT' ? 'bg-white ring-1 ring-intenza-100 text-intenza-700' : 'text-slate-400'}`}>Color Split</button>
+                                 <button onClick={() => setDisplayMode('NAME')} className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-all ${displayMode === 'NAME' ? 'bg-white shadow text-slate-900' : 'text-slate-400'}`}>{t({ en: 'Standard', zh: '標準型號' })}</button>
+                                 <button onClick={() => setDisplayMode('SKU')} className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-all ${displayMode === 'SKU' ? 'bg-white shadow text-slate-900' : 'text-slate-400'}`}>{t({ en: 'SKU', zh: 'SKU 代碼' })}</button>
+                                 <button onClick={() => setDisplayMode('COLOR_SPLIT')} className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-all ${displayMode === 'COLOR_SPLIT' ? 'bg-white ring-1 ring-intenza-100 text-intenza-700' : 'text-slate-400'}`}>{t({ en: 'Color Split', zh: '顏色拆分' })}</button>
                              </div>
                          )}
                     </div>
@@ -613,28 +613,28 @@ const Analytics: React.FC<AnalyticsProps> = ({ products, shipments, testers = []
                 <div className="flex-1 min-h-[400px]">
                     {displayMode === 'COLOR_SPLIT' && currentLevel === 'MODEL' && viewDimension === 'PRODUCT' ? (
                         <div className="grid grid-cols-2 gap-4 h-full">
-                            <div className="bg-amber-50/30 rounded-2xl p-4 border border-amber-100 flex flex-col"><h4 className="text-amber-800 font-bold text-sm mb-2 text-center uppercase">Brown Edition</h4><div className="flex-1 min-h-[300px]">{renderSingleChart(colorSplitData.brown, 'Brown', BROWN_PALETTE)}</div></div>
-                            <div className="bg-slate-50/50 rounded-2xl p-4 border border-slate-100 flex flex-col"><h4 className="text-slate-700 font-bold text-sm mb-2 text-center uppercase">Black Edition</h4><div className="flex-1 min-h-[300px]">{renderSingleChart(colorSplitData.black, 'Black', BLACK_PALETTE)}</div></div>
+                            <div className="bg-amber-50/30 rounded-2xl p-4 border border-amber-100 flex flex-col"><h4 className="text-amber-800 font-bold text-sm mb-2 text-center uppercase">{t({ en: 'Brown Edition', zh: '咖啡色版本' })}</h4><div className="flex-1 min-h-[300px]">{renderSingleChart(colorSplitData.brown, 'Brown', BROWN_PALETTE)}</div></div>
+                            <div className="bg-slate-50/50 rounded-2xl p-4 border border-slate-100 flex flex-col"><h4 className="text-slate-700 font-bold text-sm mb-2 text-center uppercase">{t({ en: 'Black Edition', zh: '黑色版本' })}</h4><div className="flex-1 min-h-[300px]">{renderSingleChart(colorSplitData.black, 'Black', BLACK_PALETTE)}</div></div>
                         </div>
-                    ) : (chartData.length > 0 ? renderSingleChart(chartData) : <div className="h-full flex flex-col items-center justify-center text-slate-400"><BarIcon size={48} className="mb-2 opacity-20" /><p>No data available.</p></div>)}
+                    ) : (chartData.length > 0 ? renderSingleChart(chartData) : <div className="h-full flex flex-col items-center justify-center text-slate-400"><BarIcon size={48} className="mb-2 opacity-20" /><p>{t({ en: 'No data available.', zh: '查無數據記錄。' })}</p></div>)}
                 </div>
              </div>
              
              <div className="space-y-6">
                 <div className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm">
-                    <h3 className="font-bold text-slate-900 mb-4 flex items-center gap-2"><Search size={18} className="text-intenza-600"/> Traceability</h3>
-                    <input type="text" placeholder="ECO ID (e.g., ECO-2023-001)..." className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-intenza-500/20" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
+                    <h3 className="font-bold text-slate-900 mb-4 flex items-center gap-2"><Search size={18} className="text-intenza-600"/> {t({ en: 'Traceability', zh: '品質追溯' })}</h3>
+                    <input type="text" placeholder={t({ en: "ECO ID (e.g., ECO-2023-001)...", zh: "輸入 ECO ID (例如 ECO-2023-001)..." })} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-intenza-500/20" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
                     <div className="max-h-[300px] overflow-y-auto space-y-3 pt-4 custom-scrollbar">
-                        {searchQuery && traceabilityResults.length === 0 && <div className="text-sm text-slate-400 text-center">No records found</div>}
+                        {searchQuery && traceabilityResults.length === 0 && <div className="text-sm text-slate-400 text-center">{t({ en: 'No records found', zh: '未找到相關記錄' })}</div>}
                         {traceabilityResults.map((res, idx) => (
                             <div key={idx} className="bg-slate-50 p-3 rounded-xl border border-slate-100">
                                 <div className="flex justify-between items-start mb-1"><span className="font-bold text-xs text-slate-800">{t(res.product.modelName)}</span><span className="text-[10px] bg-red-100 text-red-700 px-1.5 py-0.5 rounded font-mono">{res.eco.ecoNumber}</span></div>
-                                <div className="text-[10px] text-slate-500">Affected Clients: {Array.from(new Set(res.shipments.map((s: ShipmentData) => s.buyer))).join(', ') || 'None'}</div>
+                                <div className="text-[10px] text-slate-500">{t({ en: 'Affected Clients:', zh: '受影響客戶：' })} {Array.from(new Set(res.shipments.map((s: ShipmentData) => s.buyer))).join(', ') || t({ en: 'None', zh: '無' })}</div>
                             </div>
                         ))}
                     </div>
                 </div>
-                {showAiInsights && <GeminiInsight context={`Viewing shipment data. Dimension: ${viewDimension}. Level: ${currentLevel}. Filters: ${JSON.stringify(drillPath)}.`} data={displayMode === 'COLOR_SPLIT' ? colorSplitData : chartData} />}
+                {showAiInsights && <GeminiInsight context={`Viewing shipment data in ${language}. Dimension: ${viewDimension}. Level: ${currentLevel}. Filters: ${JSON.stringify(drillPath)}.`} data={displayMode === 'COLOR_SPLIT' ? colorSplitData : chartData} />}
              </div>
           </div>
         );
@@ -648,8 +648,8 @@ const Analytics: React.FC<AnalyticsProps> = ({ products, shipments, testers = []
                       <div className="flex items-center gap-4 w-full md:w-auto">
                           <div className="p-3 bg-indigo-50 text-indigo-600 rounded-xl"><Users size={24}/></div>
                           <div className="flex-1">
-                              <h2 className="text-xl font-bold text-slate-900">Ergonomics Analytics</h2>
-                              <p className="text-sm text-slate-500">Human Factors Pass Rate & Demographics</p>
+                              <h2 className="text-xl font-bold text-slate-900">{t({ en: 'Ergonomics Analytics', zh: '人因工程數據分析' })}</h2>
+                              <p className="text-sm text-slate-500">{t({ en: 'Human Factors Pass Rate & Demographics', zh: '操作通過率與測試員人口統計分析' })}</p>
                           </div>
                       </div>
                       
@@ -661,7 +661,7 @@ const Analytics: React.FC<AnalyticsProps> = ({ products, shipments, testers = []
                                    onChange={(e) => setSelectedErgoProductId(e.target.value)}
                                    className="w-full pl-10 pr-8 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 appearance-none cursor-pointer hover:bg-slate-100 transition-colors"
                                >
-                                   <option value="ALL">Company Overview (All Products)</option>
+                                   <option value="ALL">{t({ en: 'Company Overview (All Products)', zh: '公司全產品概覽' })}</option>
                                    {products.map(p => (
                                        <option key={p.id} value={p.id}>{t(p.modelName)} ({p.sku})</option>
                                    ))}
@@ -679,26 +679,26 @@ const Analytics: React.FC<AnalyticsProps> = ({ products, shipments, testers = []
                          <div className="grid grid-cols-2 gap-4">
                             <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm">
                                 <div className="text-2xl font-bold text-slate-900">{ergoAggregates.totalTesters}</div>
-                                <div className="text-xs text-slate-500 uppercase font-bold tracking-wide mt-1">Total Testers</div>
+                                <div className="text-xs text-slate-500 uppercase font-bold tracking-wide mt-1">{t({ en: 'Total Testers', zh: '測試員總數' })}</div>
                             </div>
                             <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm">
                                 <div className="text-2xl font-bold text-slate-900">{ergoAggregates.totalProjects}</div>
-                                <div className="text-xs text-slate-500 uppercase font-bold tracking-wide mt-1">Active Projects</div>
+                                <div className="text-xs text-slate-500 uppercase font-bold tracking-wide mt-1">{t({ en: 'Active Projects', zh: '進行中專案' })}</div>
                             </div>
                          </div>
                          
                          {/* Top Issues */}
                          <div className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm flex flex-col h-[400px]">
-                            <h3 className="text-sm font-bold text-slate-900 mb-4 flex items-center gap-2 uppercase tracking-wide"><AlertTriangle size={16} className="text-amber-500"/> Top Issues {selectedErgoProductId !== 'ALL' && <span className="text-xs text-slate-400 font-normal">({t(ergoAggregates.selectedProduct?.modelName || {en:'',zh:''})})</span>}</h3>
+                            <h3 className="text-sm font-bold text-slate-900 mb-4 flex items-center gap-2 uppercase tracking-wide"><AlertTriangle size={16} className="text-amber-500"/> {t({ en: 'Top Issues', zh: '主要異常反饋' })} {selectedErgoProductId !== 'ALL' && <span className="text-xs text-slate-400 font-normal">({t(ergoAggregates.selectedProduct?.modelName || {en:'',zh:''})})</span>}</h3>
                             <div className="flex-1 overflow-y-auto space-y-3 custom-scrollbar pr-2">
-                                {ergoAggregates.topNgReasons.length === 0 ? <div className="text-center text-slate-400 py-10">No NG data recorded</div> : 
+                                {ergoAggregates.topNgReasons.length === 0 ? <div className="text-center text-slate-400 py-10">{t({ en: 'No NG data recorded', zh: '暫無 NG 數據記錄' })}</div> : 
                                 ergoAggregates.topNgReasons.map((item, idx) => (
                                     <div key={idx} className="bg-slate-50 p-3 rounded-xl border border-slate-100">
                                     <div className="flex justify-between items-start mb-1">
                                         <span className="font-bold text-xs text-slate-800 leading-tight flex-1">{item.reason}</span>
                                         <span className="bg-amber-100 text-amber-700 text-[10px] font-bold px-1.5 py-0.5 rounded-full ml-2">{item.count}</span>
                                     </div>
-                                    <div className="text-[10px] text-slate-400 mt-1">{item.category}</div>
+                                    <div className="text-[10px] text-slate-400 mt-1">{t({ en: item.category, zh: item.category === 'Strength Curve' ? '強度曲線' : item.category === 'Experience' ? '操作體驗' : item.category === 'Stroke' ? '運動行程' : '其他建議' })}</div>
                                     </div>
                                 ))
                                 }
@@ -711,13 +711,13 @@ const Analytics: React.FC<AnalyticsProps> = ({ products, shipments, testers = []
                           {/* Chart Controls */}
                           <div className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm flex flex-wrap items-center justify-between gap-4">
                               <div className="flex gap-2">
-                                  <button onClick={() => setErgoChartMode('BAR')} className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${ergoChartMode === 'BAR' ? 'bg-indigo-50 text-indigo-700' : 'text-slate-500 hover:bg-slate-50'}`}><BarIcon size={14}/> Bar</button>
-                                  <button onClick={() => setErgoChartMode('PIE')} className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${ergoChartMode === 'PIE' ? 'bg-indigo-50 text-indigo-700' : 'text-slate-500 hover:bg-slate-50'}`}><PieIcon size={14}/> Pie</button>
+                                  <button onClick={() => setErgoChartMode('BAR')} className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${ergoChartMode === 'BAR' ? 'bg-indigo-50 text-indigo-700' : 'text-slate-500 hover:bg-slate-50'}`}><BarIcon size={14}/> {t({ en: 'Bar', zh: '長條圖' })}</button>
+                                  <button onClick={() => setErgoChartMode('PIE')} className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${ergoChartMode === 'PIE' ? 'bg-indigo-50 text-indigo-700' : 'text-slate-500 hover:bg-slate-50'}`}><PieIcon size={14}/> {t({ en: 'Pie', zh: '圓餅圖' })}</button>
                               </div>
                               <div className="flex gap-2">
-                                  <button onClick={() => setErgoBreakdown('OVERVIEW')} className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${ergoBreakdown === 'OVERVIEW' ? 'bg-slate-900 text-white' : 'text-slate-500 hover:bg-slate-100'}`}>Overall</button>
-                                  <button onClick={() => setErgoBreakdown('GENDER')} className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${ergoBreakdown === 'GENDER' ? 'bg-slate-900 text-white' : 'text-slate-500 hover:bg-slate-100'}`}>By Gender (NG)</button>
-                                  <button onClick={() => setErgoBreakdown('HEIGHT')} className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${ergoBreakdown === 'HEIGHT' ? 'bg-slate-900 text-white' : 'text-slate-500 hover:bg-slate-100'}`}>By Height (NG)</button>
+                                  <button onClick={() => setErgoBreakdown('OVERVIEW')} className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${ergoBreakdown === 'OVERVIEW' ? 'bg-slate-900 text-white' : 'text-slate-500 hover:bg-slate-100'}`}>{t({ en: 'Overall', zh: '整體比例' })}</button>
+                                  <button onClick={() => setErgoBreakdown('GENDER')} className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${ergoBreakdown === 'GENDER' ? 'bg-slate-900 text-white' : 'text-slate-500 hover:bg-slate-100'}`}>{t({ en: 'By Gender (NG)', zh: '依性別 (NG)' })}</button>
+                                  <button onClick={() => setErgoBreakdown('HEIGHT')} className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${ergoBreakdown === 'HEIGHT' ? 'bg-slate-900 text-white' : 'text-slate-500 hover:bg-slate-100'}`}>{t({ en: 'By Height (NG)', zh: '依身高 (NG)' })}</button>
                               </div>
                           </div>
 
@@ -731,11 +731,11 @@ const Analytics: React.FC<AnalyticsProps> = ({ products, shipments, testers = []
                                         <Tooltip cursor={{fill: 'transparent'}} contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }} />
                                         <Legend verticalAlign="top" iconType="circle" height={36}/>
                                         
-                                        {ergoBreakdown === 'OVERVIEW' && <Bar dataKey="passRate" name="Pass Rate %" stackId="a" fill="#10b981" radius={[0, 4, 4, 0]} barSize={32} />}
-                                        {ergoBreakdown === 'OVERVIEW' && <Bar dataKey="ngRate" name="NG Rate %" stackId="a" fill="#f87171" radius={[0, 4, 4, 0]} barSize={32} />}
+                                        {ergoBreakdown === 'OVERVIEW' && <Bar dataKey="passRate" name={t({ en: 'Pass Rate %', zh: '通過率 %' })} stackId="a" fill="#10b981" radius={[0, 4, 4, 0]} barSize={32} />}
+                                        {ergoBreakdown === 'OVERVIEW' && <Bar dataKey="ngRate" name={t({ en: 'NG Rate %', zh: '異常率 %' })} stackId="a" fill="#f87171" radius={[0, 4, 4, 0]} barSize={32} />}
 
-                                        {ergoBreakdown === 'GENDER' && <Bar dataKey="maleNg" name="Male NG Count" stackId="a" fill="#3b82f6" radius={[0, 0, 0, 0]} barSize={32} />}
-                                        {ergoBreakdown === 'GENDER' && <Bar dataKey="femaleNg" name="Female NG Count" stackId="a" fill="#ec4899" radius={[0, 4, 4, 0]} barSize={32} />}
+                                        {ergoBreakdown === 'GENDER' && <Bar dataKey="maleNg" name={t({ en: 'Male NG Count', zh: '男性 NG 數' })} stackId="a" fill="#3b82f6" radius={[0, 0, 0, 0]} barSize={32} />}
+                                        {ergoBreakdown === 'GENDER' && <Bar dataKey="femaleNg" name={t({ en: 'Female NG Count', zh: '女性 NG 數' })} stackId="a" fill="#ec4899" radius={[0, 4, 4, 0]} barSize={32} />}
 
                                         {ergoBreakdown === 'HEIGHT' && <Bar dataKey="h1" name="<160cm NG" stackId="a" fill="#fca5a5" radius={[0, 0, 0, 0]} barSize={32} />}
                                         {ergoBreakdown === 'HEIGHT' && <Bar dataKey="h2" name="160-170cm NG" stackId="a" fill="#f87171" radius={[0, 0, 0, 0]} barSize={32} />}
@@ -753,7 +753,7 @@ const Analytics: React.FC<AnalyticsProps> = ({ products, shipments, testers = []
                                                     <ResponsiveContainer width="100%" height="100%">
                                                         <PieChart>
                                                             <Pie 
-                                                                data={[{name: 'Pass', value: catData.passCount}, {name: 'NG', value: catData.ngCount}]} 
+                                                                data={[{name: t({ en: 'Pass', zh: '通過' }), value: catData.passCount}, {name: t({ en: 'NG', zh: '異常' }), value: catData.ngCount}]} 
                                                                 dataKey="value" 
                                                                 cx="50%" cy="50%" 
                                                                 innerRadius="60%" outerRadius="80%" 
@@ -773,8 +773,8 @@ const Analytics: React.FC<AnalyticsProps> = ({ products, shipments, testers = []
                                         ))}
                                     </div>
                                     <div className="flex justify-center gap-6 mt-4 pb-2">
-                                        <div className="flex items-center gap-2 text-xs font-bold text-slate-600"><div className="w-3 h-3 rounded-full bg-emerald-500"></div> Pass</div>
-                                        <div className="flex items-center gap-2 text-xs font-bold text-slate-600"><div className="w-3 h-3 rounded-full bg-red-500"></div> NG</div>
+                                        <div className="flex items-center gap-2 text-xs font-bold text-slate-600"><div className="w-3 h-3 rounded-full bg-emerald-500"></div> {t({ en: 'Pass', zh: '通過' })}</div>
+                                        <div className="flex items-center gap-2 text-xs font-bold text-slate-600"><div className="w-3 h-3 rounded-full bg-red-500"></div> {t({ en: 'NG', zh: '異常' })}</div>
                                     </div>
                                 </div>
                              )}
@@ -794,8 +794,8 @@ const Analytics: React.FC<AnalyticsProps> = ({ products, shipments, testers = []
                   <div className="flex items-center gap-4 w-full md:w-auto">
                       <div className="p-3 bg-emerald-50 text-emerald-600 rounded-xl"><Activity size={24}/></div>
                       <div className="flex-1">
-                          <h2 className="text-xl font-bold text-slate-900">Lab Testing Status</h2>
-                          <p className="text-sm text-slate-500">Durability & Reliability per SKU</p>
+                          <h2 className="text-xl font-bold text-slate-900">{t({ en: 'Lab Testing Status', zh: '實驗室測試狀態' })}</h2>
+                          <p className="text-sm text-slate-500">{t({ en: 'Durability & Reliability per SKU', zh: '各型號之耐久性與可靠度分析' })}</p>
                       </div>
                   </div>
                   
@@ -807,7 +807,7 @@ const Analytics: React.FC<AnalyticsProps> = ({ products, shipments, testers = []
                                onChange={(e) => setSelectedLabSeries(e.target.value)}
                                className="w-full pl-10 pr-8 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 appearance-none cursor-pointer hover:bg-slate-100 transition-colors"
                            >
-                               <option value="ALL">All Series</option>
+                               <option value="ALL">{t({ en: 'All Series', zh: '所有系列' })}</option>
                                {uniqueSeries.map(s => (
                                    <option key={s} value={s}>{s}</option>
                                ))}
@@ -820,7 +820,7 @@ const Analytics: React.FC<AnalyticsProps> = ({ products, shipments, testers = []
                {/* SKU Status Grid (Health Matrix) */}
                <div className="lg:col-span-3">
                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                       {testAggregates.skuStatusData.length === 0 && <div className="col-span-full text-center py-12 text-slate-400">No products found in this series.</div>}
+                       {testAggregates.skuStatusData.length === 0 && <div className="col-span-full text-center py-12 text-slate-400">{t({ en: 'No products found in this series.', zh: '此系列下查無產品。' })}</div>}
                        {testAggregates.skuStatusData.map((item) => {
                            const { product, totalTests, counts, criticalTests } = item;
                            const passW = totalTests > 0 ? (counts[TestStatus.PASS] / totalTests) * 100 : 0;
@@ -852,8 +852,8 @@ const Analytics: React.FC<AnalyticsProps> = ({ products, shipments, testers = []
                                     
                                     <div className="p-4 flex-1 flex flex-col">
                                         <div className="flex justify-between items-end mb-2">
-                                            <span className="text-xs font-bold text-slate-500 uppercase">Test Health</span>
-                                            <span className="text-xs font-bold text-slate-900">{totalTests} Tests</span>
+                                            <span className="text-xs font-bold text-slate-500 uppercase">{t({ en: 'Test Health', zh: '測試健康度' })}</span>
+                                            <span className="text-xs font-bold text-slate-900">{totalTests} {t({ en: 'Tests', zh: '項測試' })}</span>
                                         </div>
                                         
                                         {/* Segmented Health Bar */}
@@ -867,8 +867,8 @@ const Analytics: React.FC<AnalyticsProps> = ({ products, shipments, testers = []
 
                                         {/* Legend / Counts */}
                                         <div className="flex justify-between text-[10px] text-slate-500 mb-4 border-b border-slate-50 pb-2">
-                                            <div className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-emerald-500"/> {counts[TestStatus.PASS]} Pass</div>
-                                            <div className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-red-500"/> {counts[TestStatus.FAIL]} Fail</div>
+                                            <div className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-emerald-500"/> {counts[TestStatus.PASS]} {t({ en: 'Pass', zh: '通過' })}</div>
+                                            <div className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-red-500"/> {counts[TestStatus.FAIL]} {t({ en: 'Fail', zh: '不通過' })}</div>
                                         </div>
 
                                         {/* Critical Alerts List */}
@@ -884,9 +884,9 @@ const Analytics: React.FC<AnalyticsProps> = ({ products, shipments, testers = []
                                                     </div>
                                                 ))
                                             ) : (
-                                                <div className="text-xs text-slate-400 italic text-center py-2">No critical issues</div>
+                                                <div className="text-xs text-slate-400 italic text-center py-2">{t({ en: 'No critical issues', zh: '查無嚴重異常' })}</div>
                                             )}
-                                            {criticalTests.length > 2 && <div className="text-[10px] text-center text-slate-400">+{criticalTests.length - 2} more issues</div>}
+                                            {criticalTests.length > 2 && <div className="text-[10px] text-center text-slate-400">+{criticalTests.length - 2} {t({ en: 'more issues', zh: '更多問題' })}</div>}
                                         </div>
                                     </div>
                                </div>
@@ -897,14 +897,14 @@ const Analytics: React.FC<AnalyticsProps> = ({ products, shipments, testers = []
 
                {/* Category Performance (Bottom Aggregate) */}
                <div className="lg:col-span-3 bg-white p-8 rounded-3xl border border-slate-100 shadow-sm mt-4">
-                   <h3 className="text-lg font-bold text-slate-900 mb-6">Average Completion % by Category ({selectedLabSeries === 'ALL' ? 'Company Wide' : selectedLabSeries})</h3>
+                   <h3 className="text-lg font-bold text-slate-900 mb-6">{t({ en: 'Average Completion % by Category', zh: '各類別平均測試完成率' })} ({selectedLabSeries === 'ALL' ? t({ en: 'Company Wide', zh: '全公司' }) : selectedLabSeries})</h3>
                    <ResponsiveContainer width="100%" height={250}>
                        <BarChart data={testAggregates.categoryChartData}>
                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9"/>
                            <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fill: '#64748b', fontSize: 12}} dy={10} />
                            <YAxis axisLine={false} tickLine={false} tick={{fill: '#64748b', fontSize: 12}} unit="%"/>
                            <Tooltip cursor={{fill: '#f8fafc'}} contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }} />
-                           <Bar dataKey="avgScore" name="Avg Completion" fill="#3b82f6" radius={[6, 6, 0, 0]} barSize={50} />
+                           <Bar dataKey="avgScore" name={t({ en: 'Avg Completion', zh: '平均完成率' })} fill="#3b82f6" radius={[6, 6, 0, 0]} barSize={50} />
                        </BarChart>
                    </ResponsiveContainer>
                </div>
@@ -918,14 +918,14 @@ const Analytics: React.FC<AnalyticsProps> = ({ products, shipments, testers = []
     <div className="w-full p-8 min-h-screen">
       <header className="mb-8 flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-           <h1 className="text-3xl font-bold text-slate-900">Product Dashboard</h1>
-           <p className="text-slate-500 mt-1">Integrated analytics for shipments, human factors, and lab testing.</p>
+           <h1 className="text-3xl font-bold text-slate-900">{t({ en: 'Product Dashboard', zh: '產品數據總覽' })}</h1>
+           <p className="text-slate-500 mt-1">{t({ en: 'Integrated analytics for shipments, human factors, and lab testing.', zh: '整合出貨、人因測試與實驗室壽命測試之數據分析。' })}</p>
         </div>
         {activeView === 'SHIPMENT' && (
             <div>
             <button onClick={() => fileInputRef.current?.click()} disabled={isUploading} className="bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 px-4 py-2 rounded-xl font-medium flex items-center gap-2 transition-all shadow-sm">
                 {isUploading ? <span className="animate-spin">⌛</span> : <FileSpreadsheet size={18} className="text-green-600" />}
-                Upload Shipment Data
+                {t({ en: 'Upload Shipment Data', zh: '上傳出貨數據檔案' })}
             </button>
             <input ref={fileInputRef} type="file" accept=".xlsx, .xls" className="hidden" onChange={handleFileUpload} />
             </div>
@@ -938,19 +938,19 @@ const Analytics: React.FC<AnalyticsProps> = ({ products, shipments, testers = []
              onClick={() => setActiveView('SHIPMENT')}
              className={`flex items-center gap-2 px-6 py-3 rounded-xl font-bold text-sm transition-all ${activeView === 'SHIPMENT' ? 'bg-white shadow-md text-slate-900' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-200/50'}`}
           >
-              <Truck size={18} className={activeView === 'SHIPMENT' ? 'text-intenza-600' : ''}/> Shipment Data
+              <Truck size={18} className={activeView === 'SHIPMENT' ? 'text-intenza-600' : ''}/> {t({ en: 'Shipment Data', zh: '出貨數據' })}
           </button>
           <button 
              onClick={() => setActiveView('ERGO')}
              className={`flex items-center gap-2 px-6 py-3 rounded-xl font-bold text-sm transition-all ${activeView === 'ERGO' ? 'bg-white shadow-md text-slate-900' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-200/50'}`}
           >
-              <Users size={18} className={activeView === 'ERGO' ? 'text-indigo-600' : ''}/> Ergonomics Database
+              <Users size={18} className={activeView === 'ERGO' ? 'text-indigo-600' : ''}/> {t({ en: 'Ergonomics Database', zh: '人因數據庫' })}
           </button>
           <button 
              onClick={() => setActiveView('PRODUCT_TEST')}
              className={`flex items-center gap-2 px-6 py-3 rounded-xl font-bold text-sm transition-all ${activeView === 'PRODUCT_TEST' ? 'bg-white shadow-md text-slate-900' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-200/50'}`}
           >
-              <Activity size={18} className={activeView === 'PRODUCT_TEST' ? 'text-emerald-600' : ''}/> Lab Testing (All SKUs)
+              <Activity size={18} className={activeView === 'PRODUCT_TEST' ? 'text-emerald-600' : ''}/> {t({ en: 'Lab Testing (All SKUs)', zh: '實驗室測試 (全型號)' })}
           </button>
       </div>
       
