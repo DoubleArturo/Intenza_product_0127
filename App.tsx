@@ -45,7 +45,7 @@ const App = () => {
   const [shipments, setShipments] = useState<ShipmentData[]>(MOCK_SHIPMENTS);
   const [testers, setTesters] = useState<Tester[]>(MOCK_TESTERS);
   const [users, setUsers] = useState<UserAccount[]>([]);
-  const [showAiInsights, setShowAiInsights] = useState(true);
+  const [showAiInsights, setShowAiInsights] = useState(false); // 預設關閉 AI
   const [maxHistorySteps, setMaxHistorySteps] = useState(10);
 
   const [syncStatus, setSyncStatus] = useState<'idle' | 'saving' | 'success' | 'error'>('idle');
@@ -144,7 +144,13 @@ const App = () => {
   return (
     <LanguageContext.Provider value={{ language, setLanguage, t }}>
       <div className="flex min-h-screen bg-slate-50 relative">
-        <Sidebar onLogout={handleLogout} isAdmin={isAdmin} />
+        <Sidebar 
+          onLogout={handleLogout} 
+          isAdmin={isAdmin} 
+          onPush={handleSyncToCloud}
+          onPull={handleLoadFromCloud}
+          syncStatus={syncStatus}
+        />
         <main className="flex-1 overflow-y-auto">
           <Suspense fallback={<PageLoader />}>
             <Routes>

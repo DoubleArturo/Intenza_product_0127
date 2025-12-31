@@ -1,15 +1,18 @@
 
 import React, { useContext, useState } from 'react';
 import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, BarChart2, Settings, LogOut } from 'lucide-react';
+import { LayoutDashboard, BarChart2, Settings, LogOut, CloudUpload, CloudDownload, Cloud, Loader2 } from 'lucide-react';
 import { LanguageContext } from '../App';
 
 interface SidebarProps {
   onLogout: () => void;
   isAdmin: boolean;
+  onPush: () => void;
+  onPull: () => void;
+  syncStatus: 'idle' | 'saving' | 'success' | 'error';
 }
 
-const Sidebar: React.FC<SidebarProps> = ({ onLogout, isAdmin }) => {
+const Sidebar: React.FC<SidebarProps> = ({ onLogout, isAdmin, onPush, onPull, syncStatus }) => {
   const { t } = useContext(LanguageContext);
   const [isExpanded, setIsExpanded] = useState(false);
 
@@ -55,7 +58,44 @@ const Sidebar: React.FC<SidebarProps> = ({ onLogout, isAdmin }) => {
         </NavLink>
       </nav>
 
-      <div className="mt-auto px-3 pb-6 space-y-2">
+      {/* 雲端共享中心 (Push / Pull) - 對所有用戶開放 */}
+      <div className="px-3 mb-4">
+        <div className={`bg-slate-50 rounded-2xl p-2 transition-all duration-300 ${isExpanded ? 'opacity-100' : 'opacity-100 flex flex-col items-center'}`}>
+          <div className={`mb-2 px-2 flex items-center justify-between w-full ${!isExpanded ? 'hidden' : ''}`}>
+             <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1">
+                <Cloud size={10} /> Cloud Center
+             </span>
+             {syncStatus === 'saving' && <Loader2 size={10} className="text-intenza-600 animate-spin" />}
+          </div>
+          
+          <div className={`flex gap-1 w-full ${!isExpanded ? 'flex-col' : ''}`}>
+            <button 
+              onClick={(e) => { e.preventDefault(); onPush(); }}
+              disabled={syncStatus === 'saving'}
+              title="Push to Cloud"
+              className={`flex-1 flex items-center justify-center gap-2 p-2 rounded-lg transition-all ${
+                syncStatus === 'saving' ? 'bg-slate-200 text-slate-400' : 'bg-white border border-slate-200 text-slate-600 hover:text-intenza-600 hover:border-intenza-200 hover:shadow-sm'
+              }`}
+            >
+              <CloudUpload size={18} />
+              {isExpanded && <span className="text-[11px] font-bold">Push</span>}
+            </button>
+            <button 
+              onClick={(e) => { e.preventDefault(); onPull(); }}
+              disabled={syncStatus === 'saving'}
+              title="Pull from Cloud"
+              className={`flex-1 flex items-center justify-center gap-2 p-2 rounded-lg transition-all ${
+                syncStatus === 'saving' ? 'bg-slate-200 text-slate-400' : 'bg-white border border-slate-200 text-slate-600 hover:text-emerald-600 hover:border-emerald-200 hover:shadow-sm'
+              }`}
+            >
+              <CloudDownload size={18} />
+              {isExpanded && <span className="text-[11px] font-bold">Pull</span>}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div className="px-3 pb-6 space-y-2">
         <div className="pt-4 border-t border-slate-100">
           {/* 僅 Admin 可見設定 */}
           {isAdmin && (
