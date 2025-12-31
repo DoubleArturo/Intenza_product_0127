@@ -1,3 +1,4 @@
+
 import React, { useState, useMemo, useRef, useContext } from 'react';
 import { 
   PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer, 
@@ -6,7 +7,7 @@ import {
 import { 
   ArrowLeft, PieChart as PieIcon, BarChart as BarIcon, Search, FileSpreadsheet, 
   Layers, Palette, Box, Activity, ChevronDown, 
-  Image as ImageIcon, ClipboardList, User
+  Image as ImageIcon, ClipboardList, User, Globe, MapPin
 } from 'lucide-react';
 import { ShipmentData, ChartViewType, ProductModel, Tester } from '../types';
 import GeminiInsight from '../components/GeminiInsight';
@@ -44,15 +45,31 @@ const Analytics: React.FC<AnalyticsProps> = ({ products, shipments, onImportData
   const [traceSearchQuery, setTraceSearchQuery] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  /**
+   * Enhanced Drill-Down Logic
+   * Defines what the "Next" level should be based on current selection
+   */
   const currentLevel = useMemo(() => {
     const depth = drillPath.length;
-    if (dimension === 'BUYER') return 'BUYER';
     
+    // Path if starting from BUYER view
+    if (dimension === 'BUYER') {
+      switch (depth) {
+        case 0: return 'BUYER';
+        case 1: return 'SERIES';
+        case 2: return 'SKU';
+        case 3: return 'VERSION';
+        default: return 'VERSION';
+      }
+    }
+    
+    // Path if starting from PRODUCT (Metric) view
     switch (depth) {
       case 0: return 'CATEGORY';
       case 1: return 'SERIES';
       case 2: return 'SKU';
-      case 3: return 'VERSION';
+      case 3: return 'BUYER'; // After picking SKU, see which Buyers bought it
+      case 4: return 'VERSION'; // After picking Buyer, see Versions
       default: return 'VERSION';
     }
   }, [drillPath, dimension]);
@@ -63,6 +80,8 @@ const Analytics: React.FC<AnalyticsProps> = ({ products, shipments, onImportData
       if (step.level === 'CATEGORY') data = data.filter(s => s.category === step.filterVal);
       if (step.level === 'SERIES') data = data.filter(s => s.series === step.filterVal);
       if (step.level === 'SKU') data = data.filter(s => s.sku === step.filterVal);
+      if (step.level === 'BUYER') data = data.filter(s => s.buyer === step.filterVal);
+      if (step.level === 'VERSION') data = data.filter(s => s.version === step.filterVal);
     });
     return data;
   }, [shipments, drillPath]);
@@ -73,21 +92,19 @@ const Analytics: React.FC<AnalyticsProps> = ({ products, shipments, onImportData
 
     filteredShipments.forEach(item => {
       let key = '';
-      if (dimension === 'BUYER') {
-        key = item.buyer;
-      } else {
-        switch (currentLevel) {
-          case 'CATEGORY': key = item.category || 'N/A'; break;
-          case 'SERIES': key = item.series || 'N/A'; break;
-          case 'SKU': key = item.sku || 'N/A'; break;
-          case 'VERSION': key = item.version || 'v1.0'; break;
-          default: key = item.category;
-        }
+      switch (currentLevel) {
+        case 'CATEGORY': key = item.category || 'N/A'; break;
+        case 'SERIES': key = item.series || 'N/A'; break;
+        case 'SKU': key = item.sku || 'N/A'; break;
+        case 'BUYER': key = item.buyer || 'N/A'; break;
+        case 'VERSION': key = item.version || 'v1.0'; break;
+        default: key = item.category;
       }
 
       aggregated[key] = (aggregated[key] || 0) + item.quantity;
       
-      const prod = products.find(p => p.sku === item.sku);
+      // Try to find product meta if it's SKU level or related
+      const prod = products.find(p => p.sku === (currentLevel === 'SKU' ? key : item.sku));
       if (prod) {
         meta[key] = {
           sku: prod.sku,
@@ -102,17 +119,22 @@ const Analytics: React.FC<AnalyticsProps> = ({ products, shipments, onImportData
       value: aggregated[key],
       ...meta[key]
     })).sort((a, b) => b.value - a.value);
-  }, [filteredShipments, currentLevel, dimension, products, t]);
+  }, [filteredShipments, currentLevel, products, t]);
 
   const totalQuantity = useMemo(() => chartData.reduce((acc, curr) => acc + curr.value, 0), [chartData]);
 
   const handleDrill = (entry: any) => {
-    if (dimension === 'BUYER' || currentLevel === 'VERSION') return;
+    if (currentLevel === 'VERSION') return;
     setDrillPath([...drillPath, { level: currentLevel, label: entry.name, filterVal: entry.name }]);
   };
 
   const handleBack = () => {
     setDrillPath(drillPath.slice(0, -1));
+  };
+
+  const handleResetDrill = (dim: DimensionFilter) => {
+    setDimension(dim);
+    setDrillPath([]);
   };
 
   const colorData = useMemo(() => {
@@ -131,6 +153,15 @@ const Analytics: React.FC<AnalyticsProps> = ({ products, shipments, onImportData
     return Object.entries(counts).map(([name, value]) => ({ name, value }));
   }, [filteredShipments]);
 
+  const countryData = useMemo(() => {
+    const counts: Record<string, number> = {};
+    filteredShipments.forEach(s => {
+      const country = s.country || 'Global';
+      counts[country] = (counts[country] || 0) + s.quantity;
+    });
+    return Object.entries(counts).map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value);
+  }, [filteredShipments]);
+
   const traceResults = useMemo(() => {
     if (!traceSearchQuery) return [];
     const q = traceSearchQuery.toLowerCase();
@@ -138,7 +169,8 @@ const Analytics: React.FC<AnalyticsProps> = ({ products, shipments, onImportData
       s.sn?.toLowerCase().includes(q) || 
       s.deliveryNo?.toLowerCase().includes(q) || 
       s.pi?.toLowerCase().includes(q) || 
-      s.pn?.toLowerCase().includes(q)
+      s.pn?.toLowerCase().includes(q) ||
+      s.buyer?.toLowerCase().includes(q)
     ).slice(0, 10);
   }, [traceSearchQuery, shipments]);
 
@@ -168,7 +200,8 @@ const Analytics: React.FC<AnalyticsProps> = ({ products, shipments, onImportData
           sn: String(row['S/N'] || ''),
           version: String(row['Version'] || '1'),
           category: row['Category'] || 'Other',
-          series: row['Series'] || 'General'
+          series: row['Series'] || 'General',
+          country: row['Country'] || row['Region'] || 'Global'
         }));
 
         onImportData(newShipments);
@@ -188,10 +221,10 @@ const Analytics: React.FC<AnalyticsProps> = ({ products, shipments, onImportData
           {data.imageUrl && (
             <img src={data.imageUrl} className="w-full h-28 object-contain rounded-lg mb-3 bg-slate-50 border border-slate-100 p-2" alt={data.name} />
           )}
-          <p className="font-black text-slate-900 text-sm mb-1">{data.name}</p>
+          <p className="font-black text-slate-900 text-sm mb-1 uppercase tracking-tight">{data.name}</p>
           {data.fullName && <p className="text-[10px] font-bold text-slate-400 mb-2 uppercase">{data.fullName}</p>}
           <div className="flex items-center justify-between border-t border-slate-100 pt-3 mt-1">
-            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Total Qty</span>
+            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Qty Count</span>
             <span className="text-intenza-600 font-black text-base">{data.value.toLocaleString()}</span>
           </div>
         </div>
@@ -200,11 +233,10 @@ const Analytics: React.FC<AnalyticsProps> = ({ products, shipments, onImportData
     return null;
   };
 
-  // 自定義 X 軸刻度，在型號下方顯示縮圖
   const CustomXAxisTick = (props: any) => {
     const { x, y, payload } = props;
     const dataItem = chartData.find(d => d.name === payload.value);
-    const showImage = currentLevel === 'SKU' || currentLevel === 'VERSION' || currentLevel === 'BUYER';
+    const showImage = currentLevel === 'SKU' || currentLevel === 'VERSION';
     
     return (
       <g transform={`translate(${x},${y})`}>
@@ -218,7 +250,7 @@ const Analytics: React.FC<AnalyticsProps> = ({ products, shipments, onImportData
           fontWeight="900"
           className="uppercase tracking-tighter"
         >
-          {payload.value.length > 12 ? payload.value.substring(0, 10) + '...' : payload.value}
+          {payload.value.length > 15 ? payload.value.substring(0, 12) + '...' : payload.value}
         </text>
         {showImage && dataItem?.imageUrl && (
           <g transform="translate(-25, 10)">
@@ -248,11 +280,11 @@ const Analytics: React.FC<AnalyticsProps> = ({ products, shipments, onImportData
       <header className="mb-10 flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-200 pb-8">
         <div>
           <h1 className="text-4xl font-black text-slate-900 tracking-tight">Product Dashboard</h1>
-          <p className="text-slate-500 mt-2 font-medium">Visualizing equipment distribution & shipment trends.</p>
+          <p className="text-slate-500 mt-2 font-medium">Drill-down analytics for Customers, SKUs, and Market versions.</p>
         </div>
         <div className="flex gap-3">
           <button onClick={() => fileInputRef.current?.click()} className="flex items-center gap-2 bg-white border-2 border-slate-100 text-slate-700 px-6 py-3 rounded-2xl font-black text-sm shadow-sm hover:border-slate-900 transition-all active:scale-95">
-            <FileSpreadsheet size={20} className="text-emerald-500" /> Import Records
+            <FileSpreadsheet size={20} className="text-emerald-500" /> Import Data
           </button>
           <input ref={fileInputRef} type="file" accept=".xlsx,.xls" className="hidden" onChange={handleFileUpload} />
         </div>
@@ -260,7 +292,7 @@ const Analytics: React.FC<AnalyticsProps> = ({ products, shipments, onImportData
 
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
         <div className="lg:col-span-3 space-y-8">
-          {/* Breadcrumbs & Controls */}
+          {/* Controls & Breadcrumbs */}
           <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm flex flex-wrap items-center justify-between gap-6">
             <div className="flex items-center gap-4">
               {drillPath.length > 0 && (
@@ -273,7 +305,7 @@ const Analytics: React.FC<AnalyticsProps> = ({ products, shipments, onImportData
                   {drillPath.length === 0 ? "Global Market Map" : drillPath[drillPath.length-1].label}
                 </h2>
                 <div className="flex items-center gap-2 mt-1">
-                  <span className="text-[10px] uppercase font-black text-white px-2 py-0.5 bg-slate-900 rounded-md">Depth: {currentLevel}</span>
+                  <span className="text-[10px] uppercase font-black text-white px-2 py-0.5 bg-slate-900 rounded-md">Level: {currentLevel}</span>
                   {drillPath.map((p, i) => (
                     <span key={i} className="text-[10px] text-slate-400 font-bold uppercase tracking-widest flex items-center gap-1">
                       <ChevronDown size={10} className="-rotate-90" /> {p.label}
@@ -285,8 +317,8 @@ const Analytics: React.FC<AnalyticsProps> = ({ products, shipments, onImportData
 
             <div className="flex items-center gap-4">
               <div className="flex bg-slate-100 p-1 rounded-xl shadow-inner">
-                <button onClick={() => setDimension('DATA_DRILL')} className={`px-5 py-2 rounded-lg text-xs font-black transition-all ${dimension === 'DATA_DRILL' ? 'bg-white shadow-md text-slate-900' : 'text-slate-400'}`}>BY METRIC</button>
-                <button onClick={() => setDimension('BUYER')} className={`px-5 py-2 rounded-lg text-xs font-black transition-all ${dimension === 'BUYER' ? 'bg-white shadow-md text-slate-900' : 'text-slate-400'}`}>BY BUYER</button>
+                <button onClick={() => handleResetDrill('DATA_DRILL')} className={`px-5 py-2 rounded-lg text-xs font-black transition-all ${dimension === 'DATA_DRILL' ? 'bg-white shadow-md text-slate-900' : 'text-slate-400'}`}>BY METRIC</button>
+                <button onClick={() => handleResetDrill('BUYER')} className={`px-5 py-2 rounded-lg text-xs font-black transition-all ${dimension === 'BUYER' ? 'bg-white shadow-md text-slate-900' : 'text-slate-400'}`}>BY BUYER</button>
               </div>
               <div className="flex bg-slate-100 p-1 rounded-xl shadow-inner">
                 <button onClick={() => setChartType('PIE')} className={`p-2 rounded-lg transition-all ${chartType === 'PIE' ? 'bg-white shadow-md text-slate-900' : 'text-slate-400'}`}><PieIcon size={18}/></button>
@@ -296,8 +328,13 @@ const Analytics: React.FC<AnalyticsProps> = ({ products, shipments, onImportData
           </div>
 
           {/* Main Chart Area */}
-          <div className="bg-white rounded-[2.5rem] p-10 border border-slate-100 shadow-sm min-h-[550px] flex flex-col">
-            <div className="flex-1">
+          <div className="bg-white rounded-[2.5rem] p-10 border border-slate-100 shadow-sm min-h-[550px] flex flex-col relative">
+            <div className="absolute top-10 right-10 flex flex-col items-end">
+               <span className="text-[10px] font-black text-slate-300 uppercase tracking-widest">Active Metric</span>
+               <span className="text-xs font-black text-intenza-600 uppercase tracking-tight">Units Shipped</span>
+            </div>
+            
+            <div className="flex-1 mt-6">
               <ResponsiveContainer width="100%" height={500}>
                 {chartType === 'PIE' ? (
                   <PieChart>
@@ -319,7 +356,7 @@ const Analytics: React.FC<AnalyticsProps> = ({ products, shipments, onImportData
                           return (
                             <text x={cx} y={cy} textAnchor="middle" dominantBaseline="central">
                               <tspan x={cx} y={cy - 12} className="text-5xl font-black fill-slate-900 tracking-tighter">{totalQuantity.toLocaleString()}</tspan>
-                              <tspan x={cx} y={cy + 25} className="text-xs font-black uppercase tracking-[0.2em] fill-slate-300">Total Units Shipped</tspan>
+                              <tspan x={cx} y={cy + 25} className="text-xs font-black uppercase tracking-[0.2em] fill-slate-300">Total Units Filtered</tspan>
                             </text>
                           );
                         }}
@@ -356,22 +393,46 @@ const Analytics: React.FC<AnalyticsProps> = ({ products, shipments, onImportData
             </div>
           </div>
 
-          {/* Color Analysis */}
-          <div className="bg-white rounded-[2.5rem] p-10 border border-slate-100 shadow-sm">
-            <div className="flex items-center gap-3 mb-8">
-              <div className="p-2 bg-slate-900 rounded-lg text-white">
-                <Palette size={20} />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            {/* Color Analysis */}
+            <div className="bg-white rounded-[2.5rem] p-8 border border-slate-100 shadow-sm">
+              <div className="flex items-center gap-3 mb-8">
+                <div className="p-2 bg-slate-900 rounded-lg text-white">
+                  <Palette size={20} />
+                </div>
+                <h3 className="font-black text-xl text-slate-900 tracking-tight">Finishing Distribution</h3>
               </div>
-              <h3 className="font-black text-xl text-slate-900 tracking-tight">Finishing Distribution</h3>
+              <div className="grid grid-cols-3 gap-6">
+                {colorData.map(c => (
+                  <div key={c.name} className="flex flex-col items-center p-4 bg-slate-50 rounded-3xl border border-slate-100 hover:bg-white hover:shadow-xl transition-all group">
+                      <div className="w-10 h-10 rounded-full mb-3 shadow-md ring-4 ring-white transition-transform group-hover:scale-110 border border-slate-200" style={{ backgroundColor: COLOR_MAP[c.name] || '#e2e8f0' }} />
+                      <span className="text-[9px] font-black text-slate-300 uppercase tracking-widest mb-1">{c.name}</span>
+                      <span className="text-xl font-black text-slate-900">{c.value.toLocaleString()}</span>
+                  </div>
+                ))}
+              </div>
             </div>
-            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-8">
-               {colorData.map(c => (
-                 <div key={c.name} className="flex flex-col items-center p-6 bg-slate-50 rounded-3xl border border-slate-100 hover:bg-white hover:shadow-xl transition-all group">
-                    <div className="w-12 h-12 rounded-full mb-4 shadow-xl ring-4 ring-white transition-transform group-hover:scale-110" style={{ backgroundColor: COLOR_MAP[c.name] || '#e2e8f0' }} />
-                    <span className="text-[10px] font-black text-slate-300 uppercase tracking-widest mb-1">{c.name}</span>
-                    <span className="text-2xl font-black text-slate-900">{c.value.toLocaleString()}</span>
-                 </div>
-               ))}
+
+            {/* Regional Reach */}
+            <div className="bg-white rounded-[2.5rem] p-8 border border-slate-100 shadow-sm">
+              <div className="flex items-center gap-3 mb-8">
+                <div className="p-2 bg-intenza-600 rounded-lg text-white">
+                  <Globe size={20} />
+                </div>
+                <h3 className="font-black text-xl text-slate-900 tracking-tight">Market Reach</h3>
+              </div>
+              <div className="space-y-4 max-h-[200px] overflow-y-auto pr-2 custom-scrollbar">
+                {countryData.map(c => (
+                  <div key={c.name} className="flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-100 hover:border-slate-300 transition-colors">
+                    <div className="flex items-center gap-3">
+                       <MapPin size={14} className="text-slate-400" />
+                       <span className="text-xs font-black uppercase text-slate-700 tracking-tight">{c.name}</span>
+                    </div>
+                    <span className="text-sm font-black text-slate-900 font-mono">{c.value.toLocaleString()}</span>
+                  </div>
+                ))}
+                {countryData.length === 0 && <p className="text-center py-6 text-xs text-slate-400 font-bold uppercase tracking-widest">No Regional Data</p>}
+              </div>
             </div>
           </div>
         </div>
@@ -411,8 +472,8 @@ const Analytics: React.FC<AnalyticsProps> = ({ products, shipments, onImportData
                   <div className="space-y-3">
                     <div className="text-xs font-black text-slate-800 line-clamp-1 uppercase">{r.description}</div>
                     <div className="grid grid-cols-2 gap-x-3 gap-y-2 text-[10px] text-slate-500 border-t border-slate-50 pt-3">
-                      <div><span className="text-slate-300 font-black uppercase block text-[8px] mb-0.5">Buyer</span> <span className="font-bold text-slate-700">{r.buyer}</span></div>
-                      <div><span className="text-slate-300 font-black uppercase block text-[8px] mb-0.5">Deliv</span> <span className="font-bold text-slate-700">{r.deliveryNo}</span></div>
+                      <div><span className="text-slate-300 font-black uppercase block text-[8px] mb-0.5">Buyer</span> <span className="font-bold text-slate-700 truncate block">{r.buyer}</span></div>
+                      <div><span className="text-slate-300 font-black uppercase block text-[8px] mb-0.5">Country</span> <span className="font-bold text-slate-700 truncate block">{r.country || 'N/A'}</span></div>
                       <div><span className="text-slate-300 font-black uppercase block text-[8px] mb-0.5">SKU</span> <span className="font-bold text-slate-700 font-mono">{r.sku}</span></div>
                       <div><span className="text-slate-300 font-black uppercase block text-[8px] mb-0.5">Ver</span> <span className="font-bold text-slate-700">v{r.version}</span></div>
                     </div>
@@ -424,32 +485,32 @@ const Analytics: React.FC<AnalyticsProps> = ({ products, shipments, onImportData
 
           {showAiInsights && (
             <GeminiInsight 
-              context={`Inventory Analysis. Level: ${currentLevel}. Focus: Shipment Trends and Buyer Distribution. Level path: ${drillPath.map(p=>p.label).join(' > ')}`} 
+              context={`Inventory Analysis. Active Level: ${currentLevel}. Active Filters: ${drillPath.map(p=>`${p.level}:${p.label}`).join(', ')}. Focus: Market trends and stock movement.`} 
               data={chartData} 
             />
           )}
 
           <div className="bg-slate-900 text-white p-10 rounded-[2.5rem] shadow-2xl shadow-slate-900/30 relative overflow-hidden group">
              <div className="absolute -top-10 -right-10 w-40 h-40 bg-white/5 rounded-full blur-3xl transition-transform group-hover:scale-150"></div>
-             <h4 className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-500 mb-6">Inventory Summary</h4>
+             <h4 className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-500 mb-6">Live Status</h4>
              <div className="space-y-6">
                <div>
-                  <div className="text-xs font-bold text-slate-400 mb-2 uppercase tracking-widest">Global Shipment</div>
-                  <div className="text-5xl font-black tracking-tighter">{shipments.reduce((acc,s)=>acc+s.quantity, 0).toLocaleString()}</div>
+                  <div className="text-xs font-bold text-slate-400 mb-2 uppercase tracking-widest">Active Total</div>
+                  <div className="text-5xl font-black tracking-tighter">{totalQuantity.toLocaleString()}</div>
                </div>
                <div className="flex justify-between items-center pt-6 border-t border-white/10">
                   <div className="flex items-center gap-3">
                      <div className="p-1.5 bg-white/10 rounded-lg"><Box size={16} className="text-intenza-500" /></div>
-                     <span className="text-xs font-bold uppercase tracking-wider">Unique SKUs</span>
+                     <span className="text-xs font-bold uppercase tracking-wider">SKUs in View</span>
                   </div>
-                  <span className="text-base font-black font-mono">{new Set(shipments.map(s=>s.sku)).size}</span>
+                  <span className="text-base font-black font-mono">{new Set(filteredShipments.map(s=>s.sku)).size}</span>
                </div>
                <div className="flex justify-between items-center">
                   <div className="flex items-center gap-3">
                      <div className="p-1.5 bg-white/10 rounded-lg"><User size={16} className="text-blue-400" /></div>
-                     <span className="text-xs font-bold uppercase tracking-wider">Key Accounts</span>
+                     <span className="text-xs font-bold uppercase tracking-wider">Buyers in View</span>
                   </div>
-                  <span className="text-base font-black font-mono">{new Set(shipments.map(s=>s.buyer)).size}</span>
+                  <span className="text-base font-black font-mono">{new Set(filteredShipments.map(s=>s.buyer)).size}</span>
                </div>
              </div>
           </div>
