@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect, useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Plus, Search, ChevronRight, X, Upload, Pencil, Save, Star, ArrowLeft, ArrowRight, Trash2, Image as ImageIcon, Loader2 } from 'lucide-react';
@@ -69,9 +68,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ products, seriesList, onAd
     const matchesSeries = selectedSeries === 'ALL' || t(p.series) === selectedSeries;
     return matchesSearch && matchesSeries;
   }).sort((a, b) => {
-    if (a.isWatched !== b.isWatched) return a.isWatched ? -1 : 1;
-    if (a.customSortOrder !== b.customSortOrder) return a.customSortOrder - b.customSortOrder;
-    return t(a.modelName).localeCompare(t(b.modelName));
+    // 按照型號名稱由小至大排序，使用 numeric: true 確保數字部分正確比較 (例如 450 < 550)
+    return t(a.modelName).localeCompare(t(b.modelName), undefined, { numeric: true, sensitivity: 'base' });
   });
 
   const seriesTabs = ['ALL', ...seriesList.map(s => t(s))];
@@ -91,7 +89,6 @@ export const Dashboard: React.FC<DashboardProps> = ({ products, seriesList, onAd
     if (file) {
       try {
         setIsUploading(true);
-        // 符合 V01 標準：上傳至 Vercel Blob 並儲存 URL
         const blobUrl = await api.uploadImage(file);
         setFormData({ ...formData, imageUrl: blobUrl });
       } catch (err) {
@@ -164,313 +161,178 @@ export const Dashboard: React.FC<DashboardProps> = ({ products, seriesList, onAd
                   : 'text-slate-500 hover:text-slate-700'
               }`}
             >
-              {s === 'ALL' ? t({ en: 'All Series', zh: '所有系列'}) : s.replace(' Series', '').replace(' 系列','')}
+              {s === 'ALL' ? t({ en: 'All Series', zh: '所有系列'}) : s}
             </button>
           ))}
         </div>
-        <div className="relative flex-1 max-w-md">
+        
+        <div className="relative flex-1 max-w-md w-full">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-          <input 
-            type="text" 
-            placeholder={t({ en: "Search SKU or Model...", zh: "搜索 SKU 或型號..."})} 
+          <input
+            type="text"
+            placeholder={t({ en: 'Search by model or SKU...', zh: '搜尋型號或 SKU...'})}
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-intenza-500/20 focus:border-intenza-500 transition-all"
+            className="w-full pl-10 pr-4 py-2 bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-intenza-500/20 transition-all shadow-sm text-sm"
           />
         </div>
       </div>
 
-      {/* Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-6 animate-fade-in">
-        {filteredProducts.map((product) => (
-          <ProductCard 
-            key={product.id} 
-            product={product} 
-            onClick={() => navigate(`/product/${product.id}`)}
-            onEdit={(e) => {
-              e.stopPropagation();
-              handleStartEdit(product);
-            }}
-            onToggleWatch={(e) => {
-              e.stopPropagation();
-              onToggleWatch(product.id);
-            }}
-            onMove={(dir) => onMoveProduct(product.id, dir)}
-            onDelete={() => onDeleteProduct(product.id)}
-          />
+      {/* Product Grid */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
+        {filteredProducts.map((p) => (
+          <div 
+            key={p.id} 
+            className="group bg-white rounded-3xl border border-slate-200 shadow-sm hover:shadow-2xl hover:shadow-slate-200/50 transition-all duration-300 overflow-hidden flex flex-col cursor-pointer"
+            onClick={() => navigate(`/product/${p.id}`)}
+          >
+            {/* Image Container */}
+            <div className="relative h-56 bg-slate-100 overflow-hidden">
+              {p.imageUrl ? (
+                <img 
+                  src={p.imageUrl} 
+                  alt={t(p.modelName)} 
+                  className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" 
+                />
+              ) : (
+                <div className="w-full h-full flex flex-col items-center justify-center text-slate-300">
+                  <ImageIcon size={48} className="opacity-20 mb-2" />
+                  <span className="text-xs font-medium uppercase tracking-widest opacity-40">No Image</span>
+                </div>
+              )}
+              
+              {/* Removed Series Tag from Top-Left as requested */}
+
+              <div className="absolute top-3 right-3 flex flex-col gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-10">
+                <button 
+                  onClick={(e) => { e.stopPropagation(); onToggleWatch(p.id); }}
+                  className={`p-2 rounded-full transition-all shadow-sm ${p.isWatched ? 'bg-amber-400 text-white' : 'bg-white/90 text-slate-400 hover:text-amber-500'}`}
+                >
+                  <Star size={16} fill={p.isWatched ? 'currentColor' : 'none'} />
+                </button>
+                <button 
+                  onClick={(e) => { e.stopPropagation(); handleStartEdit(p); }}
+                  className="p-2 bg-white/90 backdrop-blur-sm rounded-full text-slate-400 hover:text-slate-900 transition-all shadow-sm"
+                >
+                  <Pencil size={16} />
+                </button>
+                <button 
+                  onClick={(e) => { e.stopPropagation(); if(window.confirm('Delete product?')) onDeleteProduct(p.id); }}
+                  className="p-2 bg-white/90 backdrop-blur-sm rounded-full text-slate-400 hover:text-red-500 transition-all shadow-sm"
+                >
+                  <Trash2 size={16} />
+                </button>
+              </div>
+
+              <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-slate-900/60 to-transparent p-4 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                 <span className="text-[10px] font-bold text-white uppercase tracking-widest">{t({en: 'View Details', zh: '查看詳情'})}</span>
+              </div>
+            </div>
+
+            {/* Content Container */}
+            <div className="p-5 flex-1 flex flex-col">
+              <div className="flex justify-between items-start mb-2">
+                <h3 className="text-lg font-bold text-slate-900 group-hover:text-intenza-600 transition-colors line-clamp-1">{t(p.modelName)}</h3>
+                <span className="text-[10px] font-mono font-bold bg-slate-100 px-2 py-0.5 rounded text-slate-500">{p.currentVersion}</span>
+              </div>
+              
+              <p className="text-xs text-slate-500 line-clamp-2 mb-4 leading-relaxed flex-1">
+                {t(p.description)}
+              </p>
+
+              <div className="pt-4 border-t border-slate-50 flex items-center justify-between">
+                <div className="flex flex-col">
+                  <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">SKU ID</span>
+                  <span className="text-[11px] font-mono text-slate-700">{p.sku}</span>
+                </div>
+                <div className="flex items-center text-slate-300 group-hover:text-intenza-600 transition-colors">
+                  <ChevronRight size={20} />
+                </div>
+              </div>
+            </div>
+          </div>
         ))}
       </div>
 
-      {/* Add/Edit Product Modal */}
+      {/* Product Modal */}
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm animate-fade-in">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden animate-slide-up flex flex-col max-h-[90vh]">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm animate-fade-in">
+          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-xl animate-slide-up overflow-hidden">
             <div className="flex justify-between items-center p-6 border-b border-slate-100 bg-white sticky top-0 z-10">
-              <h2 className="text-xl font-bold text-slate-900">
-                {editingProduct ? t({ en: 'Edit Product', zh: '編輯產品'}) : t({ en: 'Add New Product', zh: '新增產品'})}
-              </h2>
-              <button 
-                onClick={handleCloseModal}
-                className="text-slate-400 hover:text-slate-600 transition-colors p-2 hover:bg-slate-100 rounded-full"
-              >
-                <X size={24} />
-              </button>
+              <h2 className="text-xl font-bold text-slate-900">{editingProduct ? t({en: 'Edit Product', zh: '編輯產品'}) : t({en: 'Create New Product', zh: '新增產品'})}</h2>
+              <button onClick={handleCloseModal} className="p-2 rounded-full hover:bg-slate-100 text-slate-500 transition-colors"><X size={20} /></button>
             </div>
             
-            <div className="overflow-y-auto p-6">
-              <form id="productForm" onSubmit={handleSubmit} className="space-y-6">
-                 <div>
-                   <label className="block text-sm font-medium text-slate-900 mb-2">{t({ en: 'Product Visualization', zh: '產品視覺化'})}</label>
-                   <div 
-                     onClick={() => !isUploading && fileInputRef.current?.click()}
-                     className="relative h-48 rounded-xl border-2 border-dashed border-slate-300 bg-slate-50 flex flex-col items-center justify-center cursor-pointer hover:border-intenza-400 hover:bg-intenza-50 transition-all overflow-hidden group"
-                   >
-                     {formData.imageUrl ? (
-                       <img src={formData.imageUrl} className="w-full h-full object-cover" onError={(e) => {
-                           (e.target as HTMLImageElement).src = 'https://via.placeholder.com/400x300?text=Image+Not+Found';
-                       }} />
-                     ) : (
-                       <div className="text-center p-4">
-                         <div className="w-12 h-12 bg-white rounded-full shadow-sm flex items-center justify-center mx-auto mb-3 text-slate-400 group-hover:text-intenza-500 transition-colors">
-                           {isUploading ? <Loader2 className="animate-spin" size={20} /> : <Upload size={20} />}
-                         </div>
-                         <p className="text-sm font-medium text-slate-600">{t({ en: 'Click to upload product image', zh: '點擊上傳產品圖片'})}</p>
-                         <p className="text-xs text-slate-400 mt-1">{t({ en: 'Hosted on Vercel Blob (CDN)', zh: '由 Vercel Blob 雲端儲存'})}</p>
-                       </div>
-                     )}
-                     <input 
-                       ref={fileInputRef}
-                       type="file" 
-                       accept="image/*"
-                       className="hidden"
-                       onChange={handleImageUpload}
-                     />
-                   </div>
-                   {isUploading && <p className="text-xs text-intenza-600 mt-2 animate-pulse font-bold">正在上傳至雲端儲存空間...</p>}
+            <form onSubmit={handleSubmit} className="p-6 space-y-6 max-h-[80vh] overflow-y-auto">
+              {/* Image Upload Area */}
+              <div 
+                onClick={() => fileInputRef.current?.click()}
+                className="relative h-48 bg-slate-50 rounded-2xl border-2 border-dashed border-slate-200 flex flex-col items-center justify-center cursor-pointer hover:border-intenza-400 hover:bg-intenza-50 transition-all group overflow-hidden"
+              >
+                {formData.imageUrl ? (
+                  <>
+                    <img src={formData.imageUrl} alt="Preview" className="w-full h-full object-cover" />
+                    <div className="absolute inset-0 bg-slate-900/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
+                      <Upload className="text-white" size={32} />
+                    </div>
+                  </>
+                ) : (
+                  <div className="text-center text-slate-400">
+                    {isUploading ? <Loader2 size={32} className="animate-spin text-intenza-600 mx-auto" /> : <Upload className="mx-auto mb-2" size={32} />}
+                    <span className="text-sm font-medium">Click to upload product image</span>
+                    <span className="text-[10px] block mt-1">Recommended 800x600px</span>
+                  </div>
+                )}
+                <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleImageUpload} />
+              </div>
+
+              <div className="grid grid-cols-2 gap-6">
+                <div className="col-span-2">
+                  <label className="block text-sm font-bold text-slate-700 mb-2">Model Name ({language.toUpperCase()})</label>
+                  <input required type="text" value={formData.modelName} onChange={(e) => setFormData({...formData, modelName: e.target.value})} className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-intenza-500/20 outline-none transition-all" placeholder="e.g. 550Te2 Treadmill" />
                 </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="space-y-4">
-                    <div>
-                      <label className="block text-sm font-medium text-slate-900 mb-1">{t({ en: 'Series', zh: '系列'})}</label>
-                      <select 
-                        value={t(formData.series)}
-                        onChange={(e) => {
-                          const selected = seriesList.find(s => t(s) === e.target.value);
-                          if(selected) setFormData({...formData, series: selected});
-                        }}
-                        className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-intenza-500/20 text-slate-900"
-                      >
-                        {seriesList.map(s => (
-                          <option key={t(s)} value={t(s)}>{t(s)}</option>
-                        ))}
-                      </select>
-                    </div>
-                    
-                    <div>
-                      <label className="block text-sm font-medium text-slate-900 mb-1">{t({ en: 'Model Name', zh: '型號名稱'})}</label>
-                      <input 
-                        required
-                        type="text" 
-                        placeholder={t({ en: 'e.g. 550Te2 Treadmill', zh: '例如 550Te2 跑步機'})}
-                        value={formData.modelName}
-                        onChange={(e) => setFormData({...formData, modelName: e.target.value})}
-                        className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-intenza-500/20 text-slate-900"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="space-y-4">
-                     <div>
-                      <label className="block text-sm font-medium text-slate-900 mb-1">{t({ en: 'SKU', zh: 'SKU'})}</label>
-                      <input 
-                        required
-                        type="text" 
-                        placeholder="e.g. TR-550-DL"
-                        value={formData.sku}
-                        onChange={(e) => setFormData({...formData, sku: e.target.value})}
-                        className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-intenza-500/20 text-slate-900"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-slate-900 mb-1">{t({ en: 'Initial Version', zh: '初始版本'})}</label>
-                      <input 
-                        type="text" 
-                        placeholder="v1.0"
-                        value={formData.version}
-                        onChange={(e) => setFormData({...formData, version: e.target.value})}
-                        className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-intenza-500/20 text-slate-900"
-                      />
-                    </div>
-                  </div>
+                
+                <div>
+                  <label className="block text-sm font-bold text-slate-700 mb-2">SKU ID</label>
+                  <input required type="text" value={formData.sku} onChange={(e) => setFormData({...formData, sku: e.target.value})} className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-intenza-500/20 outline-none transition-all" placeholder="e.g. TR-550-DL" />
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-bold text-slate-700 mb-2">Product Series</label>
+                  <select 
+                    value={t(formData.series)} 
+                    onChange={(e) => {
+                      const series = seriesList.find(s => t(s) === e.target.value);
+                      if (series) setFormData({...formData, series});
+                    }}
+                    className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-intenza-500/20 outline-none transition-all"
+                  >
+                    {seriesList.map(s => <option key={t(s)} value={t(s)}>{t(s)}</option>)}
+                  </select>
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-slate-900 mb-1">{t({ en: 'Description', zh: '描述'})}</label>
-                  <textarea 
-                    rows={3}
-                    placeholder={t({ en: 'Brief product description and key features...', zh: '簡要產品描述和主要特點...'})}
-                    value={formData.description}
-                    onChange={(e) => setFormData({...formData, description: e.target.value})}
-                    className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-intenza-500/20 resize-none text-slate-900"
-                  />
+                  <label className="block text-sm font-bold text-slate-700 mb-2">Initial Version</label>
+                  <input required type="text" value={formData.version} onChange={(e) => setFormData({...formData, version: e.target.value})} className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-intenza-500/20 outline-none transition-all" placeholder="e.g. v1.0" />
                 </div>
-              </form>
-            </div>
+              </div>
 
-            <div className="p-6 border-t border-slate-100 bg-slate-50 flex justify-end gap-3 sticky bottom-0">
-              <button 
-                type="button"
-                onClick={handleCloseModal}
-                className="px-5 py-2 text-slate-600 font-medium hover:bg-slate-200 rounded-lg transition-colors"
-              >
-                {t({ en: 'Cancel', zh: '取消'})}
-              </button>
-              <button 
-                form="productForm"
-                type="submit"
-                disabled={isSubmitting || isUploading}
-                className="px-5 py-2 bg-intenza-600 hover:bg-intenza-700 text-white font-medium rounded-lg shadow-lg shadow-intenza-500/30 transition-all flex items-center gap-2 disabled:bg-intenza-300"
-              >
-                {isSubmitting ? <Loader2 className="animate-spin" size={18} /> : (editingProduct ? <Save size={18} /> : <Plus size={18} />)}
-                {editingProduct ? t({ en: 'Save Changes', zh: '儲存變更'}) : t({ en: 'Create Product', zh: '建立產品'})}
-              </button>
-            </div>
+              <div>
+                <label className="block text-sm font-bold text-slate-700 mb-2">Product Description</label>
+                <textarea rows={4} value={formData.description} onChange={(e) => setFormData({...formData, description: e.target.value})} className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-intenza-500/20 outline-none transition-all resize-none" placeholder="Provide a brief overview of the product's design target..." />
+              </div>
+
+              <div className="flex gap-4 pt-4 sticky bottom-0 bg-white">
+                <button type="button" onClick={handleCloseModal} className="flex-1 py-3 text-slate-600 font-bold hover:bg-slate-50 rounded-xl transition-all border border-transparent">Cancel</button>
+                <button type="submit" disabled={isSubmitting} className="flex-1 py-3 bg-slate-900 text-white font-bold rounded-xl hover:bg-slate-800 transition-all shadow-lg shadow-slate-900/10 flex items-center justify-center gap-2">
+                  {isSubmitting ? <Loader2 size={18} className="animate-spin" /> : <Save size={18} />}
+                  {editingProduct ? 'Save Product' : 'Create Product'}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}
     </div>
   );
 };
-
-interface ProductCardProps {
-  product: ProductModel;
-  onClick: () => void;
-  onEdit: (e: React.MouseEvent) => void;
-  onToggleWatch: (e: React.MouseEvent) => void;
-  onMove: (direction: 'left' | 'right') => void;
-  onDelete: () => void;
-}
-
-const ProductCard: React.FC<ProductCardProps> = ({ product, onClick, onEdit, onToggleWatch, onMove, onDelete }) => {
-  const { t } = useContext(LanguageContext);
-  const activeIssues = product.designHistory.filter(
-    (eco) => eco.status !== EcoStatus.IN_PRODUCTION
-  ).length;
-  
-  const currentVerEco = product.designHistory.find(
-      h => h.version === product.currentVersion && h.status === EcoStatus.IN_PRODUCTION
-  );
-
-  return (
-    <div 
-      onClick={onClick}
-      className={`group bg-white rounded-2xl border transition-all duration-300 cursor-pointer overflow-hidden flex flex-col ${product.isWatched ? 'border-amber-200 shadow-lg shadow-amber-500/10' : 'border-slate-100 shadow-sm hover:shadow-xl hover:shadow-slate-200/50 hover:-translate-y-1'}`}
-    >
-      <div className="relative h-56 bg-slate-100 overflow-hidden">
-        {product.imageUrl ? (
-          <img 
-            src={product.imageUrl} 
-            alt="" 
-            className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
-            onError={(e) => {
-                (e.target as HTMLImageElement).src = 'https://via.placeholder.com/400x300?text=No+Image';
-            }}
-          />
-        ) : (
-          <div className="w-full h-full flex flex-col items-center justify-center text-slate-300 bg-slate-50">
-             <ImageIcon size={40} className="opacity-20 mb-2" />
-             <div className="text-center px-4">
-               <p className="text-xs font-bold text-slate-400">{t(product.modelName)}</p>
-               <p className="text-[10px] text-slate-400">{product.sku}</p>
-             </div>
-          </div>
-        )}
-        <div className="absolute top-4 left-4 bg-white/90 backdrop-blur-sm px-3 py-1 rounded-full text-xs font-semibold text-slate-700 shadow-sm">
-          {t(product.series).split(' ')[0]}
-        </div>
-        
-        {product.isWatched && (
-          <div className="absolute top-4 left-4 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-              <button
-                  onClick={(e) => { e.stopPropagation(); onMove('left'); }}
-                  className="w-7 h-7 bg-white/80 backdrop-blur-sm rounded-full flex items-center justify-center text-slate-500 hover:text-slate-900 hover:bg-white"
-                  title="Move Left"
-              >
-                  <ArrowLeft size={14} />
-              </button>
-              <button
-                  onClick={(e) => { e.stopPropagation(); onMove('right'); }}
-                  className="w-7 h-7 bg-white/80 backdrop-blur-sm rounded-full flex items-center justify-center text-slate-500 hover:text-slate-900 hover:bg-white"
-                  title="Move Right"
-              >
-                  <ArrowRight size={14} />
-              </button>
-          </div>
-        )}
-        
-        <button
-          onClick={onToggleWatch}
-          className={`absolute top-4 right-4 w-9 h-9 backdrop-blur-sm rounded-full flex items-center justify-center transition-all ${product.isWatched ? 'bg-amber-400 text-white' : 'bg-white/80 text-slate-400 hover:text-amber-500 hover:bg-white'}`}
-        >
-          <Star size={16} fill={product.isWatched ? "currentColor" : "none"} />
-        </button>
-        
-        <div className="absolute top-4 right-16 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-            <button
-            onClick={onEdit}
-            className="w-9 h-9 bg-white/80 backdrop-blur-sm rounded-full flex items-center justify-center text-slate-500 hover:text-slate-900 hover:bg-white transition-all scale-90 group-hover:scale-100"
-            >
-            <Pencil size={16} />
-            </button>
-
-            <button
-            onClick={(e) => { e.stopPropagation(); onDelete(); }}
-            className="w-9 h-9 bg-white/80 backdrop-blur-sm rounded-full flex items-center justify-center text-slate-500 hover:text-red-600 hover:bg-white transition-all scale-90 group-hover:scale-100"
-            >
-            <Trash2 size={16} />
-            </button>
-        </div>
-
-        <div className="absolute bottom-4 right-4 bg-black/70 backdrop-blur-md px-3 py-1 rounded-full text-xs font-medium text-white flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-          Details <ChevronRight size={12} />
-        </div>
-      </div>
-      
-      <div className="p-6 flex-1 flex flex-col">
-        <div className="flex justify-between items-start mb-2">
-          <h3 className="text-lg font-bold text-slate-900 group-hover:text-intenza-600 transition-colors">
-            {t(product.modelName)}
-          </h3>
-          <span className="text-xs font-mono bg-slate-100 text-slate-600 px-2 py-1 rounded">
-            {product.sku}
-          </span>
-        </div>
-        
-        <p className="text-slate-500 text-sm mb-4 line-clamp-2">{t(product.description)}</p>
-        
-        <div className="mt-auto pt-4 border-t border-slate-50 flex items-center justify-between">
-          <div className="flex flex-col">
-             <span className="text-slate-400 text-xs">Current Ver</span>
-             <span className="font-semibold text-slate-700">
-                {product.currentVersion}
-                {currentVerEco?.implementationDate && 
-                    <span className="text-xs text-slate-400 font-normal ml-1">({currentVerEco.implementationDate})</span>
-                }
-             </span>
-          </div>
-          <div className="flex flex-col items-end">
-             <span className="text-slate-400 text-xs">Issues</span>
-             <div className={`flex items-baseline gap-1 font-semibold ${activeIssues > 0 ? 'text-amber-500' : 'text-green-500'}`}>
-               <span className="text-4xl font-bold leading-none">{activeIssues}</span>
-               <span className="text-sm">Active</span>
-             </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-};
-
-export default Dashboard;
