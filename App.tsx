@@ -57,35 +57,9 @@ const App = () => {
 
   const handleLogout = useCallback(() => {
     setIsLoggedIn(false);
-    // Reset any sensitive session data if needed
   }, []);
 
-  const handleLoadFromCloud = useCallback(async () => {
-    try {
-      setSyncStatus('saving');
-      const cloudData = await api.loadData();
-      if (cloudData) {
-        if (cloudData.products) setProducts(cloudData.products);
-        if (cloudData.seriesList) setSeriesList(cloudData.seriesList);
-        if (cloudData.shipments) setShipments(cloudData.shipments);
-        if (cloudData.testers) setTesters(cloudData.testers);
-        if (cloudData.users) setUsers(cloudData.users);
-        if (cloudData.language) setLanguage(cloudData.language);
-        if (cloudData.showAiInsights !== undefined) setShowAiInsights(cloudData.showAiInsights);
-        setSyncStatus('success');
-      } else {
-        setSyncStatus('idle');
-      }
-    } catch (error) {
-      console.error('Failed to load cloud data:', error);
-      setSyncStatus('error');
-      setErrorDetail('無法從雲端獲取最新資料');
-    } finally {
-      setTimeout(() => setSyncStatus('idle'), 2000);
-    }
-  }, []);
-
-  const handleSyncToCloud = useCallback(async () => {
+  const handleSyncToCloud = useCallback(async (isAutoSync = false) => {
     if (syncStatus === 'saving') return;
     setSyncStatus('saving');
     setErrorDetail('');
@@ -104,7 +78,7 @@ const App = () => {
     try {
       await api.saveData(state);
       setSyncStatus('success');
-      setTimeout(() => setSyncStatus('idle'), 3000);
+      setTimeout(() => setSyncStatus('idle'), isAutoSync ? 2000 : 3000);
     } catch (error: any) {
       console.error('Cloud Sync Error:', error);
       setSyncStatus('error');
@@ -112,6 +86,34 @@ const App = () => {
       setTimeout(() => setSyncStatus('idle'), 6000);
     }
   }, [products, seriesList, shipments, testers, users, language, showAiInsights, maxHistorySteps, syncStatus]);
+
+  const handleLoadFromCloud = useCallback(async () => {
+    try {
+      setSyncStatus('saving');
+      const cloudData = await api.loadData();
+      if (cloudData) {
+        if (cloudData.products) setProducts(cloudData.products);
+        if (cloudData.seriesList) setSeriesList(cloudData.seriesList);
+        if (cloudData.shipments) setShipments(cloudData.shipments);
+        if (cloudData.testers) setTesters(cloudData.testers);
+        if (cloudData.users) setUsers(cloudData.users);
+        if (cloudData.language) setLanguage(cloudData.language);
+        if (cloudData.showAiInsights !== undefined) setShowAiInsights(cloudData.showAiInsights);
+        setSyncStatus('success');
+        // 成功載入後，為了確保本地 state 與雲端完全同步且初始化完成，自動觸發一次同步
+        setTimeout(() => handleSyncToCloud(true), 1000);
+      } else {
+        // 如果雲端沒資料（第一次登入），直接將 Mock Data 同步上去
+        handleSyncToCloud(true);
+      }
+    } catch (error) {
+      console.error('Failed to load cloud data:', error);
+      setSyncStatus('error');
+      setErrorDetail('無法獲取雲端資料，改用本地快取');
+    } finally {
+      setTimeout(() => setSyncStatus('idle'), 2000);
+    }
+  }, [handleSyncToCloud]);
 
   useEffect(() => {
     if (isLoggedIn) {
