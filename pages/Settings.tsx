@@ -1,6 +1,7 @@
 
 import React, { useState, useRef, useContext, useEffect, useMemo } from 'react';
-import { Plus, X, Save, Download, Upload, AlertTriangle, CheckCircle, Pencil, History, Sparkles, Shield, User, Trash2, Eye, EyeOff, Key, Database, HardDrive, Info, Cloud, LogOut, Loader2, Link as LinkIcon, Activity } from 'lucide-react';
+// Added missing 'Layers' to the lucide-react import list
+import { Plus, X, Save, Download, Upload, AlertTriangle, CheckCircle, Pencil, History, Sparkles, Shield, User, Trash2, Eye, EyeOff, Key, Database, HardDrive, Info, Cloud, LogOut, Loader2, Link as LinkIcon, Activity, Layers } from 'lucide-react';
 import { AppState, LocalizedString, UserAccount } from '../types';
 import { LanguageContext } from '../App';
 import { api } from '../services/api';
@@ -34,8 +35,9 @@ const Settings: React.FC<SettingsProps> = ({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [notification, setNotification] = useState<{msg: string, type: 'success' | 'error'} | null>(null);
 
-  // --- 容量計算邏輯 (優化版：區分 Base64 與 Blob URL) ---
+  // --- 容量與體積監控邏輯 ---
   const storageStats = useMemo(() => {
+    // 1. 估算行數 (Postgres 常用指標)
     const rowCount = 
       (currentAppState.products?.length || 0) + 
       (currentAppState.shipments?.length || 0) + 
@@ -44,32 +46,32 @@ const Settings: React.FC<SettingsProps> = ({
     const rowLimit = 10000;
     const rowPercent = Math.min(100, (rowCount / rowLimit) * 100);
 
-    let base64Bytes = 0;
-    let blobFilesCount = 0;
+    // 2. 計算 JSON 字串大小 (這是 Vercel Serverless Function 最硬性的 4.5MB 限制)
+    const jsonString = JSON.stringify(currentAppState);
+    const sizeInBytes = jsonString.length; // 粗略估計 1 char = 1 byte
+    const sizeInMB = sizeInBytes / (1024 * 1024);
+    const sizeLimitMB = 4.5; // Vercel Body Limit
+    const sizePercent = Math.min(100, (sizeInMB / sizeLimitMB) * 100);
 
+    // 3. 掃描舊式 Base64 (優化分析)
+    let base64Count = 0;
+    let blobFilesCount = 0;
     const analyzeUrl = (url?: string) => {
       if (!url) return;
-      if (url.startsWith('data:')) {
-        base64Bytes += (url.length * 3) / 4;
-      } else if (url.includes('vercel-storage.com')) {
-        blobFilesCount += 1;
-      }
+      if (url.startsWith('data:')) base64Count++;
+      else if (url.includes('vercel-storage.com')) blobFilesCount++;
     };
 
     currentAppState.products?.forEach(p => {
       analyzeUrl(p.imageUrl);
       p.designHistory?.forEach(eco => eco.imageUrls?.forEach(analyzeUrl));
-      p.durabilityTests?.forEach(test => test.attachmentUrls?.forEach(analyzeUrl));
-      p.ergoProjects?.forEach(proj => {
-        Object.values(proj.tasks).flat().forEach((task: any) => {
-          task.ngReasons.forEach((ng: any) => ng.attachmentUrls?.forEach(analyzeUrl));
-        });
-      });
     });
 
-    const base64MB = base64Bytes / (1024 * 1024);
-    
-    return { rowCount, rowLimit, rowPercent, base64MB, blobFilesCount };
+    return { 
+      rowCount, rowLimit, rowPercent, 
+      sizeInMB, sizeLimitMB, sizePercent,
+      base64Count, blobFilesCount 
+    };
   }, [currentAppState]);
 
   const showNotification = (msg: string, type: 'success' | 'error') => {
@@ -80,29 +82,17 @@ const Settings: React.FC<SettingsProps> = ({
   const handleTestBlob = async () => {
     setIsTestingBlob(true);
     try {
-      // 建立一個微小的測試檔案
       const testFile = new File(["blob connection test"], "test.txt", { type: "text/plain" });
       const url = await api.uploadImage(testFile);
       if (url.includes('vercel-storage.com')) {
         showNotification('Vercel Blob 連線正常！', 'success');
-      } else {
-        throw new Error('回傳的 URL 格式不正確');
       }
-    } catch (err: any) {
-      console.error(err);
-      showNotification('Blob 連線失敗，請檢查環境變數', 'error');
+    } catch (err) {
+      showNotification('Blob 連線失敗，請檢查 Token 設置', 'error');
     } finally {
       setIsTestingBlob(false);
     }
   };
-
-  const [deletingIndex, setDeletingIndex] = useState<number | null>(null);
-  const [confirmText, setConfirmText] = useState('');
-  const [editingIndex, setEditingIndex] = useState<number | null>(null);
-  const [editValue, setEditValue] = useState('');
-  const [isUserModalOpen, setIsUserModalOpen] = useState(false);
-  const [editingUser, setEditingUser] = useState<UserAccount | null>(null);
-  const [showPasswordMap, setShowPasswordMap] = useState<Record<string, boolean>>({});
 
   const handleDownloadProject = () => {
     const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(currentAppState, null, 2));
@@ -112,58 +102,62 @@ const Settings: React.FC<SettingsProps> = ({
     document.body.appendChild(downloadAnchorNode);
     downloadAnchorNode.click();
     downloadAnchorNode.remove();
-    showNotification('Project exported successfully', 'success');
+    showNotification('專案已導出至本地', 'success');
   };
 
-  // Fix: Added missing handleAddSeries function to call the onAddSeries prop and clear input
   const handleAddSeries = async () => {
     if (!newSeriesName.trim()) return;
     setIsSubmitting(true);
     try {
       await onAddSeries(newSeriesName);
       setNewSeriesName('');
-      showNotification('Series added successfully', 'success');
+      showNotification('系列已新增', 'success');
     } catch (err) {
-      console.error(err);
-      showNotification('Failed to add series', 'error');
+      showNotification('新增失敗', 'error');
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  // Fix: Added missing handleImportProject function to read local JSON files and call onLoadProject
   const handleImportProject = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-
     const reader = new FileReader();
     reader.onload = (evt) => {
       try {
-        const content = evt.target?.result as string;
-        const state = JSON.parse(content);
+        const state = JSON.parse(evt.target?.result as string);
         onLoadProject(state);
-        showNotification('Project imported successfully', 'success');
+        showNotification('本地備份已載入', 'success');
       } catch (err) {
-        console.error(err);
-        showNotification('Invalid JSON file', 'error');
+        showNotification('JSON 格式無效', 'error');
       }
     };
     reader.readAsText(file);
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
+  const getProgressColor = (percent: number) => {
+    if (percent > 90) return 'bg-red-500';
+    if (percent > 70) return 'bg-amber-500';
+    return 'bg-indigo-500';
+  };
+
+  const [isUserModalOpen, setIsUserModalOpen] = useState(false);
+  const [editingUser, setEditingUser] = useState<UserAccount | null>(null);
+  const [showPasswordMap, setShowPasswordMap] = useState<Record<string, boolean>>({});
+
   return (
     <div className="p-8 max-w-5xl mx-auto animate-fade-in space-y-8">
       <header className="border-b border-slate-100 pb-6 flex justify-between items-end">
         <div>
           <h1 className="text-3xl font-bold text-slate-900">System Settings</h1>
-          <p className="text-slate-500 mt-1">Configure global parameters, manage users, and project data.</p>
+          <p className="text-slate-500 mt-1">系統配置、帳號管理與雲端存儲監控。</p>
         </div>
         <button 
           onClick={onLogout}
           className="flex items-center gap-2 px-4 py-2 text-sm font-bold text-red-600 hover:bg-red-50 rounded-xl transition-colors border border-transparent hover:border-red-100"
         >
-          <LogOut size={18} /> Logout
+          <LogOut size={18} /> 登出系統
         </button>
       </header>
 
@@ -177,31 +171,29 @@ const Settings: React.FC<SettingsProps> = ({
       )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        
         <div className="lg:col-span-2 space-y-8">
-          {/* User Management Section */}
+          {/* User Management */}
           <section className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
              <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
                 <div className="flex items-center gap-2">
                     <Shield className="text-intenza-600" size={20} />
-                    <h2 className="text-xl font-bold text-slate-900">User Management</h2>
+                    <h2 className="text-xl font-bold text-slate-900">帳號管理</h2>
                 </div>
                 <button 
                   onClick={() => { setEditingUser(null); setIsUserModalOpen(true); }}
                   className="bg-slate-900 text-white px-4 py-1.5 rounded-lg text-sm font-bold flex items-center gap-2 hover:bg-slate-800 transition-colors"
                 >
-                  <Plus size={16} /> New User
+                  <Plus size={16} /> 新增用戶
                 </button>
              </div>
-             
              <div className="overflow-x-auto">
                 <table className="w-full text-left">
                   <thead className="bg-slate-50 text-slate-500 text-[10px] font-bold uppercase tracking-wider">
                     <tr>
-                      <th className="px-6 py-4">Username</th>
-                      <th className="px-6 py-4">Role</th>
-                      <th className="px-6 py-4">Password</th>
-                      <th className="px-6 py-4 text-right">Actions</th>
+                      <th className="px-6 py-4">使用者名稱</th>
+                      <th className="px-6 py-4">權限</th>
+                      <th className="px-6 py-4">密碼</th>
+                      <th className="px-6 py-4 text-right">操作</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
@@ -233,7 +225,7 @@ const Settings: React.FC<SettingsProps> = ({
                         <td className="px-6 py-4 text-right">
                            <div className="flex items-center justify-end gap-1">
                               <button onClick={() => { setEditingUser(user); setIsUserModalOpen(true); }} className="p-2 text-slate-400 hover:text-intenza-600 transition-colors rounded-lg hover:bg-white"><Pencil size={16} /></button>
-                              <button onClick={() => { if(window.confirm(`Delete user ${user.username}?`)) onDeleteUser(user.id); }} className="p-2 text-slate-400 hover:text-red-600 transition-colors rounded-lg hover:bg-white"><Trash2 size={16} /></button>
+                              <button onClick={() => { if(window.confirm(`確定要刪除用戶 ${user.username}？`)) onDeleteUser(user.id); }} className="p-2 text-slate-400 hover:text-red-600 transition-colors rounded-lg hover:bg-white"><Trash2 size={16} /></button>
                            </div>
                         </td>
                       </tr>
@@ -243,14 +235,13 @@ const Settings: React.FC<SettingsProps> = ({
              </div>
           </section>
 
-          {/* Series Configuration Section */}
+          {/* Series Config */}
           <section className="bg-white rounded-2xl border border-slate-200 p-8 shadow-sm">
-            <h2 className="text-xl font-bold text-slate-900 mb-2">Product Series Configuration</h2>
-            <p className="text-sm text-slate-500 mb-6">Define the product families available in the dashboard.</p>
+            <h2 className="text-xl font-bold text-slate-900 mb-2">產品系列配置</h2>
             <div className="flex gap-3 mb-6">
-              <input type="text" value={newSeriesName} onChange={(e) => setNewSeriesName(e.target.value)} placeholder="Enter new series name..." className="flex-1 px-4 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-intenza-500/20 bg-slate-50 text-slate-900" onKeyPress={(e) => e.key === 'Enter' && handleAddSeries()}/>
+              <input type="text" value={newSeriesName} onChange={(e) => setNewSeriesName(e.target.value)} placeholder="輸入系列名稱..." className="flex-1 px-4 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-intenza-500/20 bg-slate-50 text-slate-900" onKeyPress={(e) => e.key === 'Enter' && handleAddSeries()}/>
               <button onClick={handleAddSeries} disabled={isSubmitting} className="bg-slate-900 text-white px-4 py-2 rounded-lg hover:bg-slate-800 transition-colors flex items-center gap-2 disabled:bg-slate-400">
-                {isSubmitting ? <Loader2 className="animate-spin" size={18} /> : <Plus size={18} />} Add
+                {isSubmitting ? <Loader2 className="animate-spin" size={18} /> : <Plus size={18} />} 新增
               </button>
             </div>
             <div className="space-y-3">
@@ -258,8 +249,7 @@ const Settings: React.FC<SettingsProps> = ({
                 <div key={index} className="flex items-center justify-between p-3 rounded-lg border bg-slate-50 border-slate-100">
                   <span className="font-medium text-slate-700">{t(series)}</span>
                   <div className="flex items-center gap-1">
-                    <button onClick={() => { setEditingIndex(index); setEditValue(t(series)); }} className="text-slate-400 hover:text-intenza-600 p-2"><Pencil size={16} /></button>
-                    <button onClick={() => { if(window.confirm('Delete this series?')) { const nl = [...seriesList]; nl.splice(index,1); onUpdateSeriesList(nl); } }} className="text-slate-400 hover:text-red-600 p-2"><X size={18} /></button>
+                    <button onClick={() => { if(window.confirm('確定刪除系列？')) { const nl = [...seriesList]; nl.splice(index,1); onUpdateSeriesList(nl); } }} className="text-slate-400 hover:text-red-600 p-2"><X size={18} /></button>
                   </div>
                 </div>
               ))}
@@ -268,89 +258,111 @@ const Settings: React.FC<SettingsProps> = ({
         </div>
 
         <div className="space-y-8">
-           {/* Cloud Sync Management Section */}
+           {/* Cloud Connection */}
            <section className="bg-white rounded-2xl border border-slate-200 p-8 shadow-sm">
-              <div className="flex items-center gap-2 mb-4">
+              <div className="flex items-center gap-2 mb-6">
                  <Cloud className="text-intenza-600" size={20} />
-                 <h2 className="text-xl font-bold text-slate-900">Cloud Connection</h2>
+                 <h2 className="text-xl font-bold text-slate-900">雲端同步狀態</h2>
               </div>
-              
               <div className="space-y-3">
                   <button 
                     onClick={onSyncCloud}
                     disabled={syncStatus === 'saving'}
                     className={`w-full py-3 rounded-xl font-bold transition-all flex items-center justify-center gap-2 shadow-lg ${
-                      syncStatus === 'saving' 
-                        ? 'bg-slate-100 text-slate-400 cursor-not-allowed' 
-                        : 'bg-intenza-600 text-white hover:bg-intenza-700 shadow-intenza-600/20'
+                      syncStatus === 'saving' ? 'bg-slate-100 text-slate-400' : 'bg-intenza-600 text-white hover:bg-intenza-700 shadow-intenza-600/20'
                     }`}
                   >
                     {syncStatus === 'saving' ? <Loader2 size={18} className="animate-spin" /> : <Cloud size={18} />}
-                    {syncStatus === 'saving' ? 'Syncing...' : 'Sync Data to Postgres'}
+                    {syncStatus === 'saving' ? '正在同步數據...' : '立即同步至 Postgres'}
                   </button>
-
-                  <button 
-                    onClick={handleTestBlob}
-                    disabled={isTestingBlob}
-                    className="w-full py-3 rounded-xl font-bold border border-slate-200 text-slate-700 hover:bg-slate-50 transition-all flex items-center justify-center gap-2"
-                  >
+                  <button onClick={handleTestBlob} disabled={isTestingBlob} className="w-full py-3 rounded-xl font-bold border border-slate-200 text-slate-700 hover:bg-slate-50 transition-all flex items-center justify-center gap-2">
                     {isTestingBlob ? <Loader2 size={18} className="animate-spin" /> : <Activity size={18} className="text-emerald-500" />}
-                    Test Blob Connection
+                    測試 Blob 雲端連線
                   </button>
               </div>
            </section>
 
-           {/* Capacity Monitoring Section */}
+           {/* 精確容量監控區塊 */}
            <section className="bg-white rounded-2xl border border-slate-200 p-8 shadow-sm">
-              <h2 className="text-xl font-bold text-slate-900 mb-2">Storage Usage</h2>
-              <p className="text-sm text-slate-500 mb-6">Monitoring Vercel resources.</p>
+              <div className="flex items-center justify-between mb-2">
+                 <h2 className="text-xl font-bold text-slate-900">容量使用率</h2>
+                 <span className="text-[10px] bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full font-bold">LIVE</span>
+              </div>
+              <p className="text-sm text-slate-500 mb-6">監控 Vercel 與 Postgres 資源配額。</p>
               
-              <div className="space-y-6">
+              <div className="space-y-8">
+                {/* 1. 數據量 (JSON 體積) - 這是最關鍵的限制 */}
                 <div className="space-y-2">
-                  <div className="flex justify-between items-center text-[10px] font-bold uppercase tracking-wider">
-                    <div className="flex items-center gap-2 text-slate-500">
+                  <div className="flex justify-between items-center text-[11px] font-bold uppercase tracking-wider">
+                    <div className="flex items-center gap-2 text-slate-600">
                       <Database size={14} className="text-indigo-500" />
-                      Postgres (Metadata)
+                      專案數據體積
                     </div>
-                    <span className="text-slate-400">
-                      {storageStats.rowCount.toLocaleString()} Rows
+                    <span className={storageStats.sizePercent > 90 ? 'text-red-600' : 'text-slate-400'}>
+                      {storageStats.sizeInMB.toFixed(2)} MB / {storageStats.sizeLimitMB} MB
                     </span>
                   </div>
-                  <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
-                    <div className="h-full bg-indigo-500 transition-all duration-1000" style={{ width: `${storageStats.rowPercent}%` }}></div>
+                  <div className="w-full bg-slate-100 h-2.5 rounded-full overflow-hidden">
+                    <div 
+                      className={`h-full transition-all duration-1000 ${getProgressColor(storageStats.sizePercent)}`} 
+                      style={{ width: `${storageStats.sizePercent}%` }}
+                    ></div>
                   </div>
-                  {storageStats.base64MB > 0 && (
-                      <div className="flex items-center gap-1.5 text-amber-600 text-[10px] font-bold animate-pulse mt-1">
-                          <AlertTriangle size={10}/> 偵測到 {storageStats.base64MB.toFixed(1)}MB 的舊式 Base64 數據
-                      </div>
-                  )}
+                  <div className="flex justify-between text-[9px] text-slate-400 font-medium">
+                    <span>基於 Vercel Body Limit</span>
+                    <span>{Math.round(storageStats.sizePercent)}% 已使用</span>
+                  </div>
                 </div>
 
+                {/* 2. 資料庫行數 */}
                 <div className="space-y-2">
-                  <div className="flex justify-between items-center text-[10px] font-bold uppercase tracking-wider">
-                    <div className="flex items-center gap-2 text-slate-500">
-                      <HardDrive size={14} className="text-emerald-500" />
-                      Blob (Cloud CDN)
+                  <div className="flex justify-between items-center text-[11px] font-bold uppercase tracking-wider">
+                    <div className="flex items-center gap-2 text-slate-600">
+                      <Layers size={14} className="text-emerald-500" />
+                      資料庫記錄行數
                     </div>
                     <span className="text-slate-400">
-                      {storageStats.blobFilesCount} Files Linked
+                      {storageStats.rowCount.toLocaleString()} / {storageStats.rowLimit.toLocaleString()}
                     </span>
                   </div>
-                  <div className="p-3 bg-emerald-50 rounded-lg border border-emerald-100">
-                      <p className="text-[10px] text-emerald-800 leading-tight">目前所有新上傳的圖片均已自動導向 Vercel Blob，確保了資料庫的穩定性。</p>
+                  <div className="w-full bg-slate-100 h-2.5 rounded-full overflow-hidden">
+                    <div 
+                      className={`h-full transition-all duration-1000 ${getProgressColor(storageStats.rowPercent)}`} 
+                      style={{ width: `${storageStats.rowPercent}%` }}
+                    ></div>
                   </div>
                 </div>
+
+                {/* 3. 媒體文件統計 */}
+                <div className="pt-4 border-t border-slate-100 grid grid-cols-2 gap-4">
+                   <div className="p-3 bg-slate-50 rounded-xl border border-slate-100">
+                      <div className="text-[10px] font-bold text-slate-400 uppercase mb-1">Blob CDN</div>
+                      <div className="text-lg font-bold text-emerald-600">{storageStats.blobFilesCount} <span className="text-[10px] font-normal text-slate-500">Files</span></div>
+                   </div>
+                   <div className={`p-3 rounded-xl border ${storageStats.base64Count > 0 ? 'bg-red-50 border-red-100' : 'bg-slate-50 border-slate-100'}`}>
+                      <div className="text-[10px] font-bold text-slate-400 uppercase mb-1">Base64 (需優化)</div>
+                      <div className={`text-lg font-bold ${storageStats.base64Count > 0 ? 'text-red-600' : 'text-slate-500'}`}>{storageStats.base64Count} <span className="text-[10px] font-normal text-slate-500">Items</span></div>
+                   </div>
+                </div>
+
+                {storageStats.base64Count > 0 && (
+                  <div className="bg-amber-50 border border-amber-200 p-3 rounded-xl flex items-start gap-2">
+                    <AlertTriangle size={14} className="text-amber-600 shrink-0 mt-0.5" />
+                    <p className="text-[10px] text-amber-800 leading-tight">檢測到內嵌 Base64 數據，這會迅速消耗數據容量。建議重新上傳圖片以自動轉為 Blob 存儲。</p>
+                  </div>
+                )}
               </div>
            </section>
 
+           {/* Local Backup */}
            <section className="bg-white rounded-2xl border border-slate-200 p-8 shadow-sm">
-             <h2 className="text-xl font-bold text-slate-900 mb-4">Local Project Backup</h2>
+             <h2 className="text-xl font-bold text-slate-900 mb-4">專案本地備份</h2>
              <div className="grid grid-cols-1 gap-4">
                <button onClick={handleDownloadProject} className="flex items-center justify-center gap-2 w-full py-2.5 bg-white border border-slate-300 rounded-lg text-slate-700 font-bold hover:bg-slate-50 transition-all">
-                 <Download size={18} /> Export JSON
+                 <Download size={18} /> 導出 JSON 備份
                </button>
                <button onClick={() => fileInputRef.current?.click()} className="flex items-center justify-center gap-2 w-full py-2.5 bg-slate-900 text-white rounded-lg font-bold hover:bg-slate-800 transition-all">
-                 <Upload size={18} /> Import JSON
+                 <Upload size={18} /> 載入 JSON 備份
                </button>
                <input ref={fileInputRef} type="file" accept=".json" className="hidden" onChange={handleImportProject} />
              </div>
@@ -403,66 +415,36 @@ const UserAccountModal: React.FC<{
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm animate-fade-in">
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md animate-slide-up overflow-hidden">
         <div className="flex justify-between items-center p-6 border-b border-slate-100">
-          <h2 className="text-xl font-bold text-slate-900">{user ? 'Edit User' : 'Add New User'}</h2>
+          <h2 className="text-xl font-bold text-slate-900">{user ? '編輯用戶' : '新增系統用戶'}</h2>
           <button onClick={onClose} className="p-2 rounded-full hover:bg-slate-100 text-slate-500"><X size={20} /></button>
         </div>
-        
         <form onSubmit={handleSubmit} className="p-6 space-y-5">
            <div className="space-y-4">
               <div>
-                <label className="block text-sm font-bold text-slate-700 mb-1">Username</label>
+                <label className="block text-sm font-bold text-slate-700 mb-1">使用者名稱</label>
                 <div className="relative">
                   <User className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
-                  <input 
-                    type="text" required
-                    value={formData.username}
-                    onChange={(e) => setFormData({ ...formData, username: e.target.value })}
-                    className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-intenza-500/20 outline-none"
-                    placeholder="e.g. jason_hsu"
-                  />
+                  <input type="text" required value={formData.username} onChange={(e) => setFormData({ ...formData, username: e.target.value })} className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-intenza-500/20 outline-none" />
                 </div>
               </div>
-
               <div>
-                <label className="block text-sm font-bold text-slate-700 mb-1">Password</label>
+                <label className="block text-sm font-bold text-slate-700 mb-1">密碼</label>
                 <div className="relative">
                   <Key className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
-                  <input 
-                    type="text" required
-                    value={formData.password}
-                    onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                    className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-intenza-500/20 outline-none"
-                    placeholder="Enter password"
-                  />
+                  <input type="text" required value={formData.password} onChange={(e) => setFormData({ ...formData, password: e.target.value })} className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-intenza-500/20 outline-none" />
                 </div>
               </div>
-
               <div>
-                <label className="block text-sm font-bold text-slate-700 mb-1">Role</label>
+                <label className="block text-sm font-bold text-slate-700 mb-1">權限角色</label>
                 <div className="grid grid-cols-2 gap-2 p-1 bg-slate-100 rounded-lg">
-                   <button 
-                     type="button"
-                     onClick={() => setFormData({ ...formData, role: 'admin' })}
-                     className={`py-2 text-xs font-bold rounded-md transition-all ${formData.role === 'admin' ? 'bg-white shadow text-intenza-600' : 'text-slate-500'}`}
-                   >
-                     Admin
-                   </button>
-                   <button 
-                     type="button"
-                     onClick={() => setFormData({ ...formData, role: 'user' })}
-                     className={`py-2 text-xs font-bold rounded-md transition-all ${formData.role === 'user' ? 'bg-white shadow text-slate-900' : 'text-slate-500'}`}
-                   >
-                     Standard User
-                   </button>
+                   <button type="button" onClick={() => setFormData({ ...formData, role: 'admin' })} className={`py-2 text-xs font-bold rounded-md transition-all ${formData.role === 'admin' ? 'bg-white shadow text-intenza-600' : 'text-slate-500'}`}>Admin</button>
+                   <button type="button" onClick={() => setFormData({ ...formData, role: 'user' })} className={`py-2 text-xs font-bold rounded-md transition-all ${formData.role === 'user' ? 'bg-white shadow text-slate-900' : 'text-slate-500'}`}>Standard</button>
                 </div>
               </div>
            </div>
-
            <div className="pt-4 flex gap-3">
-              <button type="button" onClick={onClose} className="flex-1 py-2 text-slate-600 font-bold hover:bg-slate-50 rounded-lg transition-all">Cancel</button>
-              <button type="submit" className="flex-1 py-2 bg-slate-900 text-white font-bold rounded-lg hover:bg-slate-800 transition-all shadow-lg shadow-slate-900/10">
-                {user ? 'Save Changes' : 'Create Account'}
-              </button>
+              <button type="button" onClick={onClose} className="flex-1 py-2 text-slate-600 font-bold hover:bg-slate-50 rounded-lg">取消</button>
+              <button type="submit" className="flex-1 py-2 bg-slate-900 text-white font-bold rounded-lg hover:bg-slate-800 transition-all shadow-lg shadow-slate-900/10">確認</button>
            </div>
         </form>
       </div>

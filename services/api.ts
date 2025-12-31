@@ -14,7 +14,12 @@ export const api = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(credentials),
     });
-    if (!response.ok) throw new Error('登入失敗，請檢查帳號密碼');
+    
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.error || '登入失敗，請檢查帳號密碼');
+    }
+    
     return response.json();
   },
 

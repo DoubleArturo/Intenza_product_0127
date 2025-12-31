@@ -128,6 +128,16 @@ const App = () => {
     }
   }, []);
 
+  // 監控使用者列表變動，一旦變動就排程同步
+  useEffect(() => {
+    if (isLoggedIn && users.length > 0) {
+      const timer = setTimeout(() => {
+        handleSyncToCloud(true);
+      }, 500); // 延遲半秒同步，避免輸入時過度觸發
+      return () => clearTimeout(timer);
+    }
+  }, [users, isLoggedIn, handleSyncToCloud]);
+
   // 僅在登入狀態改變時觸發一次載入
   useEffect(() => {
     if (isLoggedIn) {
@@ -210,6 +220,7 @@ const App = () => {
                       if (state.seriesList) setSeriesList(state.seriesList);
                       if (state.shipments) setShipments(state.shipments);
                       if (state.testers) setTesters(state.testers);
+                      if (state.users) setUsers(state.users);
                   }}
                   onUpdateMaxHistory={setMaxHistorySteps}
                   onToggleAiInsights={setShowAiInsights}
