@@ -119,8 +119,60 @@ export const MOCK_PRODUCTS: ProductModel[] = [
   }
 ];
 
+// Added missing mandatory properties (deliveryNo, item, pi, pn, description, sku, sn, category, series) to match ShipmentData interface
 export const MOCK_SHIPMENTS: ShipmentData[] = [
-  { id: 's1', modelId: 'p1', version: 'v2.4', buyer: 'Gold\'s Gym', country: 'USA', quantity: 150, shipDate: '2023-12-01' },
-  { id: 's5', modelId: 'p2', version: 'v1.2', buyer: 'Hilton Group', country: 'Global', quantity: 500, shipDate: '2024-01-20' },
-  { id: 's7', modelId: 'p3', version: 'v3.0', buyer: 'Les Mills', country: 'New Zealand', quantity: 1000, shipDate: '2023-11-01' },
+  { 
+    id: 's1', 
+    modelId: 'p1', 
+    version: 'v2.4', 
+    buyer: 'Gold\'s Gym', 
+    country: 'USA', 
+    quantity: 150, 
+    shipDate: '2023-12-01',
+    deliveryNo: 'DN-001',
+    item: 'Treadmill',
+    pi: 'PI-2023-01',
+    pn: 'PN-12345',
+    description: '550Te2 Treadmill DL',
+    sku: 'TR-550-DL',
+    sn: 'SN-P1-001',
+    category: 'Cardio',
+    series: 'DL Series'
+  },
+  { 
+    id: 's5', 
+    modelId: 'p2', 
+    version: 'v1.2', 
+    buyer: 'Hilton Group', 
+    country: 'Global', 
+    quantity: 500, 
+    shipDate: '2024-01-20',
+    deliveryNo: 'DN-002',
+    item: 'Elliptical',
+    pi: 'PI-2024-05',
+    pn: 'PN-67890',
+    description: '450ET Elliptical SL',
+    sku: 'EL-450-SL',
+    sn: 'SN-P2-001',
+    category: 'Cardio',
+    series: 'SL Series'
+  },
+  { 
+    id: 's7', 
+    modelId: 'p3', 
+    version: 'v3.0', 
+    buyer: 'Les Mills', 
+    country: 'New Zealand', 
+    quantity: 1000, 
+    shipDate: '2023-11-01',
+    deliveryNo: 'DN-003',
+    item: 'Indoor Cycle',
+    pi: 'PI-2023-07',
+    pn: 'PN-11223',
+    description: 'GC3 Indoor Cycle',
+    sku: 'BK-GC3',
+    sn: 'SN-P3-001',
+    category: 'Cardio',
+    series: 'Cardio Series'
+  },
 ];

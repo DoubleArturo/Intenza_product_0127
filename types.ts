@@ -42,15 +42,14 @@ export type FeedbackType = 'EVALUATION' | 'COMPLAINT';
 export type ErgoProjectCategory = 'Strength Curve' | 'Experience' | 'Stroke' | 'Other Suggestion';
 export type Gender = 'Male' | 'Female';
 
-// Simplified for Customer Feedback
 export interface ErgoFeedback {
   id: string;
   date: string;
   type: 'COMPLAINT';
   category: ErgoProjectCategory;
   content: LocalizedString;
-  source: string; // Customer, etc.
-  status?: 'PENDING' | 'DISCUSSION' | 'IGNORED'; // Updated status field
+  source: string;
+  status?: 'PENDING' | 'DISCUSSION' | 'IGNORED';
   attachmentUrls?: string[];
 }
 
@@ -62,13 +61,12 @@ export enum NgDecisionStatus {
   IDEA = 'IDEA'
 }
 
-// New Project-Based Structure for Internal Evaluation
 export interface NgReason {
   testerId: string;
   reason: LocalizedString;
   attachmentUrls?: string[];
   decisionStatus?: NgDecisionStatus;
-  linkedEcoId?: string; // CHANGED: Use ID for robust dynamic linking
+  linkedEcoId?: string;
 }
 
 export interface EvaluationTask {
@@ -94,16 +92,15 @@ export interface ErgoProject {
   uniqueNgReasons: { [key in ErgoProjectCategory]?: LocalizedString[] };
 }
 
-
 export interface DesignChange {
   id: string;
-  ecoNumber: string; // ECO/ECR
+  ecoNumber: string;
   date: string;
   version: string;
   description: LocalizedString;
   affectedBatches: string[];
   affectedCustomers: string[];
-  imageUrls?: string[]; // Updated to support multiple images/videos
+  imageUrls?: string[];
   status: EcoStatus;
   implementationDate?: string;
   sourceFeedbacks?: {
@@ -112,19 +109,13 @@ export interface DesignChange {
     taskId: string;
     testerId: string;
   }[];
-  // Deprecated single sourceFeedback for backward compatibility if needed, but array preferred
-  sourceFeedback?: {
-    projectId: string;
-    category: ErgoProjectCategory;
-    testerId: string;
-  }
 }
 
 export interface TestResult {
   id: string;
-  category: string; // Changed from fixed union to string to allow custom categories
+  category: string;
   testName: LocalizedString;
-  score: number; // 0-100 or percentage
+  score: number;
   status: TestStatus;
   details: LocalizedString;
   targetValue?: number;
@@ -145,14 +136,10 @@ export interface ProductModel {
   currentVersion: string;
   description: LocalizedString;
   designHistory: DesignChange[];
-  ergoTests: TestResult[]; // Retained for legacy or simple tests
-  
-  // New project-based ergonomics
+  ergoTests: TestResult[];
   ergoProjects: ErgoProject[];
   customerFeedback: ErgoFeedback[];
   uniqueFeedbackTags: { [key in ErgoProjectCategory]?: LocalizedString[] };
-
-
   durabilityTests: TestResult[];
   isWatched: boolean;
   customSortOrder: number;
@@ -161,12 +148,35 @@ export interface ProductModel {
 export interface ShipmentData {
   id: string;
   modelId: string;
-  version: string;
-  buyer: string;
-  country: string;
-  quantity: number;
   shipDate: string;
-  variant?: string; // Stores the raw description/color (e.g. "Chest Press (Brown)")
+  buyer: string;
+  deliveryNo: string;
+  item: string;
+  pi: string;
+  pn: string;
+  description: string;
+  sku: string;
+  quantity: number;
+  sn: string;
+  version: string;
+  category: string;
+  series: string;
+  country?: string; // Pre-reserved for future use
+}
+
+export type ChartViewType = 'PIE' | 'BAR';
+export type DrillLevel = 'CATEGORY' | 'SERIES' | 'SKU' | 'VERSION' | 'BUYER' | 'COUNTRY' | 'CUSTOMER';
+
+export interface AppState {
+  products: ProductModel[];
+  seriesList: LocalizedString[];
+  shipments: ShipmentData[];
+  testers: Tester[]; 
+  users: UserAccount[];
+  language: Language;
+  maxHistorySteps?: number;
+  showAiInsights?: boolean;
+  customLogoUrl?: string;
 }
 
 export interface Tester {
@@ -174,23 +184,7 @@ export interface Tester {
   name: string;
   gender: Gender;
   imageUrl: string;
-  height: number; // in cm
+  height: number;
   experienceYears: number;
-  rating: number; // 1-5 stars
-}
-
-// Data Visualization Types
-export type ChartViewType = 'PIE' | 'BAR';
-export type DrillLevel = 'SERIES' | 'MODEL' | 'VERSION' | 'BUYER' | 'COUNTRY' | 'CUSTOMER';
-
-export interface AppState {
-  products: ProductModel[];
-  seriesList: LocalizedString[];
-  shipments: ShipmentData[];
-  testers: Tester[]; 
-  users: UserAccount[]; // 加入帳號列表
-  language: Language;
-  maxHistorySteps?: number;
-  showAiInsights?: boolean;
-  customLogoUrl?: string; // 加入自定義 Logo
+  rating: number;
 }
