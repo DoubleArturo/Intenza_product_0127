@@ -119,6 +119,12 @@ const App = () => {
     }
   }, []);
 
+  const handleResetShipments = useCallback(() => {
+    setShipments([]);
+    // Immediately trigger a sync to cloud after clearing
+    setTimeout(() => handleSyncToCloud(true), 100);
+  }, [handleSyncToCloud]);
+
   // 初始載入（無論登入與否，為了讀取 Logo）
   useEffect(() => {
     if (!initialLoadDone.current) {
@@ -205,6 +211,7 @@ const App = () => {
                       onUpdateUser={(u) => setUsers(users.map(old => old.id === u.id ? u : old))}
                       onDeleteUser={(id) => setUsers(users.filter(u => u.id !== id))}
                       onSyncCloud={handleSyncToCloud} onLogout={handleLogout} syncStatus={syncStatus}
+                      onResetDashboard={handleResetShipments}
                     />
                   ) : <Navigate to="/" />
                 } />

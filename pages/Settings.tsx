@@ -21,14 +21,15 @@ interface SettingsProps {
   onSyncCloud: () => Promise<void>;
   onLogout: () => void;
   syncStatus: 'idle' | 'saving' | 'success' | 'error';
+  onResetDashboard?: () => void;
 }
 
 const Settings: React.FC<SettingsProps> = ({ 
   seriesList, onAddSeries, onUpdateSeriesList, onRenameSeries, 
   currentAppState, onLoadProject, onUpdateMaxHistory, onToggleAiInsights,
-  onUpdateLogo, onAddUser, onUpdateUser, onDeleteUser, onSyncCloud, onLogout, syncStatus
+  onUpdateLogo, onAddUser, onUpdateUser, onDeleteUser, onSyncCloud, onLogout, syncStatus, onResetDashboard
 }) => {
-  const { t } = useContext(LanguageContext);
+  const { t, language } = useContext(LanguageContext);
   const [newSeriesName, setNewSeriesName] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isTestingBlob, setIsTestingBlob] = useState(false);
@@ -150,6 +151,19 @@ const Settings: React.FC<SettingsProps> = ({
     };
     reader.readAsText(file);
     if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
+  const handleResetShipments = () => {
+    const confirmed = window.confirm(
+      language === 'zh' 
+        ? '⚠️ 警告：這將會清空所有出貨數據（產品儀表板內容）。此動作無法復原，您確定嗎？' 
+        : '⚠️ WARNING: This will permanently delete all shipment data (Product Dashboard contents). This action cannot be undone. Are you sure?'
+    );
+    
+    if (confirmed && onResetDashboard) {
+      onResetDashboard();
+      showNotification(language === 'zh' ? '儀表板數據已清空' : 'Dashboard data has been reset', 'success');
+    }
   };
 
   const getProgressColor = (percent: number) => {
@@ -313,6 +327,30 @@ const Settings: React.FC<SettingsProps> = ({
                 </div>
               ))}
             </div>
+          </section>
+
+          {/* Danger Zone */}
+          <section className="bg-white rounded-2xl border border-red-100 p-8 shadow-sm">
+             <div className="flex items-center gap-2 mb-4 text-red-600">
+                 <AlertTriangle size={20} />
+                 <h2 className="text-xl font-bold">危險區域 (Danger Zone)</h2>
+             </div>
+             <div className="p-4 bg-red-50 rounded-xl border border-red-100 mb-6">
+                <p className="text-sm text-red-800 font-medium">數據維護操作：此區塊功能將永久刪除或更改核心數據，請謹慎執行。</p>
+             </div>
+             
+             <div className="flex flex-col md:flex-row items-center justify-between gap-4 p-4 rounded-xl border border-slate-100 hover:bg-slate-50 transition-colors">
+                <div className="flex-1">
+                    <h3 className="font-bold text-slate-900">重置產品儀表板數據</h3>
+                    <p className="text-xs text-slate-500 mt-1">清空所有導入的出貨記錄 (Shipment Data)。這將重置 Analytics 頁面中的所有圖表。</p>
+                </div>
+                <button 
+                    onClick={handleResetShipments}
+                    className="flex items-center gap-2 px-6 py-2.5 bg-white border border-red-200 text-red-600 rounded-xl text-sm font-bold hover:bg-red-600 hover:text-white transition-all shadow-sm"
+                >
+                    <Trash2 size={16} /> 清空出貨數據
+                </button>
+             </div>
           </section>
         </div>
 
