@@ -1,6 +1,6 @@
 
 import React, { useState, createContext, useCallback, useEffect, lazy, Suspense, useRef } from 'react';
-import { Routes, Route } from 'react-router-dom';
+import { Routes, Route, Navigate } from 'react-router-dom';
 import { MOCK_PRODUCTS, MOCK_SHIPMENTS, MOCK_TESTERS } from './services/mockData';
 import { ProductModel, Language, LocalizedString, Tester, ShipmentData, DEFAULT_SERIES, UserAccount, AppState } from './types';
 import { api } from './services/api';
@@ -38,6 +38,8 @@ const PageLoader = () => (
 const App = () => {
   const [language, setLanguage] = useState<Language>('zh');
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [currentUser, setCurrentUser] = useState<{username: string, role: 'admin' | 'user'} | null>(null);
+  
   const [products, setProducts] = useState<ProductModel[]>(MOCK_PRODUCTS);
   const [seriesList, setSeriesList] = useState<LocalizedString[]>(DEFAULT_SERIES);
   const [shipments, setShipments] = useState<ShipmentData[]>(MOCK_SHIPMENTS);
@@ -49,8 +51,8 @@ const App = () => {
   const [syncStatus, setSyncStatus] = useState<'idle' | 'saving' | 'success' | 'error'>('idle');
   const [errorDetail, setErrorDetail] = useState<string>('');
   
-  // 使用 Ref 追蹤同步狀態，避免 useCallback 循環依賴
   const isSyncingRef = useRef(false);
+  const initialLoadDone = useRef(false);
 
   const t = useCallback((str: any) => {
     if (!str) return '';
@@ -60,24 +62,18 @@ const App = () => {
 
   const handleLogout = useCallback(() => {
     setIsLoggedIn(false);
+    setCurrentUser(null);
+    initialLoadDone.current = false;
   }, []);
 
   const handleSyncToCloud = useCallback(async (isAutoSync = false) => {
-    if (isSyncingRef.current) return;
+    if (isSyncingRef.current || !isLoggedIn) return;
     
     isSyncingRef.current = true;
     setSyncStatus('saving');
-    setErrorDetail('');
     
     const state: AppState = {
-      products,
-      seriesList,
-      shipments,
-      testers,
-      users,
-      language,
-      showAiInsights,
-      maxHistorySteps
+      products, seriesList, shipments, testers, users, language, showAiInsights, maxHistorySteps
     };
 
     try {
@@ -88,18 +84,14 @@ const App = () => {
         isSyncingRef.current = false;
       }, isAutoSync ? 2000 : 3000);
     } catch (error: any) {
-      console.error('Cloud Sync Error:', error);
       setSyncStatus('error');
       setErrorDetail(error.message || '連線錯誤');
       isSyncingRef.current = false;
-      setTimeout(() => setSyncStatus('idle'), 6000);
     }
-  }, [products, seriesList, shipments, testers, users, language, showAiInsights, maxHistorySteps]);
+  }, [products, seriesList, shipments, testers, users, language, showAiInsights, maxHistorySteps, isLoggedIn]);
 
-  // 分離載入邏輯
   const handleLoadFromCloud = useCallback(async () => {
     if (isSyncingRef.current) return;
-    
     setSyncStatus('saving');
     isSyncingRef.current = true;
     
@@ -114,63 +106,51 @@ const App = () => {
         if (cloudData.language) setLanguage(cloudData.language);
         if (cloudData.showAiInsights !== undefined) setShowAiInsights(cloudData.showAiInsights);
         setSyncStatus('success');
-      } else {
-        // 第一次使用，同步預設資料
-        console.log("No cloud data, initializing...");
       }
+      initialLoadDone.current = true;
     } catch (error) {
-      console.error('Failed to load cloud data:', error);
+      console.error('Cloud load error:', error);
       setSyncStatus('error');
-      setErrorDetail('無法獲取雲端資料，改用本地快取');
     } finally {
       isSyncingRef.current = false;
       setTimeout(() => setSyncStatus('idle'), 2000);
     }
   }, []);
 
-  // 監控使用者列表變動，一旦變動就排程同步
+  // 自動同步：僅在初始載入完成後，且資料發生變動時觸發
   useEffect(() => {
-    if (isLoggedIn && users.length > 0) {
-      const timer = setTimeout(() => {
-        handleSyncToCloud(true);
-      }, 500); // 延遲半秒同步，避免輸入時過度觸發
+    if (isLoggedIn && initialLoadDone.current) {
+      const timer = setTimeout(() => handleSyncToCloud(true), 2000);
       return () => clearTimeout(timer);
     }
-  }, [users, isLoggedIn, handleSyncToCloud]);
+  }, [users, seriesList, products, testers, shipments, isLoggedIn, handleSyncToCloud]);
 
-  // 僅在登入狀態改變時觸發一次載入
+  // 登入後執行初次載入
   useEffect(() => {
-    if (isLoggedIn) {
+    if (isLoggedIn && !initialLoadDone.current) {
       handleLoadFromCloud();
     }
   }, [isLoggedIn, handleLoadFromCloud]);
 
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.ctrlKey || e.metaKey) && e.key === 's') {
-        e.preventDefault();
-        if (isLoggedIn) handleSyncToCloud();
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isLoggedIn, handleSyncToCloud]);
-
   if (!isLoggedIn) {
-    return <Login onLoginSuccess={() => setIsLoggedIn(true)} />;
+    return <Login onLoginSuccess={(user) => {
+      setCurrentUser(user);
+      setIsLoggedIn(true);
+    }} />;
   }
+
+  const isAdmin = currentUser?.role === 'admin';
 
   return (
     <LanguageContext.Provider value={{ language, setLanguage, t }}>
       <div className="flex min-h-screen bg-slate-50 relative">
-        <Sidebar onLogout={handleLogout} />
+        <Sidebar onLogout={handleLogout} isAdmin={isAdmin} />
         <main className="flex-1 overflow-y-auto">
           <Suspense fallback={<PageLoader />}>
             <Routes>
               <Route path="/" element={
                 <Dashboard 
-                  products={products} 
-                  seriesList={seriesList} 
+                  products={products} seriesList={seriesList} 
                   onAddProduct={async (p) => setProducts([...products, { ...p, id: `p-${Date.now()}`, ergoProjects: [], customerFeedback: [], designHistory: [], ergoTests: [], durabilityTests: [], isWatched: false, customSortOrder: products.length, uniqueFeedbackTags: {} } as any])}
                   onUpdateProduct={async (p) => setProducts(products.map(old => old.id === p.id ? p : old))}
                   onToggleWatch={(id) => setProducts(products.map(p => p.id === id ? { ...p, isWatched: !p.isWatched } : p))}
@@ -187,64 +167,43 @@ const App = () => {
                 />
               } />
               <Route path="/product/:id" element={
-                <ProductDetail 
-                  products={products} 
-                  testers={testers}
-                  onUpdateProduct={async (p) => setProducts(products.map(old => old.id === p.id ? p : old))}
-                  showAiInsights={showAiInsights}
-                />
+                <ProductDetail products={products} testers={testers} onUpdateProduct={async (p) => setProducts(products.map(old => old.id === p.id ? p : old))} showAiInsights={showAiInsights} />
               } />
               <Route path="/analytics" element={
-                <Analytics 
-                  products={products} 
-                  shipments={shipments} 
-                  testers={testers}
-                  onImportData={(data) => setShipments([...shipments, ...data])}
-                  onBatchAddProducts={(newPs) => setProducts([...products, ...newPs])}
-                  showAiInsights={showAiInsights}
-                />
+                <Analytics products={products} shipments={shipments} testers={testers} onImportData={(data) => setShipments([...shipments, ...data])} onBatchAddProducts={(newPs) => setProducts([...products, ...newPs])} showAiInsights={showAiInsights} />
               } />
               <Route path="/settings" element={
-                <Settings 
-                  seriesList={seriesList}
-                  onAddSeries={async (name) => setSeriesList([...seriesList, { en: name, zh: name }])}
-                  onUpdateSeriesList={(list) => setSeriesList(list)}
-                  onRenameSeries={(idx, name) => {
-                      const newList = [...seriesList];
-                      newList[idx] = { ...newList[idx], [language]: name };
-                      setSeriesList(newList);
-                  }}
-                  currentAppState={{ products, seriesList, shipments, testers, users, language, showAiInsights, maxHistorySteps }}
-                  onLoadProject={(state) => {
-                      if (state.products) setProducts(state.products);
-                      if (state.seriesList) setSeriesList(state.seriesList);
-                      if (state.shipments) setShipments(state.shipments);
-                      if (state.testers) setTesters(state.testers);
-                      if (state.users) setUsers(state.users);
-                  }}
-                  onUpdateMaxHistory={setMaxHistorySteps}
-                  onToggleAiInsights={setShowAiInsights}
-                  onAddUser={(u) => setUsers([...users, { ...u, id: Date.now().toString() }])}
-                  onUpdateUser={(u) => setUsers(users.map(old => old.id === u.id ? u : old))}
-                  onDeleteUser={(id) => setUsers(users.filter(u => u.id !== id))}
-                  onSyncCloud={handleSyncToCloud}
-                  onLogout={handleLogout}
-                  syncStatus={syncStatus}
-                />
+                isAdmin ? (
+                  <Settings 
+                    seriesList={seriesList} onAddSeries={async (name) => setSeriesList([...seriesList, { en: name, zh: name }])} onUpdateSeriesList={(list) => setSeriesList(list)}
+                    onRenameSeries={(idx, name) => {
+                        const newList = [...seriesList];
+                        newList[idx] = { ...newList[idx], [language]: name };
+                        setSeriesList(newList);
+                    }}
+                    currentAppState={{ products, seriesList, shipments, testers, users, language, showAiInsights, maxHistorySteps }}
+                    onLoadProject={(state) => {
+                        if (state.products) setProducts(state.products);
+                        if (state.seriesList) setSeriesList(state.seriesList);
+                        if (state.shipments) setShipments(state.shipments);
+                        if (state.testers) setTesters(state.testers);
+                        if (state.users) setUsers(state.users);
+                    }}
+                    onUpdateMaxHistory={setMaxHistorySteps} onToggleAiInsights={setShowAiInsights}
+                    onAddUser={(u) => setUsers([...users, { ...u, id: Date.now().toString() }])}
+                    onUpdateUser={(u) => setUsers(users.map(old => old.id === u.id ? u : old))}
+                    onDeleteUser={(id) => setUsers(users.filter(u => u.id !== id))}
+                    onSyncCloud={handleSyncToCloud} onLogout={handleLogout} syncStatus={syncStatus}
+                  />
+                ) : <Navigate to="/" />
               } />
               <Route path="/testers" element={
-                <TesterDatabase 
-                  testers={testers}
-                  onAddTester={(t) => setTesters([...testers, { ...t, id: Date.now().toString() }])}
-                  onUpdateTester={(t) => setTesters(testers.map(old => old.id === t.id ? t : old))}
-                  onDeleteTester={(id) => setTesters(testers.filter(t => t.id !== id))}
-                />
+                <TesterDatabase testers={testers} onAddTester={(t) => setTesters([...testers, { ...t, id: Date.now().toString() }])} onUpdateTester={(t) => setTesters(testers.map(old => old.id === t.id ? t : old))} onDeleteTester={(id) => setTesters(testers.filter(t => t.id !== id))} />
               } />
             </Routes>
           </Suspense>
         </main>
 
-        {/* Global Sync Status Notification */}
         {syncStatus !== 'idle' && (
           <div className="fixed bottom-6 right-6 z-[100] animate-slide-up">
             <div className={`flex items-center gap-3 px-5 py-3 rounded-2xl shadow-2xl border backdrop-blur-md ${
@@ -255,15 +214,7 @@ const App = () => {
               {syncStatus === 'saving' && <Loader2 size={18} className="animate-spin" />}
               {syncStatus === 'success' && <CheckCircle size={18} />}
               {syncStatus === 'error' && <AlertCircle size={18} />}
-              <div className="flex flex-col">
-                <span className="text-sm font-bold leading-tight">
-                  {syncStatus === 'saving' ? '正在同步至雲端...' :
-                   syncStatus === 'success' ? '雲端同步成功' : '同步失敗'}
-                </span>
-                <span className="text-[10px] opacity-80 font-medium">
-                  {syncStatus === 'error' ? errorDetail : '所有變更已儲存'}
-                </span>
-              </div>
+              <span className="text-sm font-bold">{syncStatus === 'saving' ? '同步中' : syncStatus === 'success' ? '雲端已更新' : '同步異常'}</span>
             </div>
           </div>
         )}

@@ -6,9 +6,10 @@ import { LanguageContext } from '../App';
 
 interface SidebarProps {
   onLogout: () => void;
+  isAdmin: boolean;
 }
 
-const Sidebar: React.FC<SidebarProps> = ({ onLogout }) => {
+const Sidebar: React.FC<SidebarProps> = ({ onLogout, isAdmin }) => {
   const { t } = useContext(LanguageContext);
   const [isExpanded, setIsExpanded] = useState(false);
 
@@ -40,19 +41,15 @@ const Sidebar: React.FC<SidebarProps> = ({ onLogout }) => {
 
       <nav className="flex-1 space-y-2 px-3">
         <NavLink to="/analytics" className={linkClass}>
-          <div className="flex-shrink-0">
-            <BarChart2 size={22} />
-          </div>
-          <span className={`font-medium transition-opacity duration-300 ${isExpanded ? 'opacity-100 delay-75' : 'opacity-0 hidden'}`}>
+          <div className="flex-shrink-0"><BarChart2 size={22} /></div>
+          <span className={`font-medium transition-opacity duration-300 ${isExpanded ? 'opacity-100' : 'opacity-0 hidden'}`}>
             {t({ en: 'Product Dashboard', zh: '產品儀表板' })}
           </span>
         </NavLink>
 
         <NavLink to="/" className={linkClass}>
-          <div className="flex-shrink-0">
-            <LayoutDashboard size={22} />
-          </div>
-          <span className={`font-medium transition-opacity duration-300 ${isExpanded ? 'opacity-100 delay-75' : 'opacity-0 hidden'}`}>
+          <div className="flex-shrink-0"><LayoutDashboard size={22} /></div>
+          <span className={`font-medium transition-opacity duration-300 ${isExpanded ? 'opacity-100' : 'opacity-0 hidden'}`}>
             {t({ en: 'Product Design', zh: '產品設計' })}
           </span>
         </NavLink>
@@ -60,23 +57,22 @@ const Sidebar: React.FC<SidebarProps> = ({ onLogout }) => {
 
       <div className="mt-auto px-3 pb-6 space-y-2">
         <div className="pt-4 border-t border-slate-100">
-          <NavLink to="/settings" className={`flex items-center gap-4 px-4 py-3 text-slate-400 hover:text-slate-600 transition-colors w-full rounded-xl hover:bg-slate-50 overflow-hidden whitespace-nowrap ${!isExpanded ? 'justify-center' : ''}`}>
-            <div className="flex-shrink-0">
-              <Settings size={22} />
-            </div>
-            <span className={`font-medium transition-opacity duration-300 ${isExpanded ? 'opacity-100 delay-75' : 'opacity-0 hidden'}`}>
-              {t({ en: 'Settings', zh: '設定' })}
-            </span>
-          </NavLink>
+          {/* 僅 Admin 可見設定 */}
+          {isAdmin && (
+            <NavLink to="/settings" className={linkClass}>
+              <div className="flex-shrink-0"><Settings size={22} /></div>
+              <span className={`font-medium transition-opacity duration-300 ${isExpanded ? 'opacity-100' : 'opacity-0 hidden'}`}>
+                {t({ en: 'Settings', zh: '系統設定' })}
+              </span>
+            </NavLink>
+          )}
 
           <button 
             onClick={onLogout}
             className={`flex items-center gap-4 px-4 py-3 text-red-400 hover:text-red-600 hover:bg-red-50 transition-all w-full rounded-xl overflow-hidden whitespace-nowrap ${!isExpanded ? 'justify-center' : ''}`}
           >
-            <div className="flex-shrink-0">
-              <LogOut size={22} />
-            </div>
-            <span className={`font-bold transition-opacity duration-300 ${isExpanded ? 'opacity-100 delay-75' : 'opacity-0 hidden'}`}>
+            <div className="flex-shrink-0"><LogOut size={22} /></div>
+            <span className={`font-bold transition-opacity duration-300 ${isExpanded ? 'opacity-100' : 'opacity-0 hidden'}`}>
               {t({ en: 'Logout', zh: '登出系統' })}
             </span>
           </button>

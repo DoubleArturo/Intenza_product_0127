@@ -11,7 +11,7 @@ export default async function handler(request: VercelRequest, response: VercelRe
   const client = await db.connect();
   
   try {
-    // 確保表結構存在，防止初次部署後直接登入導致的崩潰
+    // 建立表結構（保險機制）
     await client.sql`
       CREATE TABLE IF NOT EXISTS workspace_storage (
         id TEXT PRIMARY KEY,
@@ -20,27 +20,23 @@ export default async function handler(request: VercelRequest, response: VercelRe
       );
     `;
 
-    // 取得目前的雲端狀態
+    // 取得資料庫內容
     const { rows } = await client.sql`
       SELECT content FROM workspace_storage 
       WHERE id = 'global_state'
       LIMIT 1
     `;
     
-    // 預設緊急帳號
+    // 預設緊急後門
     const fallbackUser = { username: 'admin', password: 'adminx', role: 'admin' };
 
     let users = [];
     if (rows.length > 0 && rows[0].content) {
       let content = rows[0].content;
       
-      // 有些驅動程式版本會將 JSONB 傳回為字串，有些則是物件
+      // 處理資料庫回傳格式差異
       if (typeof content === 'string') {
-        try {
-          content = JSON.parse(content);
-        } catch (e) {
-          console.error('Failed to parse content string:', e);
-        }
+        try { content = JSON.parse(content); } catch (e) {}
       }
       
       if (content && Array.isArray(content.users)) {
@@ -48,7 +44,7 @@ export default async function handler(request: VercelRequest, response: VercelRe
       }
     }
 
-    // 優先比對資料庫中的用戶
+    // 1. 比對自定義用戶
     const matchedUser = users.find((u: any) => 
       u.username === username && String(u.password) === String(password)
     );
@@ -56,31 +52,37 @@ export default async function handler(request: VercelRequest, response: VercelRe
     if (matchedUser) {
       return response.status(200).json({ 
         success: true, 
-        user: { id: matchedUser.id, username: matchedUser.username, role: matchedUser.role } 
+        user: { 
+          username: matchedUser.username, 
+          role: matchedUser.role || 'user' 
+        } 
       });
     }
 
-    // 最後檢查預設帳號
+    // 2. 比對預設 Admin
     if (username === fallbackUser.username && password === fallbackUser.password) {
       return response.status(200).json({ 
         success: true, 
-        user: { id: 'default-admin', username: 'admin', role: 'admin' } 
+        user: { 
+          username: 'admin', 
+          role: 'admin' 
+        } 
       });
     }
 
     return response.status(401).json({ error: '帳號或密碼不正確' });
 
   } catch (error) {
-    console.error('Login API Critical Error:', error);
-    // 即使資料庫掛了，也讓 admin/adminx 能登入進去修復或重新同步
+    console.error('Login Auth Error:', error);
+    // 異常時的救援登入
     if (username === 'admin' && password === 'adminx') {
       return response.status(200).json({ 
         success: true, 
-        user: { id: 'emergency-admin', username: 'admin', role: 'admin' },
-        warning: 'Database connection failed, using local fallback.'
+        user: { username: 'admin', role: 'admin' },
+        warning: 'DB Connection Error, using safe mode.'
       });
     }
-    return response.status(500).json({ error: '伺服器驗證異常', details: (error as Error).message });
+    return response.status(500).json({ error: '登入程序異常' });
   } finally {
     client.release();
   }
