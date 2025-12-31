@@ -1,7 +1,7 @@
 
 import React, { useState, useRef, useContext, useEffect, useMemo } from 'react';
 // Added missing 'Layers' to the lucide-react import list
-import { Plus, X, Save, Download, Upload, AlertTriangle, CheckCircle, Pencil, History, Sparkles, Shield, User, Trash2, Eye, EyeOff, Key, Database, HardDrive, Info, Cloud, LogOut, Loader2, Link as LinkIcon, Activity, Layers, BrainCircuit } from 'lucide-react';
+import { Plus, X, Save, Download, Upload, AlertTriangle, CheckCircle, Pencil, History, Sparkles, Shield, User, Trash2, Eye, EyeOff, Key, Database, HardDrive, Info, Cloud, LogOut, Loader2, Link as LinkIcon, Activity, Layers } from 'lucide-react';
 import { AppState, LocalizedString, UserAccount } from '../types';
 import { LanguageContext } from '../App';
 import { api } from '../services/api';
@@ -172,30 +172,6 @@ const Settings: React.FC<SettingsProps> = ({
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <div className="lg:col-span-2 space-y-8">
-          {/* AI Toggle Section */}
-          <section className="bg-white rounded-2xl border border-slate-200 p-8 shadow-sm">
-             <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                    <div className="p-3 bg-intenza-50 rounded-xl text-intenza-600">
-                      <Sparkles size={24} />
-                    </div>
-                    <div>
-                      <h2 className="text-xl font-bold text-slate-900">AI 智慧分析功能</h2>
-                      <p className="text-sm text-slate-500">啟用後將在數據分析與產品詳情頁顯示由 Gemini AI 產生的洞察摘要。</p>
-                    </div>
-                </div>
-                <button 
-                  onClick={() => onToggleAiInsights(!currentAppState.showAiInsights)}
-                  className={`relative inline-flex h-7 w-14 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${currentAppState.showAiInsights ? 'bg-intenza-600' : 'bg-slate-200'}`}
-                >
-                  <span
-                    aria-hidden="true"
-                    className={`inline-block h-6 w-6 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${currentAppState.showAiInsights ? 'translate-x-7' : 'translate-x-0'}`}
-                  />
-                </button>
-             </div>
-          </section>
-
           {/* User Management */}
           <section className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
              <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
@@ -437,7 +413,7 @@ const UserAccountModal: React.FC<{
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm animate-fade-in">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-md animate-slide-up overflow-hidden">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md animate-slide-up overflow-hidden">
         <div className="flex justify-between items-center p-6 border-b border-slate-100">
           <h2 className="text-xl font-bold text-slate-900">{user ? '編輯用戶' : '新增系統用戶'}</h2>
           <button onClick={onClose} className="p-2 rounded-full hover:bg-slate-100 text-slate-500"><X size={20} /></button>

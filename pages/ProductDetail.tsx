@@ -13,14 +13,6 @@ const isVideo = (url: string) => {
     return url.startsWith('data:video') || url.match(/\.(mp4|webm|ogg)$/i);
 };
 
-// Define ProductDetailProps interface to fix missing name error
-interface ProductDetailProps {
-  products: ProductModel[];
-  testers?: Tester[];
-  onUpdateProduct: (product: ProductModel) => Promise<void>;
-  showAiInsights: boolean;
-}
-
 // Main Product Detail Page Component
 const ProductDetail: React.FC<ProductDetailProps> = ({ products, testers = [], onUpdateProduct, showAiInsights }) => {
   const { id } = useParams();
