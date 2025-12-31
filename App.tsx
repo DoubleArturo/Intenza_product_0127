@@ -1,5 +1,5 @@
 
-import React, { useState, createContext, useCallback, useEffect, lazy, Suspense } from 'react';
+import React, { useState, createContext, useCallback, useEffect, lazy, Suspense, useRef } from 'react';
 import { Routes, Route } from 'react-router-dom';
 import { MOCK_PRODUCTS, MOCK_SHIPMENTS, MOCK_TESTERS } from './services/mockData';
 import { ProductModel, Language, LocalizedString, Tester, ShipmentData, DEFAULT_SERIES, UserAccount, AppState } from './types';
@@ -48,6 +48,9 @@ const App = () => {
 
   const [syncStatus, setSyncStatus] = useState<'idle' | 'saving' | 'success' | 'error'>('idle');
   const [errorDetail, setErrorDetail] = useState<string>('');
+  
+  // 使用 Ref 追蹤同步狀態，避免 useCallback 循環依賴
+  const isSyncingRef = useRef(false);
 
   const t = useCallback((str: any) => {
     if (!str) return '';
@@ -60,7 +63,9 @@ const App = () => {
   }, []);
 
   const handleSyncToCloud = useCallback(async (isAutoSync = false) => {
-    if (syncStatus === 'saving') return;
+    if (isSyncingRef.current) return;
+    
+    isSyncingRef.current = true;
     setSyncStatus('saving');
     setErrorDetail('');
     
@@ -78,18 +83,27 @@ const App = () => {
     try {
       await api.saveData(state);
       setSyncStatus('success');
-      setTimeout(() => setSyncStatus('idle'), isAutoSync ? 2000 : 3000);
+      setTimeout(() => {
+        setSyncStatus('idle');
+        isSyncingRef.current = false;
+      }, isAutoSync ? 2000 : 3000);
     } catch (error: any) {
       console.error('Cloud Sync Error:', error);
       setSyncStatus('error');
       setErrorDetail(error.message || '連線錯誤');
+      isSyncingRef.current = false;
       setTimeout(() => setSyncStatus('idle'), 6000);
     }
-  }, [products, seriesList, shipments, testers, users, language, showAiInsights, maxHistorySteps, syncStatus]);
+  }, [products, seriesList, shipments, testers, users, language, showAiInsights, maxHistorySteps]);
 
+  // 分離載入邏輯
   const handleLoadFromCloud = useCallback(async () => {
+    if (isSyncingRef.current) return;
+    
+    setSyncStatus('saving');
+    isSyncingRef.current = true;
+    
     try {
-      setSyncStatus('saving');
       const cloudData = await api.loadData();
       if (cloudData) {
         if (cloudData.products) setProducts(cloudData.products);
@@ -100,21 +114,21 @@ const App = () => {
         if (cloudData.language) setLanguage(cloudData.language);
         if (cloudData.showAiInsights !== undefined) setShowAiInsights(cloudData.showAiInsights);
         setSyncStatus('success');
-        // 成功載入後，為了確保本地 state 與雲端完全同步且初始化完成，自動觸發一次同步
-        setTimeout(() => handleSyncToCloud(true), 1000);
       } else {
-        // 如果雲端沒資料（第一次登入），直接將 Mock Data 同步上去
-        handleSyncToCloud(true);
+        // 第一次使用，同步預設資料
+        console.log("No cloud data, initializing...");
       }
     } catch (error) {
       console.error('Failed to load cloud data:', error);
       setSyncStatus('error');
       setErrorDetail('無法獲取雲端資料，改用本地快取');
     } finally {
+      isSyncingRef.current = false;
       setTimeout(() => setSyncStatus('idle'), 2000);
     }
-  }, [handleSyncToCloud]);
+  }, []);
 
+  // 僅在登入狀態改變時觸發一次載入
   useEffect(() => {
     if (isLoggedIn) {
       handleLoadFromCloud();
