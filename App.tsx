@@ -55,6 +55,11 @@ const App = () => {
     return str[language] || str.en || str.zh || '';
   }, [language]);
 
+  const handleLogout = useCallback(() => {
+    setIsLoggedIn(false);
+    // Reset any sensitive session data if needed
+  }, []);
+
   const handleLoadFromCloud = useCallback(async () => {
     try {
       setSyncStatus('saving');
@@ -132,7 +137,7 @@ const App = () => {
   return (
     <LanguageContext.Provider value={{ language, setLanguage, t }}>
       <div className="flex min-h-screen bg-slate-50 relative">
-        <Sidebar />
+        <Sidebar onLogout={handleLogout} />
         <main className="flex-1 overflow-y-auto">
           <Suspense fallback={<PageLoader />}>
             <Routes>
@@ -195,6 +200,9 @@ const App = () => {
                   onAddUser={(u) => setUsers([...users, { ...u, id: Date.now().toString() }])}
                   onUpdateUser={(u) => setUsers(users.map(old => old.id === u.id ? u : old))}
                   onDeleteUser={(id) => setUsers(users.filter(u => u.id !== id))}
+                  onSyncCloud={handleSyncToCloud}
+                  onLogout={handleLogout}
+                  syncStatus={syncStatus}
                 />
               } />
               <Route path="/testers" element={

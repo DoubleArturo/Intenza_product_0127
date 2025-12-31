@@ -1,9 +1,14 @@
+
 import React, { useContext, useState } from 'react';
 import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, BarChart2, Settings, Menu } from 'lucide-react';
+import { LayoutDashboard, BarChart2, Settings, LogOut } from 'lucide-react';
 import { LanguageContext } from '../App';
 
-const Sidebar = () => {
+interface SidebarProps {
+  onLogout: () => void;
+}
+
+const Sidebar: React.FC<SidebarProps> = ({ onLogout }) => {
   const { t } = useContext(LanguageContext);
   const [isExpanded, setIsExpanded] = useState(false);
 
@@ -34,7 +39,6 @@ const Sidebar = () => {
       </div>
 
       <nav className="flex-1 space-y-2 px-3">
-        {/* 1. Product Dashboard (Formerly Data Visualization) - Moved to Top */}
         <NavLink to="/analytics" className={linkClass}>
           <div className="flex-shrink-0">
             <BarChart2 size={22} />
@@ -44,7 +48,6 @@ const Sidebar = () => {
           </span>
         </NavLink>
 
-        {/* 2. Product Design - Moved to Second */}
         <NavLink to="/" className={linkClass}>
           <div className="flex-shrink-0">
             <LayoutDashboard size={22} />
@@ -55,8 +58,8 @@ const Sidebar = () => {
         </NavLink>
       </nav>
 
-      <div className="mt-auto px-3 pb-6">
-        <div className="pt-4 mt-4 border-t border-slate-100">
+      <div className="mt-auto px-3 pb-6 space-y-2">
+        <div className="pt-4 border-t border-slate-100">
           <NavLink to="/settings" className={`flex items-center gap-4 px-4 py-3 text-slate-400 hover:text-slate-600 transition-colors w-full rounded-xl hover:bg-slate-50 overflow-hidden whitespace-nowrap ${!isExpanded ? 'justify-center' : ''}`}>
             <div className="flex-shrink-0">
               <Settings size={22} />
@@ -65,6 +68,18 @@ const Sidebar = () => {
               {t({ en: 'Settings', zh: '設定' })}
             </span>
           </NavLink>
+
+          <button 
+            onClick={onLogout}
+            className={`flex items-center gap-4 px-4 py-3 text-red-400 hover:text-red-600 hover:bg-red-50 transition-all w-full rounded-xl overflow-hidden whitespace-nowrap ${!isExpanded ? 'justify-center' : ''}`}
+          >
+            <div className="flex-shrink-0">
+              <LogOut size={22} />
+            </div>
+            <span className={`font-bold transition-opacity duration-300 ${isExpanded ? 'opacity-100 delay-75' : 'opacity-0 hidden'}`}>
+              {t({ en: 'Logout', zh: '登出系統' })}
+            </span>
+          </button>
         </div>
       </div>
     </aside>

@@ -1,5 +1,7 @@
+
 import React, { useState, useRef, useContext, useEffect, useMemo } from 'react';
-import { Plus, X, Save, Download, Upload, AlertTriangle, CheckCircle, Pencil, History, Sparkles, Shield, User, Trash2, Eye, EyeOff, Key, Database, HardDrive, Info } from 'lucide-react';
+/* Added missing Loader2 import */
+import { Plus, X, Save, Download, Upload, AlertTriangle, CheckCircle, Pencil, History, Sparkles, Shield, User, Trash2, Eye, EyeOff, Key, Database, HardDrive, Info, Cloud, LogOut, Loader2 } from 'lucide-react';
 import { AppState, LocalizedString, UserAccount } from '../types';
 import { LanguageContext } from '../App';
 
@@ -15,12 +17,15 @@ interface SettingsProps {
   onAddUser: (user: Omit<UserAccount, 'id'>) => void;
   onUpdateUser: (user: UserAccount) => void;
   onDeleteUser: (id: string) => void;
+  onSyncCloud: () => Promise<void>;
+  onLogout: () => void;
+  syncStatus: 'idle' | 'saving' | 'success' | 'error';
 }
 
 const Settings: React.FC<SettingsProps> = ({ 
   seriesList, onAddSeries, onUpdateSeriesList, onRenameSeries, 
   currentAppState, onLoadProject, onUpdateMaxHistory, onToggleAiInsights,
-  onAddUser, onUpdateUser, onDeleteUser
+  onAddUser, onUpdateUser, onDeleteUser, onSyncCloud, onLogout, syncStatus
 }) => {
   const { t } = useContext(LanguageContext);
   const [newSeriesName, setNewSeriesName] = useState('');
@@ -30,21 +35,18 @@ const Settings: React.FC<SettingsProps> = ({
 
   // --- 容量計算邏輯 ---
   const storageStats = useMemo(() => {
-    // 1. Postgres 列數估算 (Vercel Postgres Hobby 限制約為 256MB/效能考量建議列數)
     const rowCount = 
       (currentAppState.products?.length || 0) + 
       (currentAppState.shipments?.length || 0) + 
       (currentAppState.testers?.length || 0) + 
       (currentAppState.users?.length || 0);
-    const rowLimit = 10000; // 模擬上限
+    const rowLimit = 10000;
     const rowPercent = Math.min(100, (rowCount / rowLimit) * 100);
 
-    // 2. Blob 儲存空間估算 (Vercel Blob Hobby 限制為 250MB)
-    // 遍歷所有產品圖片與測試附件進行大小估算 (以 Base64 字串長度換算)
     let totalBytes = 0;
     const countBytes = (str?: string) => {
       if (!str || !str.startsWith('data:')) return 0;
-      return (str.length * 3) / 4; // Base64 粗略換算
+      return (str.length * 3) / 4;
     };
 
     currentAppState.products?.forEach(p => {
@@ -52,7 +54,6 @@ const Settings: React.FC<SettingsProps> = ({
       p.designHistory?.forEach(eco => eco.imageUrls?.forEach(url => totalBytes += countBytes(url)));
       p.durabilityTests?.forEach(test => test.attachmentUrls?.forEach(url => totalBytes += countBytes(url)));
       p.ergoProjects?.forEach(proj => {
-        // Fix: Explicitly cast to any[] to avoid "unknown" type error on task variable
         (Object.values(proj.tasks).flat() as any[]).forEach(task => {
           task.ngReasons.forEach((ng: any) => ng.attachmentUrls?.forEach((url: string) => totalBytes += countBytes(url)));
         });
@@ -60,13 +61,12 @@ const Settings: React.FC<SettingsProps> = ({
     });
 
     const mbUsed = totalBytes / (1024 * 1024);
-    const mbLimit = 250; // Vercel Blob Hobby Limit
+    const mbLimit = 250;
     const mbPercent = Math.min(100, (mbUsed / mbLimit) * 100);
 
     return { rowCount, rowLimit, rowPercent, mbUsed, mbLimit, mbPercent };
   }, [currentAppState]);
 
-  // --- 其他狀態 ---
   const [deletingIndex, setDeletingIndex] = useState<number | null>(null);
   const [confirmText, setConfirmText] = useState('');
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
@@ -172,9 +172,17 @@ const Settings: React.FC<SettingsProps> = ({
 
   return (
     <div className="p-8 max-w-5xl mx-auto animate-fade-in space-y-8">
-      <header className="border-b border-slate-100 pb-6">
-        <h1 className="text-3xl font-bold text-slate-900">System Settings</h1>
-        <p className="text-slate-500 mt-1">Configure global parameters, manage users, and project data.</p>
+      <header className="border-b border-slate-100 pb-6 flex justify-between items-end">
+        <div>
+          <h1 className="text-3xl font-bold text-slate-900">System Settings</h1>
+          <p className="text-slate-500 mt-1">Configure global parameters, manage users, and project data.</p>
+        </div>
+        <button 
+          onClick={onLogout}
+          className="flex items-center gap-2 px-4 py-2 text-sm font-bold text-red-600 hover:bg-red-50 rounded-xl transition-colors border border-transparent hover:border-red-100"
+        >
+          <LogOut size={18} /> Logout
+        </button>
       </header>
 
       {notification && (
@@ -324,13 +332,43 @@ const Settings: React.FC<SettingsProps> = ({
 
         {/* Right Column: Global Settings & Capacity */}
         <div className="space-y-8">
+           {/* Cloud Sync Management Section */}
+           <section className="bg-white rounded-2xl border border-slate-200 p-8 shadow-sm">
+              <div className="flex items-center gap-2 mb-4">
+                 <Cloud className="text-intenza-600" size={20} />
+                 <h2 className="text-xl font-bold text-slate-900">Cloud Data Sync</h2>
+              </div>
+              <p className="text-sm text-slate-500 mb-6">Manually synchronize all project data to the cloud database for persistence.</p>
+              
+              <button 
+                onClick={onSyncCloud}
+                disabled={syncStatus === 'saving'}
+                className={`w-full py-3 rounded-xl font-bold transition-all flex items-center justify-center gap-2 shadow-lg ${
+                  syncStatus === 'saving' 
+                    ? 'bg-slate-100 text-slate-400 cursor-not-allowed' 
+                    : 'bg-intenza-600 text-white hover:bg-intenza-700 shadow-intenza-600/20'
+                }`}
+              >
+                {syncStatus === 'saving' ? (
+                  <Loader2 size={18} className="animate-spin" />
+                ) : (
+                  <Cloud size={18} />
+                )}
+                {syncStatus === 'saving' ? 'Syncing...' : 'Sync to Cloud Now'}
+              </button>
+              
+              <div className="mt-4 flex items-center gap-2 text-xs text-slate-400 px-1">
+                <Info size={12} />
+                <span>Tip: You can also use <kbd className="font-sans px-1 bg-slate-100 border rounded">Ctrl+S</kbd> anywhere.</span>
+              </div>
+           </section>
+
            {/* Capacity Monitoring Section */}
            <section className="bg-white rounded-2xl border border-slate-200 p-8 shadow-sm">
-              <h2 className="text-xl font-bold text-slate-900 mb-2">Storage & Database</h2>
+              <h2 className="text-xl font-bold text-slate-900 mb-2">Storage Usage</h2>
               <p className="text-sm text-slate-500 mb-6">Monitoring Vercel resources usage.</p>
               
               <div className="space-y-6">
-                {/* Postgres Stats */}
                 <div className="space-y-2">
                   <div className="flex justify-between items-center text-xs font-bold uppercase tracking-wider">
                     <div className="flex items-center gap-2 text-slate-500">
@@ -349,7 +387,6 @@ const Settings: React.FC<SettingsProps> = ({
                   </div>
                 </div>
 
-                {/* Blob Stats */}
                 <div className="space-y-2">
                   <div className="flex justify-between items-center text-xs font-bold uppercase tracking-wider">
                     <div className="flex items-center gap-2 text-slate-500">
@@ -366,13 +403,6 @@ const Settings: React.FC<SettingsProps> = ({
                       style={{ width: `${storageStats.mbPercent}%` }}
                     ></div>
                   </div>
-                </div>
-
-                <div className="bg-blue-50 border border-blue-100 rounded-xl p-3 flex items-start gap-3">
-                  <Info size={16} className="text-blue-500 mt-0.5 shrink-0" />
-                  <p className="text-[10px] text-blue-700 leading-relaxed italic">
-                    Capacity values are calculated based on current Hobby tier limits. Exceeding 250MB Blob storage may require a plan upgrade on Vercel Dashboard.
-                  </p>
                 </div>
               </div>
            </section>
@@ -400,36 +430,13 @@ const Settings: React.FC<SettingsProps> = ({
            </section>
            
            <section className="bg-white rounded-2xl border border-slate-200 p-8 shadow-sm">
-              <h2 className="text-xl font-bold text-slate-900 mb-2">Undo History</h2>
-              <div className="space-y-4">
-                 <div className="flex items-center gap-3 mb-2">
-                    <History className="text-slate-400" size={18} />
-                    <span className="font-bold text-slate-700 text-sm">Max History: {localMaxHistory}</span>
-                 </div>
-                 <input 
-                    type="range" min="5" max="50" step="5"
-                    value={localMaxHistory} 
-                    onChange={(e) => setLocalMaxHistory(Number(e.target.value))}
-                    className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-intenza-600"
-                 />
-                 <button 
-                    onClick={saveHistorySettings} 
-                    disabled={localMaxHistory === currentAppState.maxHistorySteps}
-                    className="w-full py-2 bg-slate-900 text-white font-bold rounded-lg hover:bg-slate-800 disabled:opacity-50"
-                 >
-                   Update Undo Limit
-                 </button>
-              </div>
-           </section>
-
-           <section className="bg-white rounded-2xl border border-slate-200 p-8 shadow-sm">
-             <h2 className="text-xl font-bold text-slate-900 mb-4">Project Data</h2>
+             <h2 className="text-xl font-bold text-slate-900 mb-4">Local Project Backup</h2>
              <div className="grid grid-cols-1 gap-4">
                <button onClick={handleDownloadProject} className="flex items-center justify-center gap-2 w-full py-2.5 bg-white border border-slate-300 rounded-lg text-slate-700 font-bold hover:bg-slate-50 transition-all">
-                 <Download size={18} /> Export Project
+                 <Download size={18} /> Export JSON
                </button>
                <button onClick={() => fileInputRef.current?.click()} className="flex items-center justify-center gap-2 w-full py-2.5 bg-slate-900 text-white rounded-lg font-bold hover:bg-slate-800 transition-all">
-                 <Upload size={18} /> Import Project
+                 <Upload size={18} /> Import JSON
                </button>
                <input ref={fileInputRef} type="file" accept=".json" className="hidden" onChange={handleImportProject} />
              </div>
@@ -453,8 +460,6 @@ const Settings: React.FC<SettingsProps> = ({
     </div>
   );
 };
-
-// --- Sub-Components ---
 
 const UserAccountModal: React.FC<{ 
   isOpen: boolean; 
