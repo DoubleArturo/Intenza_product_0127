@@ -1,23 +1,20 @@
-
 import React, { useState, useMemo, useRef, useContext } from 'react';
 import { 
   PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer, 
-  BarChart, Bar, XAxis, YAxis, CartesianGrid
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Label
 } from 'recharts';
 import { 
   ArrowLeft, PieChart as PieIcon, BarChart as BarIcon, Search, FileSpreadsheet, 
-  Layers, Palette, Tag, Globe, Users, Box, Truck, Activity, 
-  BrainCircuit, AlertTriangle, CheckCircle, Clock, ChevronDown, Filter, LayoutGrid, 
-  Image as ImageIcon, ClipboardList, ListFilter, User
+  Layers, Palette, Box, Activity, ChevronDown, 
+  Image as ImageIcon, ClipboardList, User
 } from 'lucide-react';
-import { ShipmentData, ChartViewType, DrillLevel, ProductModel, TestStatus, ErgoProjectCategory, Tester } from '../types';
+import { ShipmentData, ChartViewType, ProductModel, Tester } from '../types';
 import GeminiInsight from '../components/GeminiInsight';
 import * as XLSX from 'xlsx';
 import { LanguageContext } from '../App';
 
 const COLORS = ['#0f172a', '#e3261b', '#94a3b8', '#fbbf24', '#f63e32', '#475569', '#3b82f6', '#10b981', '#8b5cf6', '#d946ef', '#06b6d4'];
 
-// Palettes for color split
 const COLOR_MAP: Record<string, string> = {
   'Brown': '#78350f',
   'Black': '#020617',
@@ -36,24 +33,17 @@ interface AnalyticsProps {
   showAiInsights: boolean;
 }
 
-type MainView = 'SHIPMENT' | 'ERGO' | 'PRODUCT_TEST';
 type DimensionFilter = 'DATA_DRILL' | 'BUYER';
 
 const Analytics: React.FC<AnalyticsProps> = ({ products, shipments, onImportData, onBatchAddProducts, showAiInsights }) => {
   const { language, t } = useContext(LanguageContext);
   
-  // NAVIGATION STATE
-  const [activeView, setActiveView] = useState<MainView>('SHIPMENT');
-
-  // SHIPMENT VIEW STATES
   const [chartType, setChartType] = useState<ChartViewType>('PIE');
   const [drillPath, setDrillPath] = useState<{ level: string, label: string, filterVal: string }[]>([]);
   const [dimension, setDimension] = useState<DimensionFilter>('DATA_DRILL');
-  const [isUploading, setIsUploading] = useState(false);
   const [traceSearchQuery, setTraceSearchQuery] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // DRILL-DOWN LOGIC (Category > Series > SKU > Version)
   const currentLevel = useMemo(() => {
     const depth = drillPath.length;
     if (dimension === 'BUYER') return 'BUYER';
@@ -69,7 +59,7 @@ const Analytics: React.FC<AnalyticsProps> = ({ products, shipments, onImportData
 
   const filteredShipments = useMemo(() => {
     let data = [...shipments];
-    drillPath.forEach((step, index) => {
+    drillPath.forEach((step) => {
       if (step.level === 'CATEGORY') data = data.filter(s => s.category === step.filterVal);
       if (step.level === 'SERIES') data = data.filter(s => s.series === step.filterVal);
       if (step.level === 'SKU') data = data.filter(s => s.sku === step.filterVal);
@@ -97,16 +87,13 @@ const Analytics: React.FC<AnalyticsProps> = ({ products, shipments, onImportData
 
       aggregated[key] = (aggregated[key] || 0) + item.quantity;
       
-      // Attach metadata for the "SKU" or "VERSION" level to show thumbnails
-      if (currentLevel === 'SKU' || currentLevel === 'VERSION') {
-        const prod = products.find(p => p.sku === item.sku);
-        if (prod) {
-          meta[key] = {
-            sku: prod.sku,
-            imageUrl: prod.imageUrl,
-            fullName: t(prod.modelName)
-          };
-        }
+      const prod = products.find(p => p.sku === item.sku);
+      if (prod) {
+        meta[key] = {
+          sku: prod.sku,
+          imageUrl: prod.imageUrl,
+          fullName: t(prod.modelName)
+        };
       }
     });
 
@@ -117,7 +104,17 @@ const Analytics: React.FC<AnalyticsProps> = ({ products, shipments, onImportData
     })).sort((a, b) => b.value - a.value);
   }, [filteredShipments, currentLevel, dimension, products, t]);
 
-  // COLOR ANALYSIS LOGIC
+  const totalQuantity = useMemo(() => chartData.reduce((acc, curr) => acc + curr.value, 0), [chartData]);
+
+  const handleDrill = (entry: any) => {
+    if (dimension === 'BUYER' || currentLevel === 'VERSION') return;
+    setDrillPath([...drillPath, { level: currentLevel, label: entry.name, filterVal: entry.name }]);
+  };
+
+  const handleBack = () => {
+    setDrillPath(drillPath.slice(0, -1));
+  };
+
   const colorData = useMemo(() => {
     const counts: Record<string, number> = {};
     filteredShipments.forEach(s => {
@@ -134,7 +131,6 @@ const Analytics: React.FC<AnalyticsProps> = ({ products, shipments, onImportData
     return Object.entries(counts).map(([name, value]) => ({ name, value }));
   }, [filteredShipments]);
 
-  // TRACEABILITY / SEARCH LOGIC
   const traceResults = useMemo(() => {
     if (!traceSearchQuery) return [];
     const q = traceSearchQuery.toLowerCase();
@@ -146,19 +142,9 @@ const Analytics: React.FC<AnalyticsProps> = ({ products, shipments, onImportData
     ).slice(0, 10);
   }, [traceSearchQuery, shipments]);
 
-  const handleDrill = (entry: any) => {
-    if (dimension === 'BUYER' || currentLevel === 'VERSION') return;
-    setDrillPath([...drillPath, { level: currentLevel, label: entry.name, filterVal: entry.name }]);
-  };
-
-  const handleBack = () => {
-    setDrillPath(drillPath.slice(0, -1));
-  };
-
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    setIsUploading(true);
     const reader = new FileReader();
     reader.onload = (evt) => {
       try {
@@ -169,7 +155,7 @@ const Analytics: React.FC<AnalyticsProps> = ({ products, shipments, onImportData
         
         const newShipments: ShipmentData[] = jsonData.map((row: any, i) => ({
           id: `imp-${Date.now()}-${i}`,
-          modelId: 'imported', // Logic to map to actual product if exists
+          modelId: 'imported',
           shipDate: row['Shipped date'] || '',
           buyer: row['Buyer'] || 'Unknown',
           deliveryNo: String(row['Delivery No.'] || ''),
@@ -189,8 +175,6 @@ const Analytics: React.FC<AnalyticsProps> = ({ products, shipments, onImportData
         alert(`Successfully imported ${newShipments.length} records.`);
       } catch (err) {
         alert('File parsing error.');
-      } finally {
-        setIsUploading(false);
       }
     };
     reader.readAsArrayBuffer(file);
@@ -200,15 +184,15 @@ const Analytics: React.FC<AnalyticsProps> = ({ products, shipments, onImportData
     if (active && payload && payload.length) {
       const data = payload[0].payload;
       return (
-        <div className="bg-white p-4 border border-slate-200 shadow-2xl rounded-2xl min-w-[180px]">
+        <div className="bg-white p-4 border border-slate-200 shadow-2xl rounded-2xl min-w-[200px]">
           {data.imageUrl && (
-            <img src={data.imageUrl} className="w-full h-24 object-cover rounded-lg mb-3 bg-slate-50 border border-slate-100" />
+            <img src={data.imageUrl} className="w-full h-28 object-contain rounded-lg mb-3 bg-slate-50 border border-slate-100 p-2" alt={data.name} />
           )}
-          <p className="font-bold text-slate-900 text-sm mb-1">{data.name}</p>
-          {data.fullName && <p className="text-[10px] text-slate-500 mb-2">{data.fullName}</p>}
-          <div className="flex items-center justify-between border-t border-slate-50 pt-2">
-            <span className="text-xs text-slate-400">Total QTY</span>
-            <span className="text-intenza-600 font-bold">{data.value.toLocaleString()}</span>
+          <p className="font-black text-slate-900 text-sm mb-1">{data.name}</p>
+          {data.fullName && <p className="text-[10px] font-bold text-slate-400 mb-2 uppercase">{data.fullName}</p>}
+          <div className="flex items-center justify-between border-t border-slate-100 pt-3 mt-1">
+            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Total Qty</span>
+            <span className="text-intenza-600 font-black text-base">{data.value.toLocaleString()}</span>
           </div>
         </div>
       );
@@ -216,102 +200,155 @@ const Analytics: React.FC<AnalyticsProps> = ({ products, shipments, onImportData
     return null;
   };
 
+  // 自定義 X 軸刻度，在型號下方顯示縮圖
+  const CustomXAxisTick = (props: any) => {
+    const { x, y, payload } = props;
+    const dataItem = chartData.find(d => d.name === payload.value);
+    const showImage = currentLevel === 'SKU' || currentLevel === 'VERSION' || currentLevel === 'BUYER';
+    
+    return (
+      <g transform={`translate(${x},${y})`}>
+        <text 
+          x={0} 
+          y={0} 
+          dy={showImage ? 70 : 16} 
+          textAnchor="middle" 
+          fill="#64748b" 
+          fontSize={10} 
+          fontWeight="900"
+          className="uppercase tracking-tighter"
+        >
+          {payload.value.length > 12 ? payload.value.substring(0, 10) + '...' : payload.value}
+        </text>
+        {showImage && dataItem?.imageUrl && (
+          <g transform="translate(-25, 10)">
+            <defs>
+              <clipPath id={`clip-${payload.value}`}>
+                <rect width="50" height="50" rx="12" ry="12" />
+              </clipPath>
+            </defs>
+            <rect width="50" height="50" rx="12" ry="12" fill="#fff" stroke="#f1f5f9" strokeWidth="2" className="shadow-sm" />
+            <image
+              width="44"
+              height="44"
+              x="3"
+              y="3"
+              href={dataItem.imageUrl}
+              preserveAspectRatio="xMidYMid meet"
+              clipPath={`url(#clip-${payload.value})`}
+            />
+          </g>
+        )}
+      </g>
+    );
+  };
+
   return (
-    <div className="p-8 w-full min-h-screen">
-      <header className="mb-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
+    <div className="p-8 w-full min-h-screen bg-slate-50/30">
+      <header className="mb-10 flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-200 pb-8">
         <div>
-          <h1 className="text-3xl font-bold text-slate-900">Inventory Dashboard</h1>
-          <p className="text-slate-500 mt-1">Multi-level data visualization & traceability.</p>
+          <h1 className="text-4xl font-black text-slate-900 tracking-tight">Product Dashboard</h1>
+          <p className="text-slate-500 mt-2 font-medium">Visualizing equipment distribution & shipment trends.</p>
         </div>
-        <div className="flex gap-2">
-          <button onClick={() => fileInputRef.current?.click()} className="flex items-center gap-2 bg-white border border-slate-200 text-slate-700 px-4 py-2.5 rounded-xl font-bold text-sm shadow-sm hover:bg-slate-50 transition-all">
-            <FileSpreadsheet size={18} className="text-green-600" /> Import Data
+        <div className="flex gap-3">
+          <button onClick={() => fileInputRef.current?.click()} className="flex items-center gap-2 bg-white border-2 border-slate-100 text-slate-700 px-6 py-3 rounded-2xl font-black text-sm shadow-sm hover:border-slate-900 transition-all active:scale-95">
+            <FileSpreadsheet size={20} className="text-emerald-500" /> Import Records
           </button>
           <input ref={fileInputRef} type="file" accept=".xlsx,.xls" className="hidden" onChange={handleFileUpload} />
         </div>
       </header>
 
-      {/* Main Container */}
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
-        
-        {/* Left: Charts Column */}
         <div className="lg:col-span-3 space-y-8">
-          
-          {/* Controls Bar */}
-          <div className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm flex flex-wrap items-center justify-between gap-6">
-            <div className="flex items-center gap-3">
+          {/* Breadcrumbs & Controls */}
+          <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm flex flex-wrap items-center justify-between gap-6">
+            <div className="flex items-center gap-4">
               {drillPath.length > 0 && (
-                <button onClick={handleBack} className="p-2 hover:bg-slate-100 rounded-full text-slate-500">
-                  <ArrowLeft size={18} />
+                <button onClick={handleBack} className="p-2.5 bg-slate-100 hover:bg-slate-200 rounded-full text-slate-600 transition-colors">
+                  <ArrowLeft size={20} strokeWidth={3} />
                 </button>
               )}
               <div>
-                <h2 className="text-sm font-bold text-slate-900 flex items-center gap-2">
-                  {drillPath.length === 0 ? "Global Distribution" : drillPath[drillPath.length-1].label}
+                <h2 className="text-lg font-black text-slate-900 flex items-center gap-2">
+                  {drillPath.length === 0 ? "Global Market Map" : drillPath[drillPath.length-1].label}
                 </h2>
-                <div className="flex items-center gap-1 mt-0.5">
-                  <span className="text-[10px] uppercase font-bold text-intenza-600 px-1.5 py-0.5 bg-intenza-50 rounded">Level: {currentLevel}</span>
-                  {drillPath.length > 0 && <span className="text-[10px] text-slate-300">/</span>}
+                <div className="flex items-center gap-2 mt-1">
+                  <span className="text-[10px] uppercase font-black text-white px-2 py-0.5 bg-slate-900 rounded-md">Depth: {currentLevel}</span>
                   {drillPath.map((p, i) => (
-                    <span key={i} className="text-[10px] text-slate-400 font-medium">{p.label}{i < drillPath.length -1 ? ' > ' : ''}</span>
+                    <span key={i} className="text-[10px] text-slate-400 font-bold uppercase tracking-widest flex items-center gap-1">
+                      <ChevronDown size={10} className="-rotate-90" /> {p.label}
+                    </span>
                   ))}
                 </div>
               </div>
             </div>
 
             <div className="flex items-center gap-4">
-              <div className="flex bg-slate-100 p-1 rounded-xl">
-                <button onClick={() => setDimension('DATA_DRILL')} className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${dimension === 'DATA_DRILL' ? 'bg-white shadow text-slate-900' : 'text-slate-400'}`}>By Metric</button>
-                <button onClick={() => setDimension('BUYER')} className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${dimension === 'BUYER' ? 'bg-white shadow text-slate-900' : 'text-slate-400'}`}>By Buyer</button>
+              <div className="flex bg-slate-100 p-1 rounded-xl shadow-inner">
+                <button onClick={() => setDimension('DATA_DRILL')} className={`px-5 py-2 rounded-lg text-xs font-black transition-all ${dimension === 'DATA_DRILL' ? 'bg-white shadow-md text-slate-900' : 'text-slate-400'}`}>BY METRIC</button>
+                <button onClick={() => setDimension('BUYER')} className={`px-5 py-2 rounded-lg text-xs font-black transition-all ${dimension === 'BUYER' ? 'bg-white shadow-md text-slate-900' : 'text-slate-400'}`}>BY BUYER</button>
               </div>
-              <div className="flex bg-slate-100 p-1 rounded-xl">
-                <button onClick={() => setChartType('PIE')} className={`p-1.5 rounded-lg ${chartType === 'PIE' ? 'bg-white shadow text-slate-900' : 'text-slate-400'}`}><PieIcon size={16}/></button>
-                <button onClick={() => setChartType('BAR')} className={`p-1.5 rounded-lg ${chartType === 'BAR' ? 'bg-white shadow text-slate-900' : 'text-slate-400'}`}><BarIcon size={16}/></button>
+              <div className="flex bg-slate-100 p-1 rounded-xl shadow-inner">
+                <button onClick={() => setChartType('PIE')} className={`p-2 rounded-lg transition-all ${chartType === 'PIE' ? 'bg-white shadow-md text-slate-900' : 'text-slate-400'}`}><PieIcon size={18}/></button>
+                <button onClick={() => setChartType('BAR')} className={`p-2 rounded-lg transition-all ${chartType === 'BAR' ? 'bg-white shadow-md text-slate-900' : 'text-slate-400'}`}><BarIcon size={18}/></button>
               </div>
             </div>
           </div>
 
           {/* Main Chart Area */}
-          <div className="bg-white rounded-3xl p-8 border border-slate-100 shadow-sm min-h-[500px] flex flex-col">
+          <div className="bg-white rounded-[2.5rem] p-10 border border-slate-100 shadow-sm min-h-[550px] flex flex-col">
             <div className="flex-1">
-              <ResponsiveContainer width="100%" height={450}>
+              <ResponsiveContainer width="100%" height={500}>
                 {chartType === 'PIE' ? (
                   <PieChart>
                     <Pie 
                       data={chartData} 
                       cx="50%" cy="50%" 
-                      innerRadius="40%" outerRadius="75%" 
+                      innerRadius="65%" outerRadius="90%" 
                       dataKey="value" 
                       onClick={handleDrill}
                       cursor="pointer"
+                      stroke="#fff"
+                      strokeWidth={4}
+                      paddingAngle={2}
                     >
-                      {chartData.map((_, i) => <Cell key={`cell-${i}`} fill={COLORS[i % COLORS.length]} />)}
+                      {chartData.map((_, i) => <Cell key={`cell-${i}`} fill={COLORS[i % COLORS.length]} className="hover:opacity-80 transition-opacity" />)}
+                      <Label 
+                        content={({ viewBox }: any) => {
+                          const { cx, cy } = viewBox;
+                          return (
+                            <text x={cx} y={cy} textAnchor="middle" dominantBaseline="central">
+                              <tspan x={cx} y={cy - 12} className="text-5xl font-black fill-slate-900 tracking-tighter">{totalQuantity.toLocaleString()}</tspan>
+                              <tspan x={cx} y={cy + 25} className="text-xs font-black uppercase tracking-[0.2em] fill-slate-300">Total Units Shipped</tspan>
+                            </text>
+                          );
+                        }}
+                      />
                     </Pie>
                     <Tooltip content={<CustomTooltip />} />
-                    <Legend verticalAlign="bottom" height={36} iconType="circle" />
+                    <Legend verticalAlign="bottom" height={40} iconType="circle" wrapperStyle={{ paddingTop: '20px', fontWeight: 'bold', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.1em' }} />
                   </PieChart>
                 ) : (
-                  <BarChart data={chartData} margin={{ top: 20, right: 30, left: 20, bottom: 40 }}>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                  <BarChart data={chartData} margin={{ top: 20, right: 30, left: 20, bottom: 90 }}>
+                    <CartesianGrid strokeDasharray="6 6" vertical={false} stroke="#f1f5f9" />
                     <XAxis 
                       dataKey="name" 
                       axisLine={false} 
                       tickLine={false} 
-                      tick={{ fontSize: 11, fill: '#64748b' }}
                       interval={0}
-                      angle={-30}
-                      textAnchor="end"
+                      height={100}
+                      tick={<CustomXAxisTick />}
                     />
-                    <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: '#64748b' }} />
+                    <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: '#cbd5e1', fontWeight: 'bold' }} />
                     <Tooltip content={<CustomTooltip />} cursor={{ fill: '#f8fafc' }} />
                     <Bar 
                       dataKey="value" 
-                      radius={[8, 8, 0, 0]} 
+                      radius={[12, 12, 0, 0]} 
                       onClick={handleDrill} 
                       cursor="pointer"
-                      barSize={40}
+                      barSize={50}
                     >
-                      {chartData.map((_, i) => <Cell key={`cell-${i}`} fill={COLORS[i % COLORS.length]} />)}
+                      {chartData.map((_, i) => <Cell key={`cell-${i}`} fill={COLORS[i % COLORS.length]} className="hover:brightness-95 transition-all" />)}
                     </Bar>
                   </BarChart>
                 )}
@@ -319,63 +356,65 @@ const Analytics: React.FC<AnalyticsProps> = ({ products, shipments, onImportData
             </div>
           </div>
 
-          {/* Color Split Row */}
-          <div className="bg-white rounded-3xl p-8 border border-slate-100 shadow-sm">
-            <div className="flex items-center gap-2 mb-6">
-              <Palette className="text-intenza-600" size={18} />
-              <h3 className="font-bold text-slate-900">Color Variation Analysis</h3>
+          {/* Color Analysis */}
+          <div className="bg-white rounded-[2.5rem] p-10 border border-slate-100 shadow-sm">
+            <div className="flex items-center gap-3 mb-8">
+              <div className="p-2 bg-slate-900 rounded-lg text-white">
+                <Palette size={20} />
+              </div>
+              <h3 className="font-black text-xl text-slate-900 tracking-tight">Finishing Distribution</h3>
             </div>
-            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-6">
+            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-8">
                {colorData.map(c => (
-                 <div key={c.name} className="flex flex-col items-center p-4 bg-slate-50 rounded-2xl border border-slate-100">
-                    <div className="w-8 h-8 rounded-full mb-3 shadow-sm ring-2 ring-white" style={{ backgroundColor: COLOR_MAP[c.name] || '#e2e8f0' }} />
-                    <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">{c.name}</span>
-                    <span className="text-lg font-bold text-slate-900 mt-1">{c.value.toLocaleString()}</span>
-                    <span className="text-[9px] text-slate-400">units</span>
+                 <div key={c.name} className="flex flex-col items-center p-6 bg-slate-50 rounded-3xl border border-slate-100 hover:bg-white hover:shadow-xl transition-all group">
+                    <div className="w-12 h-12 rounded-full mb-4 shadow-xl ring-4 ring-white transition-transform group-hover:scale-110" style={{ backgroundColor: COLOR_MAP[c.name] || '#e2e8f0' }} />
+                    <span className="text-[10px] font-black text-slate-300 uppercase tracking-widest mb-1">{c.name}</span>
+                    <span className="text-2xl font-black text-slate-900">{c.value.toLocaleString()}</span>
                  </div>
                ))}
             </div>
           </div>
         </div>
 
-        {/* Right: Traceability & AI Sidebar */}
+        {/* Sidebar Analytics */}
         <div className="space-y-6">
-          
-          {/* Traceability Search */}
-          <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm flex flex-col">
-            <h3 className="font-bold text-slate-900 mb-4 flex items-center gap-2">
-              <ClipboardList size={18} className="text-intenza-600" /> Data Traceability
+          <div className="bg-white p-8 rounded-[2rem] border border-slate-200 shadow-sm flex flex-col h-full max-h-[700px]">
+            <h3 className="font-black text-xl text-slate-900 mb-6 flex items-center gap-3">
+              <ClipboardList size={22} className="text-intenza-600" /> Trace Records
             </h3>
-            <div className="relative mb-4">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+            <div className="relative mb-6">
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
               <input 
                 type="text" 
-                placeholder="Search S/N, Delivery No..." 
+                placeholder="Serial, PI or Buyer..." 
                 value={traceSearchQuery}
                 onChange={(e) => setTraceSearchQuery(e.target.value)}
-                className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-intenza-500/20 outline-none"
+                className="w-full pl-12 pr-4 py-4 bg-slate-50 border-2 border-slate-50 rounded-2xl text-sm font-bold focus:border-slate-900 focus:bg-white outline-none transition-all shadow-inner"
               />
             </div>
             
-            <div className="space-y-3 max-h-[400px] overflow-y-auto custom-scrollbar">
+            <div className="space-y-4 overflow-y-auto flex-1 pr-2 custom-scrollbar">
               {traceSearchQuery && traceResults.length === 0 && (
-                <div className="text-center py-6 text-slate-400 text-xs italic">No matching records.</div>
+                <div className="text-center py-10">
+                   <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-3">
+                      <Search size={24} className="opacity-10" />
+                   </div>
+                   <p className="text-xs font-bold text-slate-300 italic uppercase">No matches found</p>
+                </div>
               )}
               {traceResults.map(r => (
-                <div key={r.id} className="p-3 bg-slate-50 border border-slate-100 rounded-xl hover:bg-white hover:shadow-md transition-all">
-                  <div className="flex justify-between items-start mb-2">
-                    <span className="text-[9px] font-bold bg-intenza-600 text-white px-1.5 py-0.5 rounded">S/N: {r.sn}</span>
-                    <span className="text-[8px] text-slate-400 font-mono">{r.shipDate}</span>
+                <div key={r.id} className="p-4 bg-white border-2 border-slate-50 rounded-2xl hover:border-slate-200 transition-all cursor-default">
+                  <div className="flex justify-between items-start mb-3">
+                    <span className="text-[10px] font-black bg-slate-900 text-white px-2 py-1 rounded-md tracking-wider">SN: {r.sn}</span>
+                    <span className="text-[9px] text-slate-400 font-black font-mono">{r.shipDate}</span>
                   </div>
-                  <div className="space-y-1.5">
-                    <div className="text-[11px] font-bold text-slate-800 line-clamp-1">{r.description}</div>
-                    <div className="grid grid-cols-2 gap-x-2 gap-y-1 text-[9px] text-slate-500 border-t border-slate-100 pt-1.5">
-                      <div><span className="text-slate-400 uppercase">Buyer:</span> {r.buyer}</div>
-                      <div><span className="text-slate-400 uppercase">Deliv:</span> {r.deliveryNo}</div>
-                      <div><span className="text-slate-400 uppercase">PI:</span> {r.pi}</div>
-                      <div><span className="text-slate-400 uppercase">PN:</span> {r.pn}</div>
-                      <div><span className="text-slate-400 uppercase">SKU:</span> {r.sku}</div>
-                      <div><span className="text-slate-400 uppercase">Ver:</span> {r.version}</div>
+                  <div className="space-y-3">
+                    <div className="text-xs font-black text-slate-800 line-clamp-1 uppercase">{r.description}</div>
+                    <div className="grid grid-cols-2 gap-x-3 gap-y-2 text-[10px] text-slate-500 border-t border-slate-50 pt-3">
+                      <div><span className="text-slate-300 font-black uppercase block text-[8px] mb-0.5">Buyer</span> <span className="font-bold text-slate-700">{r.buyer}</span></div>
+                      <div><span className="text-slate-300 font-black uppercase block text-[8px] mb-0.5">Deliv</span> <span className="font-bold text-slate-700">{r.deliveryNo}</span></div>
+                      <div><span className="text-slate-300 font-black uppercase block text-[8px] mb-0.5">SKU</span> <span className="font-bold text-slate-700 font-mono">{r.sku}</span></div>
+                      <div><span className="text-slate-300 font-black uppercase block text-[8px] mb-0.5">Ver</span> <span className="font-bold text-slate-700">v{r.version}</span></div>
                     </div>
                   </div>
                 </div>
@@ -385,32 +424,32 @@ const Analytics: React.FC<AnalyticsProps> = ({ products, shipments, onImportData
 
           {showAiInsights && (
             <GeminiInsight 
-              context={`Inventory Analyst view. Current Level: ${currentLevel}. Dimension: ${dimension}. Level path: ${drillPath.map(p=>p.label).join(' > ')}`} 
+              context={`Inventory Analysis. Level: ${currentLevel}. Focus: Shipment Trends and Buyer Distribution. Level path: ${drillPath.map(p=>p.label).join(' > ')}`} 
               data={chartData} 
             />
           )}
 
-          {/* Quick Stats Summary */}
-          <div className="bg-slate-900 text-white p-6 rounded-3xl shadow-xl">
-             <h4 className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-4">Total Inventory Summary</h4>
-             <div className="space-y-4">
+          <div className="bg-slate-900 text-white p-10 rounded-[2.5rem] shadow-2xl shadow-slate-900/30 relative overflow-hidden group">
+             <div className="absolute -top-10 -right-10 w-40 h-40 bg-white/5 rounded-full blur-3xl transition-transform group-hover:scale-150"></div>
+             <h4 className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-500 mb-6">Inventory Summary</h4>
+             <div className="space-y-6">
                <div>
-                  <div className="text-xs text-slate-400 mb-1">Total Shipped Quantity</div>
-                  <div className="text-3xl font-bold">{shipments.reduce((acc,s)=>acc+s.quantity, 0).toLocaleString()}</div>
+                  <div className="text-xs font-bold text-slate-400 mb-2 uppercase tracking-widest">Global Shipment</div>
+                  <div className="text-5xl font-black tracking-tighter">{shipments.reduce((acc,s)=>acc+s.quantity, 0).toLocaleString()}</div>
                </div>
-               <div className="flex justify-between items-center pt-4 border-t border-white/10">
-                  <div className="flex items-center gap-2">
-                     <Box size={14} className="text-intenza-500" />
-                     <span className="text-xs font-medium">SKUs Tracked</span>
+               <div className="flex justify-between items-center pt-6 border-t border-white/10">
+                  <div className="flex items-center gap-3">
+                     <div className="p-1.5 bg-white/10 rounded-lg"><Box size={16} className="text-intenza-500" /></div>
+                     <span className="text-xs font-bold uppercase tracking-wider">Unique SKUs</span>
                   </div>
-                  <span className="text-sm font-bold">{new Set(shipments.map(s=>s.sku)).size}</span>
+                  <span className="text-base font-black font-mono">{new Set(shipments.map(s=>s.sku)).size}</span>
                </div>
                <div className="flex justify-between items-center">
-                  <div className="flex items-center gap-2">
-                     <User size={14} className="text-blue-400" />
-                     <span className="text-xs font-medium">Active Buyers</span>
+                  <div className="flex items-center gap-3">
+                     <div className="p-1.5 bg-white/10 rounded-lg"><User size={16} className="text-blue-400" /></div>
+                     <span className="text-xs font-bold uppercase tracking-wider">Key Accounts</span>
                   </div>
-                  <span className="text-sm font-bold">{new Set(shipments.map(s=>s.buyer)).size}</span>
+                  <span className="text-base font-black font-mono">{new Set(shipments.map(s=>s.buyer)).size}</span>
                </div>
              </div>
           </div>
