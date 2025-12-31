@@ -1,17 +1,18 @@
 
-import React, { useState, createContext, useCallback, useEffect } from 'react';
+import React, { useState, createContext, useCallback, useEffect, lazy, Suspense } from 'react';
 import { Routes, Route } from 'react-router-dom';
 import { MOCK_PRODUCTS, MOCK_SHIPMENTS, MOCK_TESTERS } from './services/mockData';
 import { ProductModel, Language, LocalizedString, Tester, ShipmentData, DEFAULT_SERIES, UserAccount, AppState } from './types';
 import { api } from './services/api';
 import { Cloud, CloudCheck, CloudOff, Loader2, CheckCircle, AlertCircle } from 'lucide-react';
 
-// Importing pages
-import { Dashboard } from './pages/Dashboard';
-import ProductDetail from './pages/ProductDetail';
-import Analytics from './pages/Analytics';
-import Settings from './pages/Settings';
-import TesterDatabase from './pages/TesterDatabase';
+// Using React.lazy for route-based code splitting
+const Dashboard = lazy(() => import('./pages/Dashboard').then(module => ({ default: module.Dashboard })));
+const ProductDetail = lazy(() => import('./pages/ProductDetail'));
+const Analytics = lazy(() => import('./pages/Analytics'));
+const Settings = lazy(() => import('./pages/Settings'));
+const TesterDatabase = lazy(() => import('./pages/TesterDatabase'));
+
 import Sidebar from './components/Sidebar';
 import Login from './components/Login';
 
@@ -26,6 +27,14 @@ export const LanguageContext = createContext<LanguageContextType>({
   setLanguage: () => {},
   t: (str) => (str ? (str.zh || str.en || '') : ''),
 });
+
+// Loading Fallback Component
+const PageLoader = () => (
+  <div className="flex-1 flex flex-col items-center justify-center bg-slate-50 min-h-[60vh]">
+    <Loader2 size={40} className="text-intenza-600 animate-spin mb-4" />
+    <p className="text-slate-500 font-medium animate-pulse text-sm">正在載入模組...</p>
+  </div>
+);
 
 const App = () => {
   const [language, setLanguage] = useState<Language>('zh');
@@ -46,9 +55,6 @@ const App = () => {
     return str[language] || str.en || str.zh || '';
   }, [language]);
 
-  /**
-   * 從雲端載入資料
-   */
   const handleLoadFromCloud = useCallback(async () => {
     try {
       const cloudData = await api.loadData();
@@ -65,12 +71,8 @@ const App = () => {
     }
   }, []);
 
-  /**
-   * 將資料同步至雲端
-   */
   const handleSyncToCloud = useCallback(async () => {
     if (syncStatus === 'saving') return;
-    
     setSyncStatus('saving');
     const state: AppState = {
       products,
@@ -82,7 +84,6 @@ const App = () => {
       showAiInsights,
       maxHistorySteps
     };
-
     try {
       await api.saveData(state);
       setSyncStatus('success');
@@ -94,18 +95,12 @@ const App = () => {
     }
   }, [products, shipments, testers, users, language, showAiInsights, maxHistorySteps, syncStatus]);
 
-  /**
-   * 登入後自動載入
-   */
   useEffect(() => {
     if (isLoggedIn) {
       handleLoadFromCloud();
     }
   }, [isLoggedIn, handleLoadFromCloud]);
 
-  /**
-   * 快捷鍵監聽 Ctrl+S / Cmd+S
-   */
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.key === 's') {
@@ -115,49 +110,9 @@ const App = () => {
         }
       }
     };
-
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isLoggedIn, handleSyncToCloud]);
-
-  const handleAddProduct = async (p: any) => {
-    const newProduct: ProductModel = { 
-        ...p, 
-        id: `p-${Date.now()}`, 
-        ergoProjects: [], 
-        customerFeedback: [], 
-        designHistory: [], 
-        ergoTests: [], 
-        durabilityTests: [], 
-        isWatched: false, 
-        customSortOrder: products.length,
-        uniqueFeedbackTags: {}
-    };
-    setProducts([...products, newProduct]);
-  };
-
-  const handleUpdateProduct = async (p: ProductModel) => {
-    setProducts(products.map(old => old.id === p.id ? p : old));
-  };
-
-  const handleDeleteProduct = (id: string) => {
-    setProducts(products.filter(p => p.id !== id));
-  };
-
-  const handleToggleWatch = (id: string) => {
-    setProducts(products.map(p => p.id === id ? { ...p, isWatched: !p.isWatched } : p));
-  };
-
-  const handleMoveProduct = (id: string, dir: 'left' | 'right') => {
-    const idx = products.findIndex(p => p.id === id);
-    if (idx === -1) return;
-    const newProducts = [...products];
-    const targetIdx = dir === 'left' ? idx - 1 : idx + 1;
-    if (targetIdx >= 0 && targetIdx < products.length) {
-      [newProducts[idx], newProducts[targetIdx]] = [newProducts[targetIdx], newProducts[idx]];
-      setProducts(newProducts);
-    }
-  };
 
   if (!isLoggedIn) {
     return <Login onLoginSuccess={() => setIsLoggedIn(true)} />;
@@ -168,67 +123,76 @@ const App = () => {
       <div className="flex min-h-screen bg-slate-50 relative">
         <Sidebar />
         <main className="flex-1 overflow-y-auto">
-          <Routes>
-            <Route path="/" element={
-              <Dashboard 
-                products={products} 
-                seriesList={DEFAULT_SERIES} 
-                onAddProduct={handleAddProduct}
-                onUpdateProduct={handleUpdateProduct}
-                onToggleWatch={handleToggleWatch}
-                onMoveProduct={handleMoveProduct}
-                onDeleteProduct={handleDeleteProduct}
-              />
-            } />
-            <Route path="/product/:id" element={
-              <ProductDetail 
-                products={products} 
-                testers={testers}
-                onUpdateProduct={handleUpdateProduct}
-                showAiInsights={showAiInsights}
-              />
-            } />
-            <Route path="/analytics" element={
-              <Analytics 
-                products={products} 
-                shipments={shipments} 
-                testers={testers}
-                onImportData={(data) => setShipments([...shipments, ...data])}
-                onBatchAddProducts={(newPs) => setProducts([...products, ...newPs])}
-                showAiInsights={showAiInsights}
-              />
-            } />
-            <Route path="/settings" element={
-              <Settings 
-                seriesList={DEFAULT_SERIES}
-                onAddSeries={async (name) => {}}
-                onUpdateSeriesList={() => {}}
-                onRenameSeries={() => {}}
-                currentAppState={{ products, seriesList: DEFAULT_SERIES, shipments, testers, users, language, showAiInsights, maxHistorySteps }}
-                onLoadProject={(state) => {
-                    if (state.products) setProducts(state.products);
-                    if (state.shipments) setShipments(state.shipments);
-                    if (state.testers) setTesters(state.testers);
-                }}
-                onUpdateMaxHistory={setMaxHistorySteps}
-                onToggleAiInsights={setShowAiInsights}
-                onAddUser={(u) => setUsers([...users, { ...u, id: Date.now().toString() }])}
-                onUpdateUser={(u) => setUsers(users.map(old => old.id === u.id ? u : old))}
-                onDeleteUser={(id) => setUsers(users.filter(u => u.id !== id))}
-              />
-            } />
-            <Route path="/testers" element={
-              <TesterDatabase 
-                testers={testers}
-                onAddTester={(t) => setTesters([...testers, { ...t, id: Date.now().toString() }])}
-                onUpdateTester={(t) => setTesters(testers.map(old => old.id === t.id ? t : old))}
-                onDeleteTester={(id) => setTesters(testers.filter(t => t.id !== id))}
-              />
-            } />
-          </Routes>
+          <Suspense fallback={<PageLoader />}>
+            <Routes>
+              <Route path="/" element={
+                <Dashboard 
+                  products={products} 
+                  seriesList={DEFAULT_SERIES} 
+                  onAddProduct={async (p) => setProducts([...products, { ...p, id: `p-${Date.now()}`, ergoProjects: [], customerFeedback: [], designHistory: [], ergoTests: [], durabilityTests: [], isWatched: false, customSortOrder: products.length, uniqueFeedbackTags: {} } as any])}
+                  onUpdateProduct={async (p) => setProducts(products.map(old => old.id === p.id ? p : old))}
+                  onToggleWatch={(id) => setProducts(products.map(p => p.id === id ? { ...p, isWatched: !p.isWatched } : p))}
+                  onMoveProduct={(id, dir) => {
+                    const idx = products.findIndex(p => p.id === id);
+                    const targetIdx = dir === 'left' ? idx - 1 : idx + 1;
+                    if (targetIdx >= 0 && targetIdx < products.length) {
+                      const newP = [...products];
+                      [newP[idx], newP[targetIdx]] = [newP[targetIdx], newP[idx]];
+                      setProducts(newP);
+                    }
+                  }}
+                  onDeleteProduct={(id) => setProducts(products.filter(p => p.id !== id))}
+                />
+              } />
+              <Route path="/product/:id" element={
+                <ProductDetail 
+                  products={products} 
+                  testers={testers}
+                  onUpdateProduct={async (p) => setProducts(products.map(old => old.id === p.id ? p : old))}
+                  showAiInsights={showAiInsights}
+                />
+              } />
+              <Route path="/analytics" element={
+                <Analytics 
+                  products={products} 
+                  shipments={shipments} 
+                  testers={testers}
+                  onImportData={(data) => setShipments([...shipments, ...data])}
+                  onBatchAddProducts={(newPs) => setProducts([...products, ...newPs])}
+                  showAiInsights={showAiInsights}
+                />
+              } />
+              <Route path="/settings" element={
+                <Settings 
+                  seriesList={DEFAULT_SERIES}
+                  onAddSeries={async (name) => {}}
+                  onUpdateSeriesList={() => {}}
+                  onRenameSeries={() => {}}
+                  currentAppState={{ products, seriesList: DEFAULT_SERIES, shipments, testers, users, language, showAiInsights, maxHistorySteps }}
+                  onLoadProject={(state) => {
+                      if (state.products) setProducts(state.products);
+                      if (state.shipments) setShipments(state.shipments);
+                      if (state.testers) setTesters(state.testers);
+                  }}
+                  onUpdateMaxHistory={setMaxHistorySteps}
+                  onToggleAiInsights={setShowAiInsights}
+                  onAddUser={(u) => setUsers([...users, { ...u, id: Date.now().toString() }])}
+                  onUpdateUser={(u) => setUsers(users.map(old => old.id === u.id ? u : old))}
+                  onDeleteUser={(id) => setUsers(users.filter(u => u.id !== id))}
+                />
+              } />
+              <Route path="/testers" element={
+                <TesterDatabase 
+                  testers={testers}
+                  onAddTester={(t) => setTesters([...testers, { ...t, id: Date.now().toString() }])}
+                  onUpdateTester={(t) => setTesters(testers.map(old => old.id === t.id ? t : old))}
+                  onDeleteTester={(id) => setTesters(testers.filter(t => t.id !== id))}
+                />
+              } />
+            </Routes>
+          </Suspense>
         </main>
 
-        {/* Global Sync Status Notification */}
         {syncStatus !== 'idle' && (
           <div className="fixed bottom-6 right-6 z-[100] animate-slide-up">
             <div className={`flex items-center gap-3 px-5 py-3 rounded-2xl shadow-2xl border backdrop-blur-md ${
@@ -239,7 +203,6 @@ const App = () => {
               {syncStatus === 'saving' && <Loader2 size={18} className="animate-spin" />}
               {syncStatus === 'success' && <CheckCircle size={18} />}
               {syncStatus === 'error' && <AlertCircle size={18} />}
-              
               <div className="flex flex-col">
                 <span className="text-sm font-bold leading-tight">
                   {syncStatus === 'saving' ? '正在同步至雲端...' :
