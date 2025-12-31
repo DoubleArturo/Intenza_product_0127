@@ -166,7 +166,14 @@ export interface ShipmentData {
   country: string;
   quantity: number;
   shipDate: string;
-  variant?: string; // Stores the raw description/color (e.g. "Chest Press (Brown)")
+  variant?: string;
+  // 以下為擴展追蹤欄位
+  deliveryNo?: string;
+  itemNo?: string;
+  pi?: string;
+  pn?: string;
+  sn?: string;
+  category?: string;
 }
 
 export interface Tester {

@@ -404,12 +404,14 @@ const Analytics: React.FC<AnalyticsProps> = ({ products, shipments, testers = []
         const newSkuMap = new Map<string, string>(); 
 
         jsonData.forEach((row: any) => {
-            const sku = row['SKU'];
+            // 對應圖片欄位: 'Spec.' 為 SKU
+            const sku = row['Spec.'] || row['SKU'];
             if (!sku || seenSkus.has(sku) || newSkuMap.has(sku)) return;
 
             const newId = `p-imported-${sku.replace(/[^a-zA-Z0-9]/g, '-')}`;
             newSkuMap.set(sku, newId);
 
+            // 對應圖片欄位: 'Series'
             const rawSeries = row['Series'] || 'General';
             let mappedSeries: LocalizedString;
             if (rawSeries.includes('DL')) mappedSeries = { en: 'DL Series (Entertainment)', zh: 'DL 系列 (娛樂)' };
@@ -418,7 +420,9 @@ const Analytics: React.FC<AnalyticsProps> = ({ products, shipments, testers = []
             else if (rawSeries.includes('Strength')) mappedSeries = { en: 'Strength Series', zh: '力量系列' };
             else mappedSeries = { en: `${rawSeries} Series`, zh: `${rawSeries} 系列` };
 
+            // 對應圖片欄位: 'Description'
             const rawDesc = row['Description'] || 'Unknown Model';
+            // 嘗試從 Description 提取型號名稱（去掉顏色標註）
             const modelName = rawDesc.replace(/\(Brown\)|\(Black\)|\(Brn\)|\(Blk\)|（咖啡色）|（黑色）/gi, '').trim();
 
             productsToCreate.push({
@@ -428,7 +432,7 @@ const Analytics: React.FC<AnalyticsProps> = ({ products, shipments, testers = []
                 modelName: { en: modelName, zh: modelName },
                 description: { en: rawDesc, zh: rawDesc },
                 currentVersion: row['Version'] ? (row['Version'].toString().startsWith('v') ? row['Version'] : `v${row['Version']}`) : 'v1.0',
-                imageUrl: '' // Clear default image for imported products
+                imageUrl: '' 
             });
         });
 
@@ -437,7 +441,7 @@ const Analytics: React.FC<AnalyticsProps> = ({ products, shipments, testers = []
         }
 
         const newShipments: ShipmentData[] = jsonData.map((row: any, index: number) => {
-            const sku = row['SKU'];
+            const sku = row['Spec.'] || row['SKU'];
             let matchedModelId = '';
             const existingP = products.find(p => p.sku === sku);
             if (existingP) {
@@ -454,7 +458,14 @@ const Analytics: React.FC<AnalyticsProps> = ({ products, shipments, testers = []
                 country: 'Global',
                 quantity: Number(row['QTY'] || row['Quantity'] || 0),
                 shipDate: row['Shipped date'] || new Date().toISOString().split('T')[0],
-                variant: row['Description'] 
+                variant: row['Description'],
+                // 額外詳細資訊
+                deliveryNo: row['Delivery No.'],
+                itemNo: row['Item'],
+                pi: row['P/I'],
+                pn: row['P/N'],
+                sn: row['S/N'],
+                category: row['Category']
             };
         });
 
