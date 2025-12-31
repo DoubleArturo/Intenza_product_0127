@@ -34,7 +34,7 @@ interface AnalyticsProps {
   showAiInsights: boolean;
 }
 
-type DimensionFilter = 'DATA_DRILL' | 'BUYER';
+type DimensionFilter = 'DATA_DRILL' | 'BUYER' | 'COLOR';
 
 const Analytics: React.FC<AnalyticsProps> = ({ products, shipments, onImportData, onBatchAddProducts, showAiInsights }) => {
   const { language, t } = useContext(LanguageContext);
@@ -44,6 +44,14 @@ const Analytics: React.FC<AnalyticsProps> = ({ products, shipments, onImportData
   const [dimension, setDimension] = useState<DimensionFilter>('DATA_DRILL');
   const [traceSearchQuery, setTraceSearchQuery] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  /**
+   * Helper to format version string with uppercase V
+   */
+  const formatVersion = (v: string) => {
+    const clean = (v || '1.0').toUpperCase().replace('V', '');
+    return `V${clean}`;
+  };
 
   /**
    * Enhanced Drill-Down Logic
@@ -62,17 +70,38 @@ const Analytics: React.FC<AnalyticsProps> = ({ products, shipments, onImportData
         default: return 'VERSION';
       }
     }
+
+    // Path if starting from COLOR view
+    if (dimension === 'COLOR') {
+      switch (depth) {
+        case 0: return 'COLOR';
+        case 1: return 'SERIES';
+        case 2: return 'SKU';
+        case 3: return 'VERSION';
+        default: return 'VERSION';
+      }
+    }
     
     // Path if starting from PRODUCT (Metric) view
     switch (depth) {
       case 0: return 'CATEGORY';
       case 1: return 'SERIES';
       case 2: return 'SKU';
-      case 3: return 'BUYER'; // After picking SKU, see which Buyers bought it
-      case 4: return 'VERSION'; // After picking Buyer, see Versions
+      case 3: return 'BUYER'; 
+      case 4: return 'VERSION'; 
       default: return 'VERSION';
     }
   }, [drillPath, dimension]);
+
+  const getEntryColor = (description: string = '') => {
+    const desc = description.toLowerCase();
+    if (desc.includes('brown') || desc.includes('咖啡')) return 'Brown';
+    if (desc.includes('black') || desc.includes('黑')) return 'Black';
+    if (desc.includes('white') || desc.includes('白')) return 'White';
+    if (desc.includes('red') || desc.includes('紅')) return 'Red';
+    if (desc.includes('silver') || desc.includes('銀')) return 'Silver';
+    return 'Others';
+  };
 
   const filteredShipments = useMemo(() => {
     let data = [...shipments];
@@ -81,7 +110,8 @@ const Analytics: React.FC<AnalyticsProps> = ({ products, shipments, onImportData
       if (step.level === 'SERIES') data = data.filter(s => s.series === step.filterVal);
       if (step.level === 'SKU') data = data.filter(s => s.sku === step.filterVal);
       if (step.level === 'BUYER') data = data.filter(s => s.buyer === step.filterVal);
-      if (step.level === 'VERSION') data = data.filter(s => s.version === step.filterVal);
+      if (step.level === 'VERSION') data = data.filter(s => formatVersion(s.version) === step.filterVal);
+      if (step.level === 'COLOR') data = data.filter(s => getEntryColor(s.description) === step.filterVal);
     });
     return data;
   }, [shipments, drillPath]);
@@ -97,13 +127,13 @@ const Analytics: React.FC<AnalyticsProps> = ({ products, shipments, onImportData
         case 'SERIES': key = item.series || 'N/A'; break;
         case 'SKU': key = item.sku || 'N/A'; break;
         case 'BUYER': key = item.buyer || 'N/A'; break;
-        case 'VERSION': key = item.version || 'v1.0'; break;
+        case 'VERSION': key = formatVersion(item.version); break;
+        case 'COLOR': key = getEntryColor(item.description); break;
         default: key = item.category;
       }
 
       aggregated[key] = (aggregated[key] || 0) + item.quantity;
       
-      // Try to find product meta if it's SKU level or related
       const prod = products.find(p => p.sku === (currentLevel === 'SKU' ? key : item.sku));
       if (prod) {
         meta[key] = {
@@ -140,14 +170,7 @@ const Analytics: React.FC<AnalyticsProps> = ({ products, shipments, onImportData
   const colorData = useMemo(() => {
     const counts: Record<string, number> = {};
     filteredShipments.forEach(s => {
-      const desc = (s.description || '').toLowerCase();
-      let color = 'Others';
-      if (desc.includes('brown') || desc.includes('咖啡')) color = 'Brown';
-      else if (desc.includes('black') || desc.includes('黑')) color = 'Black';
-      else if (desc.includes('white') || desc.includes('白')) color = 'White';
-      else if (desc.includes('red') || desc.includes('紅')) color = 'Red';
-      else if (desc.includes('silver') || desc.includes('銀')) color = 'Silver';
-      
+      const color = getEntryColor(s.description);
       counts[color] = (counts[color] || 0) + s.quantity;
     });
     return Object.entries(counts).map(([name, value]) => ({ name, value }));
@@ -317,8 +340,9 @@ const Analytics: React.FC<AnalyticsProps> = ({ products, shipments, onImportData
 
             <div className="flex items-center gap-4">
               <div className="flex bg-slate-100 p-1 rounded-xl shadow-inner">
-                <button onClick={() => handleResetDrill('DATA_DRILL')} className={`px-5 py-2 rounded-lg text-xs font-black transition-all ${dimension === 'DATA_DRILL' ? 'bg-white shadow-md text-slate-900' : 'text-slate-400'}`}>BY METRIC</button>
-                <button onClick={() => handleResetDrill('BUYER')} className={`px-5 py-2 rounded-lg text-xs font-black transition-all ${dimension === 'BUYER' ? 'bg-white shadow-md text-slate-900' : 'text-slate-400'}`}>BY BUYER</button>
+                <button onClick={() => handleResetDrill('DATA_DRILL')} className={`px-4 py-2 rounded-lg text-xs font-black transition-all ${dimension === 'DATA_DRILL' ? 'bg-white shadow-md text-slate-900' : 'text-slate-400'}`}>BY METRIC</button>
+                <button onClick={() => handleResetDrill('BUYER')} className={`px-4 py-2 rounded-lg text-xs font-black transition-all ${dimension === 'BUYER' ? 'bg-white shadow-md text-slate-900' : 'text-slate-400'}`}>BY BUYER</button>
+                <button onClick={() => handleResetDrill('COLOR')} className={`px-4 py-2 rounded-lg text-xs font-black transition-all ${dimension === 'COLOR' ? 'bg-white shadow-md text-slate-900' : 'text-slate-400'}`}>BY COLOR</button>
               </div>
               <div className="flex bg-slate-100 p-1 rounded-xl shadow-inner">
                 <button onClick={() => setChartType('PIE')} className={`p-2 rounded-lg transition-all ${chartType === 'PIE' ? 'bg-white shadow-md text-slate-900' : 'text-slate-400'}`}><PieIcon size={18}/></button>
@@ -349,7 +373,13 @@ const Analytics: React.FC<AnalyticsProps> = ({ products, shipments, onImportData
                       strokeWidth={4}
                       paddingAngle={2}
                     >
-                      {chartData.map((_, i) => <Cell key={`cell-${i}`} fill={COLORS[i % COLORS.length]} className="hover:opacity-80 transition-opacity" />)}
+                      {chartData.map((entry, i) => (
+                        <Cell 
+                          key={`cell-${i}`} 
+                          fill={currentLevel === 'COLOR' ? (COLOR_MAP[entry.name] || COLORS[i % COLORS.length]) : COLORS[i % COLORS.length]} 
+                          className="hover:opacity-80 transition-opacity" 
+                        />
+                      ))}
                       <Label 
                         content={({ viewBox }: any) => {
                           const { cx, cy } = viewBox;
@@ -385,7 +415,13 @@ const Analytics: React.FC<AnalyticsProps> = ({ products, shipments, onImportData
                       cursor="pointer"
                       barSize={50}
                     >
-                      {chartData.map((_, i) => <Cell key={`cell-${i}`} fill={COLORS[i % COLORS.length]} className="hover:brightness-95 transition-all" />)}
+                      {chartData.map((entry, i) => (
+                        <Cell 
+                          key={`cell-${i}`} 
+                          fill={currentLevel === 'COLOR' ? (COLOR_MAP[entry.name] || COLORS[i % COLORS.length]) : COLORS[i % COLORS.length]} 
+                          className="hover:brightness-95 transition-all" 
+                        />
+                      ))}
                     </Bar>
                   </BarChart>
                 )}
@@ -394,22 +430,42 @@ const Analytics: React.FC<AnalyticsProps> = ({ products, shipments, onImportData
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-            {/* Color Analysis */}
-            <div className="bg-white rounded-[2.5rem] p-8 border border-slate-100 shadow-sm">
+            {/* Color Analysis with Integrated Chart */}
+            <div className="bg-white rounded-[2.5rem] p-8 border border-slate-100 shadow-sm flex flex-col">
               <div className="flex items-center gap-3 mb-8">
                 <div className="p-2 bg-slate-900 rounded-lg text-white">
                   <Palette size={20} />
                 </div>
                 <h3 className="font-black text-xl text-slate-900 tracking-tight">Finishing Distribution</h3>
               </div>
-              <div className="grid grid-cols-3 gap-6">
-                {colorData.map(c => (
-                  <div key={c.name} className="flex flex-col items-center p-4 bg-slate-50 rounded-3xl border border-slate-100 hover:bg-white hover:shadow-xl transition-all group">
-                      <div className="w-10 h-10 rounded-full mb-3 shadow-md ring-4 ring-white transition-transform group-hover:scale-110 border border-slate-200" style={{ backgroundColor: COLOR_MAP[c.name] || '#e2e8f0' }} />
-                      <span className="text-[9px] font-black text-slate-300 uppercase tracking-widest mb-1">{c.name}</span>
-                      <span className="text-xl font-black text-slate-900">{c.value.toLocaleString()}</span>
-                  </div>
-                ))}
+              <div className="flex-1 grid grid-cols-1 xl:grid-cols-2 gap-6">
+                <div className="h-[200px]">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie
+                        data={colorData}
+                        innerRadius={40}
+                        outerRadius={65}
+                        dataKey="value"
+                        paddingAngle={5}
+                      >
+                        {colorData.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={COLOR_MAP[entry.name] || COLORS[index % COLORS.length]} />
+                        ))}
+                      </Pie>
+                      <Tooltip />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  {colorData.slice(0, 4).map(c => (
+                    <div key={c.name} className="flex flex-col items-center p-3 bg-slate-50 rounded-2xl border border-slate-100 hover:bg-white transition-all group">
+                        <div className="w-8 h-8 rounded-full mb-2 shadow-sm border border-slate-200" style={{ backgroundColor: COLOR_MAP[c.name] || '#e2e8f0' }} />
+                        <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">{c.name}</span>
+                        <span className="text-lg font-black text-slate-900">{c.value.toLocaleString()}</span>
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
 
@@ -475,7 +531,7 @@ const Analytics: React.FC<AnalyticsProps> = ({ products, shipments, onImportData
                       <div><span className="text-slate-300 font-black uppercase block text-[8px] mb-0.5">Buyer</span> <span className="font-bold text-slate-700 truncate block">{r.buyer}</span></div>
                       <div><span className="text-slate-300 font-black uppercase block text-[8px] mb-0.5">Country</span> <span className="font-bold text-slate-700 truncate block">{r.country || 'N/A'}</span></div>
                       <div><span className="text-slate-300 font-black uppercase block text-[8px] mb-0.5">SKU</span> <span className="font-bold text-slate-700 font-mono">{r.sku}</span></div>
-                      <div><span className="text-slate-300 font-black uppercase block text-[8px] mb-0.5">Ver</span> <span className="font-bold text-slate-700">v{r.version}</span></div>
+                      <div><span className="text-slate-300 font-black uppercase block text-[8px] mb-0.5">Ver</span> <span className="font-bold text-slate-700">{formatVersion(r.version)}</span></div>
                     </div>
                   </div>
                 </div>
