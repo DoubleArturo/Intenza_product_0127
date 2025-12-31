@@ -11,9 +11,10 @@ interface SidebarProps {
   onPush: () => void;
   onPull: () => void;
   syncStatus: 'idle' | 'saving' | 'success' | 'error';
+  customLogoUrl?: string;
 }
 
-const Sidebar: React.FC<SidebarProps> = ({ onLogout, isAdmin, onPush, onPull, syncStatus }) => {
+const Sidebar: React.FC<SidebarProps> = ({ onLogout, isAdmin, onPush, onPull, syncStatus, customLogoUrl }) => {
   const { t } = useContext(LanguageContext);
   const [isExpanded, setIsExpanded] = useState(false);
 
@@ -35,8 +36,12 @@ const Sidebar: React.FC<SidebarProps> = ({ onLogout, isAdmin, onPush, onPull, sy
       onMouseLeave={() => setIsExpanded(false)}
     >
       <div className={`mb-8 flex items-center gap-3 px-4 py-6 transition-all duration-300 ${!isExpanded ? 'justify-center' : ''}`}>
-        <div className="w-10 h-10 bg-intenza-600 rounded-xl flex items-center justify-center text-white font-bold text-xl flex-shrink-0 shadow-intenza-500/20 shadow-lg">
-          I
+        <div className={`w-10 h-10 flex items-center justify-center flex-shrink-0 overflow-hidden ${!customLogoUrl ? 'bg-intenza-600 rounded-xl shadow-intenza-500/20 shadow-lg text-white font-bold text-xl' : ''}`}>
+          {customLogoUrl ? (
+            <img src={customLogoUrl} alt="Logo" className="w-full h-full object-contain" />
+          ) : (
+            "I"
+          )}
         </div>
         <div className={`transition-all duration-300 overflow-hidden whitespace-nowrap ${isExpanded ? 'opacity-100 w-auto' : 'opacity-0 w-0'}`}>
           <span className="text-xl font-bold tracking-tight text-slate-900 uppercase">Intenza</span>
