@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { Lock, User, Loader2, ChevronRight, UserCircle } from 'lucide-react';
+import { Lock, User, Loader2, ChevronRight } from 'lucide-react';
 import { api } from '../services/api';
 
 interface LoginProps {
@@ -20,8 +20,8 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
     
     try {
       // 在實際生產環境中，這裡會呼叫後端 API
-      // 為了方便測試，如果輸入 admin/admin 則模擬成功
-      if (username === 'admin' && password === 'admin') {
+      // 為了方便測試，如果輸入 admin / adminx 則模擬成功
+      if (username === 'admin' && password === 'adminx') {
           await new Promise(resolve => setTimeout(resolve, 800)); // 模擬網路延遲
           onLoginSuccess();
           return;
@@ -30,18 +30,10 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
       await api.login({ username, password });
       onLoginSuccess();
     } catch (err: any) {
-      setError(err.message || '登入過程中發生錯誤 (測試可用 admin / admin)');
+      setError(err.message || '登入失敗，請檢查帳號密碼 (測試可用 admin / adminx)');
     } finally {
       setLoading(false);
     }
-  };
-
-  const handleGuestLogin = () => {
-    setLoading(true);
-    // 訪客模式：直接進入系統
-    setTimeout(() => {
-      onLoginSuccess();
-    }, 500);
   };
 
   return (
@@ -72,7 +64,7 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
                 <User className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" size={18} />
                 <input
                   type="text"
-                  placeholder="使用者名稱 (測試用: admin)"
+                  placeholder="使用者名稱"
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
                   className="w-full pl-12 pr-4 py-3.5 bg-white/5 border border-white/10 rounded-xl text-white placeholder:text-slate-600 focus:outline-none focus:ring-2 focus:ring-intenza-500/50 transition-all"
@@ -83,7 +75,7 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
                 <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" size={18} />
                 <input
                   type="password"
-                  placeholder="密碼 (測試用: admin)"
+                  placeholder="密碼"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   className="w-full pl-12 pr-4 py-3.5 bg-white/5 border border-white/10 rounded-xl text-white placeholder:text-slate-600 focus:outline-none focus:ring-2 focus:ring-intenza-500/50 transition-all"
@@ -91,7 +83,7 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
               </div>
             </div>
 
-            <div className="space-y-3">
+            <div className="pt-2">
               <button
                 type="submit"
                 disabled={loading}
@@ -106,21 +98,20 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
                   </>
                 )}
               </button>
-
-              <button
-                type="button"
-                onClick={handleGuestLogin}
-                disabled={loading}
-                className="w-full bg-white/5 hover:bg-white/10 text-slate-300 font-medium py-3 rounded-xl border border-white/5 transition-all flex items-center justify-center gap-2"
-              >
-                <UserCircle size={18} />
-                以訪客身份進入 (免帳號)
-              </button>
             </div>
           </form>
 
-          <p className="text-center text-slate-500 text-xs mt-8">
-            © {new Date().getFullYear()} INTENZA Fitness. 測試環境模式已開啟。
+          <div className="mt-8 pt-6 border-t border-white/5 text-center">
+             <p className="text-slate-500 text-xs">
+               如有登入問題，請聯繫系統管理員。
+             </p>
+             <p className="text-slate-600 text-[10px] mt-1 italic">
+               ( 測試環境可用帳號: admin / 密碼: adminx )
+             </p>
+          </div>
+
+          <p className="text-center text-slate-600 text-[10px] mt-6">
+            © {new Date().getFullYear()} INTENZA Fitness. 版權所有。
           </p>
         </div>
       </div>
