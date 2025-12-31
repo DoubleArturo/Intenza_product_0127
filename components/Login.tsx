@@ -6,9 +6,10 @@ import { LanguageContext } from '../App';
 
 interface LoginProps {
   onLoginSuccess: (user: {username: string, role: 'admin' | 'user'}) => void;
+  customLogoUrl?: string;
 }
 
-const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
+const Login: React.FC<LoginProps> = ({ onLoginSuccess, customLogoUrl }) => {
   const { t } = useContext(LanguageContext);
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
@@ -43,8 +44,12 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
       <div className="w-full max-w-md animate-slide-up">
         <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-3xl p-8 shadow-2xl">
           <div className="flex flex-col items-center mb-10">
-            <div className="w-16 h-16 bg-intenza-600 rounded-2xl flex items-center justify-center text-white font-bold text-3xl shadow-lg shadow-intenza-600/20 mb-4">
-              I
+            <div className="w-20 h-20 bg-intenza-600 rounded-2xl flex items-center justify-center text-white font-bold text-3xl shadow-lg shadow-intenza-600/20 mb-4 overflow-hidden">
+              {customLogoUrl ? (
+                <img src={customLogoUrl} alt="Logo" className="w-full h-full object-cover" />
+              ) : (
+                "I"
+              )}
             </div>
             <h1 className="text-2xl font-bold text-white tracking-tight uppercase text-center">
               {t({ en: 'Intenza Design Quality', zh: 'INTENZA 設計品質系統' })}

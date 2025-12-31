@@ -47,6 +47,7 @@ const App = () => {
   const [users, setUsers] = useState<UserAccount[]>([]);
   const [showAiInsights, setShowAiInsights] = useState(false); // 預設關閉 AI
   const [maxHistorySteps, setMaxHistorySteps] = useState(10);
+  const [customLogoUrl, setCustomLogoUrl] = useState<string | undefined>(undefined);
 
   const [syncStatus, setSyncStatus] = useState<'idle' | 'saving' | 'success' | 'error'>('idle');
   const [errorDetail, setErrorDetail] = useState<string>('');
@@ -63,7 +64,7 @@ const App = () => {
   const handleLogout = useCallback(() => {
     setIsLoggedIn(false);
     setCurrentUser(null);
-    initialLoadDone.current = false;
+    // Note: customLogoUrl stays to keep branding on login screen
   }, []);
 
   const handleSyncToCloud = useCallback(async (isAutoSync = false) => {
@@ -73,7 +74,7 @@ const App = () => {
     setSyncStatus('saving');
     
     const state: AppState = {
-      products, seriesList, shipments, testers, users, language, showAiInsights, maxHistorySteps
+      products, seriesList, shipments, testers, users, language, showAiInsights, maxHistorySteps, customLogoUrl
     };
 
     try {
@@ -88,7 +89,7 @@ const App = () => {
       setErrorDetail(error.message || 'Connection Error');
       isSyncingRef.current = false;
     }
-  }, [products, seriesList, shipments, testers, users, language, showAiInsights, maxHistorySteps, isLoggedIn]);
+  }, [products, seriesList, shipments, testers, users, language, showAiInsights, maxHistorySteps, customLogoUrl, isLoggedIn]);
 
   const handleLoadFromCloud = useCallback(async () => {
     if (isSyncingRef.current) return;
@@ -105,6 +106,7 @@ const App = () => {
         if (cloudData.users) setUsers(cloudData.users);
         if (cloudData.language) setLanguage(cloudData.language);
         if (cloudData.showAiInsights !== undefined) setShowAiInsights(cloudData.showAiInsights);
+        if (cloudData.customLogoUrl) setCustomLogoUrl(cloudData.customLogoUrl);
         setSyncStatus('success');
       }
       initialLoadDone.current = true;
@@ -117,28 +119,31 @@ const App = () => {
     }
   }, []);
 
+  // 初始載入（無論登入與否，為了讀取 Logo）
+  useEffect(() => {
+    if (!initialLoadDone.current) {
+      handleLoadFromCloud();
+    }
+  }, [handleLoadFromCloud]);
+
   // 自動同步：僅在初始載入完成後，且資料發生變動時觸發
   useEffect(() => {
     if (isLoggedIn && initialLoadDone.current) {
       const timer = setTimeout(() => handleSyncToCloud(true), 2000);
       return () => clearTimeout(timer);
     }
-  }, [users, seriesList, products, testers, shipments, isLoggedIn, handleSyncToCloud]);
-
-  // 登入後執行初次載入
-  useEffect(() => {
-    if (isLoggedIn && !initialLoadDone.current) {
-      handleLoadFromCloud();
-    }
-  }, [isLoggedIn, handleLoadFromCloud]);
+  }, [users, seriesList, products, testers, shipments, customLogoUrl, isLoggedIn, handleSyncToCloud]);
 
   return (
     <LanguageContext.Provider value={{ language, setLanguage, t }}>
       {!isLoggedIn ? (
-        <Login onLoginSuccess={(user) => {
-          setCurrentUser(user);
-          setIsLoggedIn(true);
-        }} />
+        <Login 
+          customLogoUrl={customLogoUrl}
+          onLoginSuccess={(user) => {
+            setCurrentUser(user);
+            setIsLoggedIn(true);
+          }} 
+        />
       ) : (
         <div className="flex min-h-screen bg-slate-50 relative">
           <Sidebar 
@@ -184,15 +189,17 @@ const App = () => {
                           newList[idx] = { ...newList[idx], [language]: name };
                           setSeriesList(newList);
                       }}
-                      currentAppState={{ products, seriesList, shipments, testers, users, language, showAiInsights, maxHistorySteps }}
+                      currentAppState={{ products, seriesList, shipments, testers, users, language, showAiInsights, maxHistorySteps, customLogoUrl }}
                       onLoadProject={(state) => {
                           if (state.products) setProducts(state.products);
                           if (state.seriesList) setSeriesList(state.seriesList);
                           if (state.shipments) setShipments(state.shipments);
                           if (state.testers) setTesters(state.testers);
                           if (state.users) setUsers(state.users);
+                          if (state.customLogoUrl) setCustomLogoUrl(state.customLogoUrl);
                       }}
                       onUpdateMaxHistory={setMaxHistorySteps} onToggleAiInsights={setShowAiInsights}
+                      onUpdateLogo={setCustomLogoUrl}
                       onAddUser={(u) => setUsers([...users, { ...u, id: Date.now().toString() }])}
                       onUpdateUser={(u) => setUsers(users.map(old => old.id === u.id ? u : old))}
                       onDeleteUser={(id) => setUsers(users.filter(u => u.id !== id))}

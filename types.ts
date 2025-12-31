@@ -192,4 +192,5 @@ export interface AppState {
   language: Language;
   maxHistorySteps?: number;
   showAiInsights?: boolean;
+  customLogoUrl?: string; // 加入自定義 Logo
 }

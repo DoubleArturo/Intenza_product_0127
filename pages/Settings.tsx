@@ -1,7 +1,6 @@
 
 import React, { useState, useRef, useContext, useEffect, useMemo } from 'react';
-// Added missing 'Layers' to the lucide-react import list
-import { Plus, X, Save, Download, Upload, AlertTriangle, CheckCircle, Pencil, History, Sparkles, Shield, User, Trash2, Eye, EyeOff, Key, Database, HardDrive, Info, Cloud, LogOut, Loader2, Link as LinkIcon, Activity, Layers } from 'lucide-react';
+import { Plus, X, Save, Download, Upload, AlertTriangle, CheckCircle, Pencil, History, Sparkles, Shield, User, Trash2, Eye, EyeOff, Key, Database, HardDrive, Info, Cloud, LogOut, Loader2, Link as LinkIcon, Activity, Layers, Image as ImageIcon, RotateCcw } from 'lucide-react';
 import { AppState, LocalizedString, UserAccount } from '../types';
 import { LanguageContext } from '../App';
 import { api } from '../services/api';
@@ -15,6 +14,7 @@ interface SettingsProps {
   onLoadProject: (state: AppState) => void;
   onUpdateMaxHistory: (steps: number) => void;
   onToggleAiInsights: (enabled: boolean) => void;
+  onUpdateLogo: (url: string | undefined) => void;
   onAddUser: (user: Omit<UserAccount, 'id'>) => void;
   onUpdateUser: (user: UserAccount) => void;
   onDeleteUser: (id: string) => void;
@@ -26,18 +26,19 @@ interface SettingsProps {
 const Settings: React.FC<SettingsProps> = ({ 
   seriesList, onAddSeries, onUpdateSeriesList, onRenameSeries, 
   currentAppState, onLoadProject, onUpdateMaxHistory, onToggleAiInsights,
-  onAddUser, onUpdateUser, onDeleteUser, onSyncCloud, onLogout, syncStatus
+  onUpdateLogo, onAddUser, onUpdateUser, onDeleteUser, onSyncCloud, onLogout, syncStatus
 }) => {
   const { t } = useContext(LanguageContext);
   const [newSeriesName, setNewSeriesName] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isTestingBlob, setIsTestingBlob] = useState(false);
+  const [isUploadingLogo, setIsUploadingLogo] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const logoInputRef = useRef<HTMLInputElement>(null);
   const [notification, setNotification] = useState<{msg: string, type: 'success' | 'error'} | null>(null);
 
   // --- 容量與體積監控邏輯 ---
   const storageStats = useMemo(() => {
-    // 1. 估算行數 (Postgres 常用指標)
     const rowCount = 
       (currentAppState.products?.length || 0) + 
       (currentAppState.shipments?.length || 0) + 
@@ -46,14 +47,12 @@ const Settings: React.FC<SettingsProps> = ({
     const rowLimit = 10000;
     const rowPercent = Math.min(100, (rowCount / rowLimit) * 100);
 
-    // 2. 計算 JSON 字串大小 (這是 Vercel Serverless Function 最硬性的 4.5MB 限制)
     const jsonString = JSON.stringify(currentAppState);
-    const sizeInBytes = jsonString.length; // 粗略估計 1 char = 1 byte
+    const sizeInBytes = jsonString.length; 
     const sizeInMB = sizeInBytes / (1024 * 1024);
-    const sizeLimitMB = 4.5; // Vercel Body Limit
+    const sizeLimitMB = 4.5; 
     const sizePercent = Math.min(100, (sizeInMB / sizeLimitMB) * 100);
 
-    // 3. 掃描舊式 Base64 (優化分析)
     let base64Count = 0;
     let blobFilesCount = 0;
     const analyzeUrl = (url?: string) => {
@@ -66,6 +65,7 @@ const Settings: React.FC<SettingsProps> = ({
       analyzeUrl(p.imageUrl);
       p.designHistory?.forEach(eco => eco.imageUrls?.forEach(analyzeUrl));
     });
+    analyzeUrl(currentAppState.customLogoUrl);
 
     return { 
       rowCount, rowLimit, rowPercent, 
@@ -77,6 +77,22 @@ const Settings: React.FC<SettingsProps> = ({
   const showNotification = (msg: string, type: 'success' | 'error') => {
     setNotification({ msg, type });
     setTimeout(() => setNotification(null), 3000);
+  };
+
+  const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setIsUploadingLogo(true);
+    try {
+      const url = await api.uploadImage(file);
+      onUpdateLogo(url);
+      showNotification('Logo 已更新，請手動同步雲端', 'success');
+    } catch (err) {
+      showNotification('Logo 上傳失敗', 'error');
+    } finally {
+      setIsUploadingLogo(false);
+      if (logoInputRef.current) logoInputRef.current.value = '';
+    }
   };
 
   const handleTestBlob = async () => {
@@ -172,6 +188,49 @@ const Settings: React.FC<SettingsProps> = ({
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <div className="lg:col-span-2 space-y-8">
+          {/* Brand Identity / Logo Config */}
+          <section className="bg-white rounded-2xl border border-slate-200 p-8 shadow-sm">
+             <div className="flex items-center gap-2 mb-6">
+                 <ImageIcon className="text-intenza-600" size={20} />
+                 <h2 className="text-xl font-bold text-slate-900">品牌視覺配置 (Login Logo)</h2>
+             </div>
+             <div className="flex flex-col md:flex-row gap-8 items-center">
+                <div className="w-32 h-32 rounded-2xl bg-slate-100 border-2 border-dashed border-slate-200 flex items-center justify-center overflow-hidden relative group">
+                    {currentAppState.customLogoUrl ? (
+                        <img src={currentAppState.customLogoUrl} alt="Logo Preview" className="w-full h-full object-cover" />
+                    ) : (
+                        <div className="text-slate-300 font-bold text-4xl">I</div>
+                    )}
+                    {isUploadingLogo && (
+                        <div className="absolute inset-0 bg-white/80 flex items-center justify-center">
+                            <Loader2 className="animate-spin text-intenza-600" />
+                        </div>
+                    )}
+                </div>
+                <div className="flex-1 space-y-4">
+                    <p className="text-sm text-slate-500">上傳您的公司 Logo。此 Logo 將取代登入介面的預設圖示。建議使用 1:1 比例之圖片。</p>
+                    <div className="flex gap-3">
+                        <button 
+                            onClick={() => logoInputRef.current?.click()}
+                            disabled={isUploadingLogo}
+                            className="bg-slate-900 text-white px-5 py-2 rounded-xl text-sm font-bold hover:bg-slate-800 transition-colors flex items-center gap-2"
+                        >
+                            <Upload size={16} /> 上傳新 Logo
+                        </button>
+                        {currentAppState.customLogoUrl && (
+                            <button 
+                                onClick={() => onUpdateLogo(undefined)}
+                                className="px-5 py-2 border border-slate-200 rounded-xl text-sm font-bold text-slate-600 hover:bg-slate-50 transition-colors flex items-center gap-2"
+                            >
+                                <RotateCcw size={16} /> 重置預設
+                            </button>
+                        )}
+                        <input ref={logoInputRef} type="file" accept="image/*" className="hidden" onChange={handleLogoUpload} />
+                    </div>
+                </div>
+             </div>
+          </section>
+
           {/* User Management */}
           <section className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
              <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
@@ -282,7 +341,6 @@ const Settings: React.FC<SettingsProps> = ({
               </div>
            </section>
 
-           {/* 精確容量監控區塊 */}
            <section className="bg-white rounded-2xl border border-slate-200 p-8 shadow-sm">
               <div className="flex items-center justify-between mb-2">
                  <h2 className="text-xl font-bold text-slate-900">容量使用率</h2>
@@ -291,7 +349,6 @@ const Settings: React.FC<SettingsProps> = ({
               <p className="text-sm text-slate-500 mb-6">監控 Vercel 與 Postgres 資源配額。</p>
               
               <div className="space-y-8">
-                {/* 1. 數據量 (JSON 體積) - 這是最關鍵的限制 */}
                 <div className="space-y-2">
                   <div className="flex justify-between items-center text-[11px] font-bold uppercase tracking-wider">
                     <div className="flex items-center gap-2 text-slate-600">
@@ -314,7 +371,6 @@ const Settings: React.FC<SettingsProps> = ({
                   </div>
                 </div>
 
-                {/* 2. 資料庫行數 */}
                 <div className="space-y-2">
                   <div className="flex justify-between items-center text-[11px] font-bold uppercase tracking-wider">
                     <div className="flex items-center gap-2 text-slate-600">
@@ -333,7 +389,6 @@ const Settings: React.FC<SettingsProps> = ({
                   </div>
                 </div>
 
-                {/* 3. 媒體文件統計 */}
                 <div className="pt-4 border-t border-slate-100 grid grid-cols-2 gap-4">
                    <div className="p-3 bg-slate-50 rounded-xl border border-slate-100">
                       <div className="text-[10px] font-bold text-slate-400 uppercase mb-1">Blob CDN</div>
@@ -344,17 +399,9 @@ const Settings: React.FC<SettingsProps> = ({
                       <div className={`text-lg font-bold ${storageStats.base64Count > 0 ? 'text-red-600' : 'text-slate-500'}`}>{storageStats.base64Count} <span className="text-[10px] font-normal text-slate-500">Items</span></div>
                    </div>
                 </div>
-
-                {storageStats.base64Count > 0 && (
-                  <div className="bg-amber-50 border border-amber-200 p-3 rounded-xl flex items-start gap-2">
-                    <AlertTriangle size={14} className="text-amber-600 shrink-0 mt-0.5" />
-                    <p className="text-[10px] text-amber-800 leading-tight">檢測到內嵌 Base64 數據，這會迅速消耗數據容量。建議重新上傳圖片以自動轉為 Blob 存儲。</p>
-                  </div>
-                )}
               </div>
            </section>
 
-           {/* Local Backup */}
            <section className="bg-white rounded-2xl border border-slate-200 p-8 shadow-sm">
              <h2 className="text-xl font-bold text-slate-900 mb-4">專案本地備份</h2>
              <div className="grid grid-cols-1 gap-4">
