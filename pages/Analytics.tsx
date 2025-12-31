@@ -4,7 +4,7 @@ import {
   PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer, 
   BarChart, Bar, XAxis, YAxis, CartesianGrid, LineChart, Line 
 } from 'recharts';
-import { ArrowLeft, PieChart as PieIcon, BarChart as BarIcon, Search, FileSpreadsheet, Layers, Palette, Tag, Globe, Users, Box, Truck, Activity, BrainCircuit, AlertTriangle, CheckCircle, Clock, ChevronDown, Filter, LayoutGrid } from 'lucide-react';
+import { ArrowLeft, PieChart as PieIcon, BarChart as BarIcon, Search, FileSpreadsheet, Layers, Palette, Tag, Globe, Users, Box, Truck, Activity, BrainCircuit, AlertTriangle, CheckCircle, Clock, ChevronDown, Filter, LayoutGrid, Image as ImageIcon } from 'lucide-react';
 import { ShipmentData, ChartViewType, DrillLevel, ProductModel, LocalizedString, TestStatus, ErgoProjectCategory, NgDecisionStatus, Tester } from '../types';
 import GeminiInsight from '../components/GeminiInsight';
 import * as XLSX from 'xlsx';
@@ -428,7 +428,7 @@ const Analytics: React.FC<AnalyticsProps> = ({ products, shipments, testers = []
                 modelName: { en: modelName, zh: modelName },
                 description: { en: rawDesc, zh: rawDesc },
                 currentVersion: row['Version'] ? (row['Version'].toString().startsWith('v') ? row['Version'] : `v${row['Version']}`) : 'v1.0',
-                imageUrl: `https://picsum.photos/400/300?random=${sku}`
+                imageUrl: '' // Clear default image for imported products
             });
         });
 
@@ -496,21 +496,6 @@ const Analytics: React.FC<AnalyticsProps> = ({ products, shipments, testers = []
       }
       return null;
   };
-
-  const CustomAxisTick = (props: any) => {
-    const { x, y, payload } = props;
-    // We can't access data[index] easily in standard Recharts tick unless we pass data context or index
-    // However, Recharts renders ticks based on data order for Category axis.
-    // A trick: Recharts passes `index` prop to the tick component.
-    // But we need the data source. We can use a closure in `renderSingleChart`.
-    return (
-        <g transform={`translate(${x},${y})`}>
-            <text x={0} y={0} dy={16} textAnchor="middle" fill="#64748b" fontSize={10}>
-                {payload.value && payload.value.length > 12 ? payload.value.substring(0,10)+'...' : payload.value}
-            </text>
-        </g>
-    );
-  }
 
   const renderSingleChart = (data: any[], title?: string, palette: string[] = COLORS) => {
     if (data.length === 0) return <div className="h-full flex flex-col items-center justify-center text-slate-300"><BarIcon size={32} className="mb-2 opacity-20" /><p className="text-sm">No data</p></div>;
@@ -846,8 +831,12 @@ const Analytics: React.FC<AnalyticsProps> = ({ products, shipments, testers = []
 
                            return (
                                <div key={product.id} className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col transition-all hover:shadow-md hover:-translate-y-1">
-                                    <div className="relative h-32 bg-slate-50">
-                                        <img src={product.imageUrl} className="w-full h-full object-cover opacity-90"/>
+                                    <div className="relative h-32 bg-slate-100 flex items-center justify-center overflow-hidden">
+                                        {product.imageUrl ? (
+                                            <img src={product.imageUrl} className="w-full h-full object-cover opacity-90"/>
+                                        ) : (
+                                            <ImageIcon size={32} className="text-slate-300 opacity-30" />
+                                        )}
                                         <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent"></div>
                                         <div className="absolute bottom-3 left-4 text-white">
                                             <div className="text-xs font-semibold opacity-80 mb-0.5">{t(product.series).split(' ')[0]}</div>
