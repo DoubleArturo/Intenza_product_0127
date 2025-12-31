@@ -1,8 +1,10 @@
+
 import React, { useState, useRef, useEffect, useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Search, ChevronRight, X, Upload, Pencil, Save, Star, ArrowLeft, ArrowRight, Trash2 } from 'lucide-react';
+import { Plus, Search, ChevronRight, X, Upload, Pencil, Save, Star, ArrowLeft, ArrowRight, Trash2, Image as ImageIcon, Loader2 } from 'lucide-react';
 import { ProductModel, LocalizedString, EcoStatus } from '../types';
 import { LanguageContext } from '../App';
+import { api } from '../services/api';
 
 interface DashboardProps {
   products: ProductModel[];
@@ -23,6 +25,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ products, seriesList, onAd
   // Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
   const [editingProduct, setEditingProduct] = useState<ProductModel | null>(null);
   const [formData, setFormData] = useState({
     series: seriesList[0] || { en: '', zh: '' },
@@ -35,7 +38,6 @@ export const Dashboard: React.FC<DashboardProps> = ({ products, seriesList, onAd
   
   const fileInputRef = useRef<HTMLInputElement>(null);
   
-  // Effect to populate form for editing or reset for adding
   useEffect(() => {
     if (isModalOpen) {
       if (editingProduct) {
@@ -67,15 +69,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ products, seriesList, onAd
     const matchesSeries = selectedSeries === 'ALL' || t(p.series) === selectedSeries;
     return matchesSearch && matchesSeries;
   }).sort((a, b) => {
-    // 1. Sort by Watch status (Pinned to top)
-    if (a.isWatched !== b.isWatched) {
-        return a.isWatched ? -1 : 1;
-    }
-    // 2. Sort by Custom Sort Order
-    if (a.customSortOrder !== b.customSortOrder) {
-        return a.customSortOrder - b.customSortOrder;
-    }
-    // 3. Fallback to Name
+    if (a.isWatched !== b.isWatched) return a.isWatched ? -1 : 1;
+    if (a.customSortOrder !== b.customSortOrder) return a.customSortOrder - b.customSortOrder;
     return t(a.modelName).localeCompare(t(b.modelName));
   });
 
@@ -91,11 +86,20 @@ export const Dashboard: React.FC<DashboardProps> = ({ products, seriesList, onAd
     setEditingProduct(null);
   };
 
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      const url = URL.createObjectURL(file);
-      setFormData({ ...formData, imageUrl: url });
+      try {
+        setIsUploading(true);
+        // 符合 V01 標準：上傳至 Vercel Blob 並儲存 URL
+        const blobUrl = await api.uploadImage(file);
+        setFormData({ ...formData, imageUrl: blobUrl });
+      } catch (err) {
+        console.error("Image upload failed", err);
+        alert("圖片上傳失敗，請檢查網路連線");
+      } finally {
+        setIsUploading(false);
+      }
     }
   };
 
@@ -104,7 +108,6 @@ export const Dashboard: React.FC<DashboardProps> = ({ products, seriesList, onAd
     setIsSubmitting(true);
     
     if (editingProduct) {
-      // Create updated localized strings
       const updatedModelName = { ...editingProduct.modelName, [language]: formData.modelName };
       const updatedDescription = { ...editingProduct.description, [language]: formData.description };
 
@@ -219,18 +222,20 @@ export const Dashboard: React.FC<DashboardProps> = ({ products, seriesList, onAd
                  <div>
                    <label className="block text-sm font-medium text-slate-900 mb-2">{t({ en: 'Product Visualization', zh: '產品視覺化'})}</label>
                    <div 
-                     onClick={() => fileInputRef.current?.click()}
+                     onClick={() => !isUploading && fileInputRef.current?.click()}
                      className="relative h-48 rounded-xl border-2 border-dashed border-slate-300 bg-slate-50 flex flex-col items-center justify-center cursor-pointer hover:border-intenza-400 hover:bg-intenza-50 transition-all overflow-hidden group"
                    >
                      {formData.imageUrl ? (
-                       <img src={formData.imageUrl} alt="Preview" className="w-full h-full object-cover" />
+                       <img src={formData.imageUrl} className="w-full h-full object-cover" onError={(e) => {
+                           (e.target as HTMLImageElement).src = 'https://via.placeholder.com/400x300?text=Image+Not+Found';
+                       }} />
                      ) : (
                        <div className="text-center p-4">
                          <div className="w-12 h-12 bg-white rounded-full shadow-sm flex items-center justify-center mx-auto mb-3 text-slate-400 group-hover:text-intenza-500 transition-colors">
-                           <Upload size={20} />
+                           {isUploading ? <Loader2 className="animate-spin" size={20} /> : <Upload size={20} />}
                          </div>
                          <p className="text-sm font-medium text-slate-600">{t({ en: 'Click to upload product image', zh: '點擊上傳產品圖片'})}</p>
-                         <p className="text-xs text-slate-400 mt-1">{t({ en: 'Supports JPG, PNG (Max 2MB)', zh: '支援 JPG, PNG (最大 2MB)'})}</p>
+                         <p className="text-xs text-slate-400 mt-1">{t({ en: 'Hosted on Vercel Blob (CDN)', zh: '由 Vercel Blob 雲端儲存'})}</p>
                        </div>
                      )}
                      <input 
@@ -241,6 +246,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ products, seriesList, onAd
                        onChange={handleImageUpload}
                      />
                    </div>
+                   {isUploading && <p className="text-xs text-intenza-600 mt-2 animate-pulse font-bold">正在上傳至雲端儲存空間...</p>}
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -324,10 +330,10 @@ export const Dashboard: React.FC<DashboardProps> = ({ products, seriesList, onAd
               <button 
                 form="productForm"
                 type="submit"
-                disabled={isSubmitting}
+                disabled={isSubmitting || isUploading}
                 className="px-5 py-2 bg-intenza-600 hover:bg-intenza-700 text-white font-medium rounded-lg shadow-lg shadow-intenza-500/30 transition-all flex items-center gap-2 disabled:bg-intenza-300"
               >
-                {isSubmitting ? <span className="animate-spin">⌛</span> : (editingProduct ? <Save size={18} /> : <Plus size={18} />)}
+                {isSubmitting ? <Loader2 className="animate-spin" size={18} /> : (editingProduct ? <Save size={18} /> : <Plus size={18} />)}
                 {editingProduct ? t({ en: 'Save Changes', zh: '儲存變更'}) : t({ en: 'Create Product', zh: '建立產品'})}
               </button>
             </div>
@@ -362,18 +368,22 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onClick, onEdit, onT
       onClick={onClick}
       className={`group bg-white rounded-2xl border transition-all duration-300 cursor-pointer overflow-hidden flex flex-col ${product.isWatched ? 'border-amber-200 shadow-lg shadow-amber-500/10' : 'border-slate-100 shadow-sm hover:shadow-xl hover:shadow-slate-200/50 hover:-translate-y-1'}`}
     >
-      <div className="relative h-56 bg-slate-50 overflow-hidden">
+      <div className="relative h-56 bg-slate-100 overflow-hidden">
         {product.imageUrl ? (
           <img 
             src={product.imageUrl} 
-            alt={t(product.modelName)} 
+            alt="" 
             className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+            onError={(e) => {
+                (e.target as HTMLImageElement).src = 'https://via.placeholder.com/400x300?text=No+Image';
+            }}
           />
         ) : (
-          <div className="w-full h-full flex items-center justify-center text-slate-300">
-             <div className="text-center">
-               <p className="text-xs font-bold">{t(product.modelName)}</p>
-               <p className="text-xs">{product.sku}</p>
+          <div className="w-full h-full flex flex-col items-center justify-center text-slate-300 bg-slate-50">
+             <ImageIcon size={40} className="opacity-20 mb-2" />
+             <div className="text-center px-4">
+               <p className="text-xs font-bold text-slate-400">{t(product.modelName)}</p>
+               <p className="text-[10px] text-slate-400">{product.sku}</p>
              </div>
           </div>
         )}
@@ -381,7 +391,6 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onClick, onEdit, onT
           {t(product.series).split(' ')[0]}
         </div>
         
-        {/* Sort/Move Controls - Only visible when watched */}
         {product.isWatched && (
           <div className="absolute top-4 left-4 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
               <button
@@ -401,29 +410,23 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onClick, onEdit, onT
           </div>
         )}
         
-        {/* Watch Button */}
         <button
           onClick={onToggleWatch}
-          title={product.isWatched ? "Unwatch" : "Watch"}
           className={`absolute top-4 right-4 w-9 h-9 backdrop-blur-sm rounded-full flex items-center justify-center transition-all ${product.isWatched ? 'bg-amber-400 text-white' : 'bg-white/80 text-slate-400 hover:text-amber-500 hover:bg-white'}`}
         >
           <Star size={16} fill={product.isWatched ? "currentColor" : "none"} />
         </button>
         
         <div className="absolute top-4 right-16 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-            {/* Edit Button */}
             <button
             onClick={onEdit}
-            title="Edit Product"
             className="w-9 h-9 bg-white/80 backdrop-blur-sm rounded-full flex items-center justify-center text-slate-500 hover:text-slate-900 hover:bg-white transition-all scale-90 group-hover:scale-100"
             >
             <Pencil size={16} />
             </button>
 
-            {/* Delete Button */}
             <button
             onClick={(e) => { e.stopPropagation(); onDelete(); }}
-            title="Delete Product"
             className="w-9 h-9 bg-white/80 backdrop-blur-sm rounded-full flex items-center justify-center text-slate-500 hover:text-red-600 hover:bg-white transition-all scale-90 group-hover:scale-100"
             >
             <Trash2 size={16} />
@@ -469,3 +472,5 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onClick, onEdit, onT
     </div>
   );
 };
+
+export default Dashboard;

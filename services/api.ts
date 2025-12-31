@@ -19,6 +19,25 @@ export const api = {
   },
 
   /**
+   * 上傳圖片至 Vercel Blob (Checklist 七)
+   * 將檔案上傳並獲取永久 URL
+   */
+  uploadImage: async (file: File): Promise<string> => {
+    const filename = `${Date.now()}-${file.name}`;
+    const response = await fetch(`/api/upload?filename=${encodeURIComponent(filename)}`, {
+      method: 'POST',
+      body: file, // 直接發送檔案流
+    });
+
+    if (!response.ok) {
+      throw new Error('圖片上傳失敗');
+    }
+
+    const blob = await response.json();
+    return blob.url; // 返回 Vercel Blob 的公共 URL
+  },
+
+  /**
    * 從遠端獲取工作區資料
    */
   loadData: async (): Promise<AppState | null> => {
@@ -39,6 +58,7 @@ export const api = {
    * 將當前狀態儲存至遠端
    */
   saveData: async (state: AppState): Promise<void> => {
+    // 在存檔前，確保所有圖片都已經是 URL 而非 Base64 (雖然前端已處理，這是雙重保險)
     const response = await fetch('/api/workspace', {
       method: 'POST',
       headers: { 
@@ -49,7 +69,7 @@ export const api = {
 
     if (!response.ok) {
         if (response.status === 413) {
-           throw new Error('資料體積過大 (圖片過多)，請減少附件數量再試。');
+           throw new Error('資料體積過大，請檢查是否有未處理的大圖。');
         }
         const errorText = await response.text();
         throw new Error(`同步失敗 (${response.status}): ${errorText.substring(0, 50)}`);
