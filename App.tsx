@@ -47,6 +47,25 @@ const App = () => {
   }, [language]);
 
   /**
+   * 從雲端載入資料
+   */
+  const handleLoadFromCloud = useCallback(async () => {
+    try {
+      const cloudData = await api.loadData();
+      if (cloudData) {
+        if (cloudData.products) setProducts(cloudData.products);
+        if (cloudData.shipments) setShipments(cloudData.shipments);
+        if (cloudData.testers) setTesters(cloudData.testers);
+        if (cloudData.users) setUsers(cloudData.users);
+        if (cloudData.language) setLanguage(cloudData.language);
+        if (cloudData.showAiInsights !== undefined) setShowAiInsights(cloudData.showAiInsights);
+      }
+    } catch (error) {
+      console.error('Failed to load cloud data:', error);
+    }
+  }, []);
+
+  /**
    * 將資料同步至雲端
    */
   const handleSyncToCloud = useCallback(async () => {
@@ -74,6 +93,15 @@ const App = () => {
       setTimeout(() => setSyncStatus('idle'), 5000);
     }
   }, [products, shipments, testers, users, language, showAiInsights, maxHistorySteps, syncStatus]);
+
+  /**
+   * 登入後自動載入
+   */
+  useEffect(() => {
+    if (isLoggedIn) {
+      handleLoadFromCloud();
+    }
+  }, [isLoggedIn, handleLoadFromCloud]);
 
   /**
    * 快捷鍵監聽 Ctrl+S / Cmd+S
@@ -219,7 +247,7 @@ const App = () => {
                 </span>
                 <span className="text-[10px] opacity-80 font-medium">
                   {syncStatus === 'saving' ? '請稍候，正在更新資料庫' :
-                   syncStatus === 'success' ? '所有變更已儲存' : '請檢查網路連線或稍後再試'}
+                   syncStatus === 'success' ? '所有變更已儲存' : '伺服器未響應或連線錯誤'}
                 </span>
               </div>
             </div>

@@ -21,13 +21,18 @@ export const api = {
   /**
    * 從遠端獲取工作區資料
    */
-  loadData: async (): Promise<AppState> => {
-    const response = await fetch('/api/workspace', {
-      method: 'GET',
-      headers: { 'Content-Type': 'application/json' },
-    });
-    if (!response.ok) throw new Error('無法載入遠端資料');
-    return response.json();
+  loadData: async (): Promise<AppState | null> => {
+    try {
+      const response = await fetch('/api/workspace', {
+        method: 'GET',
+        headers: { 'Content-Type': 'application/json' },
+      });
+      if (!response.ok) throw new Error(`HTTP Error: ${response.status}`);
+      return response.json();
+    } catch (err) {
+      console.warn('Could not load data from cloud:', err);
+      return null;
+    }
   },
 
   /**
@@ -39,6 +44,9 @@ export const api = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(state),
     });
-    if (!response.ok) throw new Error('資料同步至伺服器失敗');
+    if (!response.ok) {
+        const errorMsg = await response.text();
+        throw new Error(`Sync Failed (${response.status}): ${errorMsg}`);
+    }
   }
 };
