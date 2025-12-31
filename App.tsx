@@ -23,20 +23,20 @@ export interface LanguageContextType {
 }
 
 export const LanguageContext = createContext<LanguageContextType>({
-  language: 'zh',
+  language: 'en',
   setLanguage: () => {},
-  t: (str) => (str ? (str.zh || str.en || '') : ''),
+  t: (str) => (str ? (str.en || str.zh || '') : ''),
 });
 
 const PageLoader = () => (
   <div className="flex-1 flex flex-col items-center justify-center bg-slate-50 min-h-[60vh]">
     <Loader2 size={40} className="text-intenza-600 animate-spin mb-4" />
-    <p className="text-slate-500 font-medium animate-pulse text-sm">正在載入模組...</p>
+    <p className="text-slate-500 font-medium animate-pulse text-sm">Loading module...</p>
   </div>
 );
 
 const App = () => {
-  const [language, setLanguage] = useState<Language>('zh');
+  const [language, setLanguage] = useState<Language>('en'); // Default to English
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [currentUser, setCurrentUser] = useState<{username: string, role: 'admin' | 'user'} | null>(null);
   
@@ -85,7 +85,7 @@ const App = () => {
       }, isAutoSync ? 2000 : 3000);
     } catch (error: any) {
       setSyncStatus('error');
-      setErrorDetail(error.message || '連線錯誤');
+      setErrorDetail(error.message || 'Connection Error');
       isSyncingRef.current = false;
     }
   }, [products, seriesList, shipments, testers, users, language, showAiInsights, maxHistorySteps, isLoggedIn]);
