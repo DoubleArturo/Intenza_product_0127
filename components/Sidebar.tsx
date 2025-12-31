@@ -3,6 +3,7 @@ import React, { useContext, useState } from 'react';
 import { NavLink } from 'react-router-dom';
 import { LayoutDashboard, BarChart2, Settings, LogOut, CloudUpload, CloudDownload, Cloud, Loader2 } from 'lucide-react';
 import { LanguageContext } from '../App';
+import LanguageSwitcher from './LanguageSwitcher';
 
 interface SidebarProps {
   onLogout: () => void;
@@ -38,7 +39,7 @@ const Sidebar: React.FC<SidebarProps> = ({ onLogout, isAdmin, onPush, onPull, sy
           I
         </div>
         <div className={`transition-all duration-300 overflow-hidden whitespace-nowrap ${isExpanded ? 'opacity-100 w-auto' : 'opacity-0 w-0'}`}>
-          <span className="text-xl font-bold tracking-tight text-slate-900">INTENZA</span>
+          <span className="text-xl font-bold tracking-tight text-slate-900 uppercase">Intenza</span>
         </div>
       </div>
 
@@ -58,12 +59,12 @@ const Sidebar: React.FC<SidebarProps> = ({ onLogout, isAdmin, onPush, onPull, sy
         </NavLink>
       </nav>
 
-      {/* 雲端共享中心 (Push / Pull) - 對所有用戶開放 */}
+      {/* Cloud Center */}
       <div className="px-3 mb-4">
         <div className={`bg-slate-50 rounded-2xl p-2 transition-all duration-300 ${isExpanded ? 'opacity-100' : 'opacity-100 flex flex-col items-center'}`}>
           <div className={`mb-2 px-2 flex items-center justify-between w-full ${!isExpanded ? 'hidden' : ''}`}>
              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1">
-                <Cloud size={10} /> Cloud Center
+                <Cloud size={10} /> {t({ en: 'Cloud Sync', zh: '雲端同步' })}
              </span>
              {syncStatus === 'saving' && <Loader2 size={10} className="text-intenza-600 animate-spin" />}
           </div>
@@ -72,7 +73,7 @@ const Sidebar: React.FC<SidebarProps> = ({ onLogout, isAdmin, onPush, onPull, sy
             <button 
               onClick={(e) => { e.preventDefault(); onPush(); }}
               disabled={syncStatus === 'saving'}
-              title="Push to Cloud"
+              title={t({ en: 'Push', zh: '推送' })}
               className={`flex-1 flex items-center justify-center gap-2 p-2 rounded-lg transition-all ${
                 syncStatus === 'saving' ? 'bg-slate-200 text-slate-400' : 'bg-white border border-slate-200 text-slate-600 hover:text-intenza-600 hover:border-intenza-200 hover:shadow-sm'
               }`}
@@ -83,7 +84,7 @@ const Sidebar: React.FC<SidebarProps> = ({ onLogout, isAdmin, onPush, onPull, sy
             <button 
               onClick={(e) => { e.preventDefault(); onPull(); }}
               disabled={syncStatus === 'saving'}
-              title="Pull from Cloud"
+              title={t({ en: 'Pull', zh: '抓取' })}
               className={`flex-1 flex items-center justify-center gap-2 p-2 rounded-lg transition-all ${
                 syncStatus === 'saving' ? 'bg-slate-200 text-slate-400' : 'bg-white border border-slate-200 text-slate-600 hover:text-emerald-600 hover:border-emerald-200 hover:shadow-sm'
               }`}
@@ -96,8 +97,16 @@ const Sidebar: React.FC<SidebarProps> = ({ onLogout, isAdmin, onPush, onPull, sy
       </div>
 
       <div className="px-3 pb-6 space-y-2">
-        <div className="pt-4 border-t border-slate-100">
-          {/* 僅 Admin 可見設定 */}
+        <div className="pt-4 border-t border-slate-100 space-y-2">
+          
+          {/* Language Switcher - Only fully visible when expanded */}
+          {isExpanded && (
+            <div className="px-1 py-1">
+              <LanguageSwitcher />
+            </div>
+          )}
+
+          {/* Settings */}
           {isAdmin && (
             <NavLink to="/settings" className={linkClass}>
               <div className="flex-shrink-0"><Settings size={22} /></div>
