@@ -1,6 +1,7 @@
+
 import React, { useState, useRef, useEffect, useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Search, ChevronRight, X, Upload, Pencil, Save, Star, Trash2, Image as ImageIcon, Loader2 } from 'lucide-react';
+import { Plus, Search, ChevronRight, X, Upload, Pencil, Save, Star, Trash2, Image as ImageIcon, Loader2, ArrowUpDown } from 'lucide-react';
 import { ProductModel, LocalizedString, EcoStatus } from '../types';
 import { LanguageContext } from '../App';
 import { api } from '../services/api';
@@ -15,11 +16,14 @@ interface DashboardProps {
   onDeleteProduct: (id: string) => void;
 }
 
+type SortType = 'NAME_ASC' | 'SKU_ASC' | 'SKU_DESC';
+
 export const Dashboard: React.FC<DashboardProps> = ({ products, seriesList, onAddProduct, onUpdateProduct, onToggleWatch, onDeleteProduct }) => {
   const navigate = useNavigate();
   const { language, t } = useContext(LanguageContext);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedSeries, setSelectedSeries] = useState<string>('ALL');
+  const [sortOrder, setSortOrder] = useState<SortType>('NAME_ASC');
   
   // Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -61,7 +65,6 @@ export const Dashboard: React.FC<DashboardProps> = ({ products, seriesList, onAd
     }
   }, [isModalOpen, editingProduct, seriesList, t]);
 
-  // 優化篩選與排序邏輯
   const filteredProducts = products.filter(p => {
     const modelStr = t(p.modelName).toLowerCase();
     const skuStr = p.sku.toLowerCase();
@@ -72,7 +75,12 @@ export const Dashboard: React.FC<DashboardProps> = ({ products, seriesList, onAd
     
     return matchesSearch && matchesSeries;
   }).sort((a, b) => {
-    // 嚴格按照型號名稱由小到大排序 (A-Z, 0-9)
+    if (sortOrder === 'SKU_ASC') {
+      return a.sku.localeCompare(b.sku, undefined, { numeric: true });
+    } else if (sortOrder === 'SKU_DESC') {
+      return b.sku.localeCompare(a.sku, undefined, { numeric: true });
+    }
+    // Default: Sort by model name Asc
     return t(a.modelName).localeCompare(t(b.modelName), undefined, { numeric: true, sensitivity: 'base' });
   });
 
@@ -152,8 +160,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ products, seriesList, onAd
         </button>
       </header>
 
-      {/* Filters */}
-      <div className="flex flex-col md:flex-row gap-6 mb-10 items-start md:items-center">
+      {/* Filters & Sorting */}
+      <div className="flex flex-col xl:flex-row gap-6 mb-10 items-start xl:items-center">
         <div className="flex items-center bg-slate-200/50 rounded-xl p-1.5 overflow-x-auto max-w-full no-scrollbar shadow-inner">
           {seriesTabs.map((s) => (
             <button
@@ -170,15 +178,32 @@ export const Dashboard: React.FC<DashboardProps> = ({ products, seriesList, onAd
           ))}
         </div>
         
-        <div className="relative flex-1 max-w-md w-full">
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
-          <input
-            type="text"
-            placeholder={t({ en: 'Search by model or SKU...', zh: '搜尋型號或 SKU...'})}
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-12 pr-4 py-3 bg-white border-2 border-slate-100 rounded-2xl focus:outline-none focus:border-slate-900 transition-all shadow-sm text-sm font-medium"
-          />
+        <div className="flex flex-col sm:flex-row items-center gap-4 flex-1 w-full">
+          <div className="relative flex-1 w-full">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
+            <input
+              type="text"
+              placeholder={t({ en: 'Search by model or SKU...', zh: '搜尋型號或 SKU...'})}
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full pl-12 pr-4 py-3 bg-white border-2 border-slate-100 rounded-2xl focus:outline-none focus:border-slate-900 transition-all shadow-sm text-sm font-medium"
+            />
+          </div>
+          
+          <div className="flex bg-slate-100 p-1 rounded-xl shadow-inner shrink-0">
+            <button 
+              onClick={() => setSortOrder('NAME_ASC')}
+              className={`px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${sortOrder === 'NAME_ASC' ? 'bg-white shadow-md text-slate-900' : 'text-slate-400'}`}
+            >
+              Name
+            </button>
+            <button 
+              onClick={() => setSortOrder(sortOrder === 'SKU_ASC' ? 'SKU_DESC' : 'SKU_ASC')}
+              className={`px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2 ${sortOrder.startsWith('SKU') ? 'bg-white shadow-md text-slate-900' : 'text-slate-400'}`}
+            >
+              SKU {sortOrder.startsWith('SKU') && <ArrowUpDown size={12} className={sortOrder === 'SKU_DESC' ? 'rotate-180 transition-transform' : 'transition-transform'} />}
+            </button>
+          </div>
         </div>
       </div>
 
@@ -190,7 +215,6 @@ export const Dashboard: React.FC<DashboardProps> = ({ products, seriesList, onAd
             className="group bg-white rounded-[2rem] border-2 border-slate-100 shadow-sm hover:shadow-2xl hover:shadow-slate-200/60 hover:border-slate-200 transition-all duration-300 overflow-hidden flex flex-col cursor-pointer active:scale-[0.98]"
             onClick={() => navigate(`/product/${p.id}`)}
           >
-            {/* Image Container - Use object-contain to prevent cutting */}
             <div className="relative h-64 bg-slate-50 p-6 flex items-center justify-center overflow-hidden border-b border-slate-50">
               {p.imageUrl ? (
                 <img 
@@ -227,7 +251,6 @@ export const Dashboard: React.FC<DashboardProps> = ({ products, seriesList, onAd
               </div>
             </div>
 
-            {/* Content Container */}
             <div className="p-6 flex-1 flex flex-col">
               <div className="flex flex-col gap-2 mb-4">
                 <div className="flex items-center gap-2 flex-wrap">
@@ -280,7 +303,6 @@ export const Dashboard: React.FC<DashboardProps> = ({ products, seriesList, onAd
             </div>
             
             <form onSubmit={handleSubmit} className="p-8 space-y-8 max-h-[75vh] overflow-y-auto custom-scrollbar">
-              {/* Image Upload Area */}
               <div 
                 onClick={() => fileInputRef.current?.click()}
                 className="relative h-56 bg-slate-50 rounded-3xl border-4 border-dashed border-slate-200 flex flex-col items-center justify-center cursor-pointer hover:border-slate-400 hover:bg-slate-100 transition-all group overflow-hidden shadow-inner"

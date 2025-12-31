@@ -7,7 +7,7 @@ import {
 import { 
   ArrowLeft, PieChart as PieIcon, BarChart as BarIcon, Search, FileSpreadsheet, 
   Layers, Palette, Box, Activity, ChevronDown, 
-  Image as ImageIcon, ClipboardList, User, Globe, MapPin
+  Image as ImageIcon, ClipboardList, User, Globe
 } from 'lucide-react';
 import { ShipmentData, ChartViewType, ProductModel, Tester } from '../types';
 import GeminiInsight from '../components/GeminiInsight';
@@ -55,12 +55,10 @@ const Analytics: React.FC<AnalyticsProps> = ({ products, shipments, onImportData
 
   /**
    * Enhanced Drill-Down Logic
-   * Defines what the "Next" level should be based on current selection
    */
   const currentLevel = useMemo(() => {
     const depth = drillPath.length;
     
-    // Path if starting from BUYER view
     if (dimension === 'BUYER') {
       switch (depth) {
         case 0: return 'BUYER';
@@ -71,7 +69,6 @@ const Analytics: React.FC<AnalyticsProps> = ({ products, shipments, onImportData
       }
     }
 
-    // Path if starting from COLOR view
     if (dimension === 'COLOR') {
       switch (depth) {
         case 0: return 'COLOR';
@@ -82,7 +79,6 @@ const Analytics: React.FC<AnalyticsProps> = ({ products, shipments, onImportData
       }
     }
     
-    // Path if starting from PRODUCT (Metric) view
     switch (depth) {
       case 0: return 'CATEGORY';
       case 1: return 'SERIES';
@@ -174,15 +170,6 @@ const Analytics: React.FC<AnalyticsProps> = ({ products, shipments, onImportData
       counts[color] = (counts[color] || 0) + s.quantity;
     });
     return Object.entries(counts).map(([name, value]) => ({ name, value }));
-  }, [filteredShipments]);
-
-  const countryData = useMemo(() => {
-    const counts: Record<string, number> = {};
-    filteredShipments.forEach(s => {
-      const country = s.country || 'Global';
-      counts[country] = (counts[country] || 0) + s.quantity;
-    });
-    return Object.entries(counts).map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value);
   }, [filteredShipments]);
 
   const traceResults = useMemo(() => {
@@ -429,7 +416,7 @@ const Analytics: React.FC<AnalyticsProps> = ({ products, shipments, onImportData
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+          <div className="grid grid-cols-1 gap-8">
             {/* Color Analysis with Integrated Chart */}
             <div className="bg-white rounded-[2.5rem] p-8 border border-slate-100 shadow-sm flex flex-col">
               <div className="flex items-center gap-3 mb-8">
@@ -439,55 +426,33 @@ const Analytics: React.FC<AnalyticsProps> = ({ products, shipments, onImportData
                 <h3 className="font-black text-xl text-slate-900 tracking-tight">Finishing Distribution</h3>
               </div>
               <div className="flex-1 grid grid-cols-1 xl:grid-cols-2 gap-6">
-                <div className="h-[200px]">
+                <div className="h-[250px]">
                   <ResponsiveContainer width="100%" height="100%">
                     <PieChart>
                       <Pie
                         data={colorData}
-                        innerRadius={40}
-                        outerRadius={65}
+                        innerRadius={50}
+                        outerRadius={85}
                         dataKey="value"
                         paddingAngle={5}
                       >
                         {colorData.map((entry, index) => (
                           <Cell key={`cell-${index}`} fill={COLOR_MAP[entry.name] || COLORS[index % COLORS.length]} />
                         ))}
+                        <Tooltip />
                       </Pie>
-                      <Tooltip />
                     </PieChart>
                   </ResponsiveContainer>
                 </div>
-                <div className="grid grid-cols-2 gap-3">
-                  {colorData.slice(0, 4).map(c => (
-                    <div key={c.name} className="flex flex-col items-center p-3 bg-slate-50 rounded-2xl border border-slate-100 hover:bg-white transition-all group">
-                        <div className="w-8 h-8 rounded-full mb-2 shadow-sm border border-slate-200" style={{ backgroundColor: COLOR_MAP[c.name] || '#e2e8f0' }} />
-                        <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">{c.name}</span>
-                        <span className="text-lg font-black text-slate-900">{c.value.toLocaleString()}</span>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 self-center">
+                  {colorData.map(c => (
+                    <div key={c.name} className="flex flex-col items-center p-4 bg-slate-50 rounded-2xl border border-slate-100 hover:bg-white transition-all group">
+                        <div className="w-10 h-10 rounded-full mb-2 shadow-sm border border-slate-200" style={{ backgroundColor: COLOR_MAP[c.name] || '#e2e8f0' }} />
+                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{c.name}</span>
+                        <span className="text-xl font-black text-slate-900">{c.value.toLocaleString()}</span>
                     </div>
                   ))}
                 </div>
-              </div>
-            </div>
-
-            {/* Regional Reach */}
-            <div className="bg-white rounded-[2.5rem] p-8 border border-slate-100 shadow-sm">
-              <div className="flex items-center gap-3 mb-8">
-                <div className="p-2 bg-intenza-600 rounded-lg text-white">
-                  <Globe size={20} />
-                </div>
-                <h3 className="font-black text-xl text-slate-900 tracking-tight">Market Reach</h3>
-              </div>
-              <div className="space-y-4 max-h-[200px] overflow-y-auto pr-2 custom-scrollbar">
-                {countryData.map(c => (
-                  <div key={c.name} className="flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-100 hover:border-slate-300 transition-colors">
-                    <div className="flex items-center gap-3">
-                       <MapPin size={14} className="text-slate-400" />
-                       <span className="text-xs font-black uppercase text-slate-700 tracking-tight">{c.name}</span>
-                    </div>
-                    <span className="text-sm font-black text-slate-900 font-mono">{c.value.toLocaleString()}</span>
-                  </div>
-                ))}
-                {countryData.length === 0 && <p className="text-center py-6 text-xs text-slate-400 font-bold uppercase tracking-widest">No Regional Data</p>}
               </div>
             </div>
           </div>
@@ -511,14 +476,6 @@ const Analytics: React.FC<AnalyticsProps> = ({ products, shipments, onImportData
             </div>
             
             <div className="space-y-4 overflow-y-auto flex-1 pr-2 custom-scrollbar">
-              {traceSearchQuery && traceResults.length === 0 && (
-                <div className="text-center py-10">
-                   <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-3">
-                      <Search size={24} className="opacity-10" />
-                   </div>
-                   <p className="text-xs font-bold text-slate-300 italic uppercase">No matches found</p>
-                </div>
-              )}
               {traceResults.map(r => (
                 <div key={r.id} className="p-4 bg-white border-2 border-slate-50 rounded-2xl hover:border-slate-200 transition-all cursor-default">
                   <div className="flex justify-between items-start mb-3">
