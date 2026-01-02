@@ -36,11 +36,12 @@ const Sidebar: React.FC<SidebarProps> = ({ onLogout, isAdmin, onPush, onPull, sy
       onMouseLeave={() => setIsExpanded(false)}
     >
       <div className={`mb-8 flex items-center gap-3 px-4 py-6 transition-all duration-300 ${!isExpanded ? 'justify-center' : ''}`}>
-        <div className={`w-10 h-10 flex items-center justify-center flex-shrink-0 overflow-hidden ${!customLogoUrl ? 'bg-intenza-600 rounded-xl shadow-intenza-500/20 shadow-lg text-white font-bold text-xl' : ''}`}>
+        {/* Added bg-slate-900 to ensure visibility for white/reversed logos */}
+        <div className={`w-10 h-10 flex items-center justify-center flex-shrink-0 overflow-hidden bg-slate-900 rounded-xl shadow-lg transition-transform ${isExpanded ? 'scale-110' : ''}`}>
           {customLogoUrl ? (
-            <img src={customLogoUrl} alt="Logo" className="w-full h-full object-contain" />
+            <img src={customLogoUrl} alt="Logo" className="w-full h-full object-contain p-1.5" />
           ) : (
-            "I"
+            <span className="text-white font-bold text-xl">I</span>
           )}
         </div>
         <div className={`transition-all duration-300 overflow-hidden whitespace-nowrap ${isExpanded ? 'opacity-100 w-auto' : 'opacity-0 w-0'}`}>

@@ -209,20 +209,21 @@ const Settings: React.FC<SettingsProps> = ({
                  <h2 className="text-xl font-bold text-slate-900">品牌視覺配置 (Login Logo)</h2>
              </div>
              <div className="flex flex-col md:flex-row gap-8 items-center">
-                <div className="w-32 h-32 rounded-2xl bg-slate-100 border-2 border-dashed border-slate-200 flex items-center justify-center overflow-hidden relative group">
+                {/* Changed background to bg-slate-900 to accommodate white logos */}
+                <div className="w-32 h-32 rounded-2xl bg-slate-900 border-2 border-slate-800 flex items-center justify-center overflow-hidden relative group shadow-inner">
                     {currentAppState.customLogoUrl ? (
-                        <img src={currentAppState.customLogoUrl} alt="Logo Preview" className="w-full h-full object-cover" />
+                        <img src={currentAppState.customLogoUrl} alt="Logo Preview" className="w-full h-full object-contain p-2" />
                     ) : (
-                        <div className="text-slate-300 font-bold text-4xl">I</div>
+                        <div className="text-white font-bold text-4xl">I</div>
                     )}
                     {isUploadingLogo && (
-                        <div className="absolute inset-0 bg-white/80 flex items-center justify-center">
-                            <Loader2 className="animate-spin text-intenza-600" />
+                        <div className="absolute inset-0 bg-slate-900/80 flex items-center justify-center">
+                            <Loader2 className="animate-spin text-white" />
                         </div>
                     )}
                 </div>
                 <div className="flex-1 space-y-4">
-                    <p className="text-sm text-slate-500">上傳您的公司 Logo。此 Logo 將取代登入介面的預設圖示。建議使用 1:1 比例之圖片。</p>
+                    <p className="text-sm text-slate-500">上傳您的公司 Logo。此 Logo 將取代登入介面的預設圖示。由於 Sidebar 與 Settings 採用淺色背景，建議上傳具備對比度的標誌，系統已為預設預覽套用深色底色以利檢視「反白」標誌。</p>
                     <div className="flex gap-3">
                         <button 
                             onClick={() => logoInputRef.current?.click()}
