@@ -298,6 +298,54 @@ const Analytics: React.FC<AnalyticsProps> = ({ products, shipments, onImportData
     );
   };
 
+  // Custom Segment Label for Pie Chart with Images
+  const renderCustomizedPieLabel = (props: any) => {
+    const { cx, cy, midAngle, innerRadius, outerRadius, name, imageUrl } = props;
+    const showImage = (currentLevel === 'SKU' || currentLevel === 'VERSION') && imageUrl;
+    
+    const RADIAN = Math.PI / 180;
+    const radius = outerRadius + (showImage ? 40 : 25);
+    const x = cx + radius * Math.cos(-midAngle * RADIAN);
+    const y = cy + radius * Math.sin(-midAngle * RADIAN);
+    const textAnchor = x > cx ? 'start' : 'end';
+
+    return (
+      <g>
+        <text 
+          x={x} 
+          y={showImage ? y - 12 : y} 
+          fill="#0f172a" 
+          textAnchor={textAnchor} 
+          dominantBaseline="central" 
+          fontSize={9} 
+          fontWeight="900" 
+          className="uppercase tracking-tighter"
+        >
+          {name.length > 12 ? name.substring(0, 10) + '..' : name}
+        </text>
+        {showImage && (
+          <g transform={`translate(${textAnchor === 'start' ? x : x - 30}, ${y - 5})`}>
+            <defs>
+              <clipPath id={`pie-clip-${name}`}>
+                <rect width="30" height="30" rx="8" ry="8" />
+              </clipPath>
+            </defs>
+            <rect width="30" height="30" rx="8" ry="8" fill="#fff" stroke="#f1f5f9" strokeWidth="1" className="shadow-sm" />
+            <image
+              width="26"
+              height="26"
+              x="2"
+              y="2"
+              href={imageUrl}
+              preserveAspectRatio="xMidYMid meet"
+              clipPath={`url(#pie-clip-${name})`}
+            />
+          </g>
+        )}
+      </g>
+    );
+  };
+
   return (
     <div className="p-8 w-full min-h-screen bg-slate-50/30">
       <header className="mb-10 flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-200 pb-8">
@@ -378,7 +426,7 @@ const Analytics: React.FC<AnalyticsProps> = ({ products, shipments, onImportData
           </div>
 
           {/* Main Content Area */}
-          <div className="bg-white rounded-[2.5rem] p-10 border border-slate-100 shadow-sm min-h-[550px] flex flex-col relative">
+          <div className="bg-white rounded-[2.5rem] p-10 border border-slate-100 shadow-sm min-h-[550px] flex flex-col relative overflow-hidden">
             
             {viewMode === 'SHIPMENTS' && (
               <>
@@ -390,17 +438,19 @@ const Analytics: React.FC<AnalyticsProps> = ({ products, shipments, onImportData
                 <div className="flex-1 mt-6 animate-fade-in">
                   <ResponsiveContainer width="100%" height={500}>
                     {chartType === 'PIE' ? (
-                      <PieChart>
+                      <PieChart margin={{ top: 40, bottom: 40, left: 40, right: 40 }}>
                         <Pie 
                           data={chartData} 
                           cx="50%" cy="50%" 
-                          innerRadius="65%" outerRadius="90%" 
+                          innerRadius="55%" outerRadius="75%" 
                           dataKey="value" 
                           onClick={handleDrill}
                           cursor="pointer"
                           stroke="#fff"
                           strokeWidth={4}
                           paddingAngle={2}
+                          label={renderCustomizedPieLabel}
+                          labelLine={{ stroke: '#cbd5e1', strokeWidth: 1 }}
                         >
                           {chartData.map((entry, i) => (
                             <Cell 
@@ -414,8 +464,8 @@ const Analytics: React.FC<AnalyticsProps> = ({ products, shipments, onImportData
                               const { cx, cy } = viewBox;
                               return (
                                 <text x={cx} y={cy} textAnchor="middle" dominantBaseline="central">
-                                  <tspan x={cx} y={cy - 12} className="text-5xl font-black fill-slate-900 tracking-tighter">{totalQuantity.toLocaleString()}</tspan>
-                                  <tspan x={cx} y={cy + 25} className="text-xs font-black uppercase tracking-[0.2em] fill-slate-300">Total Units Filtered</tspan>
+                                  <tspan x={cx} y={cy - 12} className="text-4xl font-black fill-slate-900 tracking-tighter">{totalQuantity.toLocaleString()}</tspan>
+                                  <tspan x={cx} y={cy + 25} className="text-[10px] font-black uppercase tracking-[0.2em] fill-slate-300">Total Units</tspan>
                                 </text>
                               );
                             }}
@@ -471,7 +521,6 @@ const Analytics: React.FC<AnalyticsProps> = ({ products, shipments, onImportData
                 
                 <div className="space-y-4">
                   {filteredProducts.map(p => {
-                    // Fix: Explicitly type the reducers to avoid 'unknown' errors
                     const totalTasks = (p.ergoProjects || []).reduce((acc: number, proj) => {
                       const taskLists = Object.values(proj.tasks || {}) as any[][];
                       return acc + taskLists.reduce((taskAcc: number, taskList) => taskAcc + taskList.length, 0);
