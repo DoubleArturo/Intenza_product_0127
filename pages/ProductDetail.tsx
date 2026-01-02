@@ -1,7 +1,7 @@
 
 import React, { useState, useMemo, useEffect, useContext, useRef } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
-import { ArrowLeft, GitCommit, UserCheck, Activity, AlertTriangle, CheckCircle, Clock, Calendar, Layers, Users, Plus, X, Pencil, Trash2, Upload, MessageSquare, ChevronsRight, ChevronsLeft, Tag, FileText, User, Database, Mars, Venus, Link as LinkIcon, Search, ClipboardList, ListPlus, Check, ChevronDown, RefreshCw, HelpCircle, BarChart3, AlertCircle, PlayCircle, Loader2, StickyNote, Lightbulb, Paperclip, Video, Image as ImageIcon, Save } from 'lucide-react';
+import { ArrowLeft, GitCommit, UserCheck, Activity, AlertTriangle, CheckCircle, Clock, Calendar, Layers, Users, Plus, X, Pencil, Trash2, Upload, MessageSquare, ChevronsRight, ChevronsLeft, Tag, FileText, User, Database, Mars, Venus, Link as LinkIcon, Search, ClipboardList, ListPlus, Check, ChevronDown, RefreshCw, HelpCircle, BarChart3, AlertCircle, PlayCircle, Loader2, StickyNote, Lightbulb, Paperclip, Video, Image as ImageIcon, Save, Star } from 'lucide-react';
 import { ProductModel, TestStatus, DesignChange, LocalizedString, TestResult, EcoStatus, ErgoFeedback, ErgoProject, Tester, ErgoProjectCategory, NgReason, ProjectOverallStatus, Gender, NgDecisionStatus, EvaluationTask } from '../types';
 import GeminiInsight from '../components/GeminiInsight';
 import { LanguageContext } from '../App';
@@ -125,6 +125,10 @@ const ProductDetail: React.FC<ProductDetailProps> = ({ products, testers = [], o
     }
   };
 
+  const handleSetCurrentVersion = (version: string) => {
+    onUpdateProduct({ ...product, currentVersion: version });
+  };
+
   // Durability Test Handlers
   const handleOpenTestModal = (test: TestResult | null = null) => {
     setEditingTest(test);
@@ -193,7 +197,16 @@ const ProductDetail: React.FC<ProductDetailProps> = ({ products, testers = [], o
       <div className="w-full px-8 py-8 animate-slide-up">
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
           <div className="lg:col-span-3 space-y-6">
-             {activeTab === 'DESIGN' && <DesignSection product={product} onAddEco={() => handleOpenEcoModal()} onEditEco={handleOpenEcoModal} onDeleteEco={handleDeleteEco} onDeleteVersion={handleDeleteVersion} />}
+             {activeTab === 'DESIGN' && (
+               <DesignSection 
+                 product={product} 
+                 onAddEco={() => handleOpenEcoModal()} 
+                 onEditEco={handleOpenEcoModal} 
+                 onDeleteEco={handleDeleteEco} 
+                 onDeleteVersion={handleDeleteVersion} 
+                 onSetCurrentVersion={handleSetCurrentVersion}
+               />
+             )}
              {activeTab === 'ERGO' && <div ref={ergoSectionRef}><ErgoSection product={product} testers={testers} onUpdateProduct={onUpdateProduct} highlightedFeedback={highlightedFeedback} /></div>}
              {activeTab === 'LIFE' && <LifeSection product={product} onAddTest={() => handleOpenTestModal()} onEditTest={handleOpenTestModal} onDeleteTest={handleDeleteTest} />}
           </div>
@@ -310,7 +323,7 @@ const categoryStyles: Record<ErgoProjectCategory, { bg: string, border: string, 
 };
 
 // Design Section
-const DesignSection = ({ product, onAddEco, onEditEco, onDeleteEco, onDeleteVersion }: { product: ProductModel, onAddEco: () => void, onEditEco: (eco: DesignChange) => void, onDeleteEco: (id: string) => void, onDeleteVersion: (version: string) => void }) => {
+const DesignSection = ({ product, onAddEco, onEditEco, onDeleteEco, onDeleteVersion, onSetCurrentVersion }: { product: ProductModel, onAddEco: () => void, onEditEco: (eco: DesignChange) => void, onDeleteEco: (id: string) => void, onDeleteVersion: (version: string) => void, onSetCurrentVersion: (version: string) => void }) => {
   const { t, language } = useContext(LanguageContext);
   const navigate = useNavigate();
   const versions = useMemo(() => Array.from(new Set([product.currentVersion, ...product.designHistory.map(h => h.version)])).sort().reverse(), [product]);
@@ -339,13 +352,22 @@ const DesignSection = ({ product, onAddEco, onEditEco, onDeleteEco, onDeleteVers
         </div>
         <div className="p-8 bg-white">
           <div className="flex items-center justify-between mb-8 border-b border-slate-50 pb-4">
-             <h3 className="text-2xl font-bold text-slate-800 flex items-center gap-3">
-                {selectedVersion}
-                <span className={`text-xs font-normal text-white px-2 py-1 rounded-md uppercase tracking-wider ${selectedVersion === product.currentVersion ? 'bg-slate-900' : 'bg-slate-400'}`}>
-                  {selectedVersion === product.currentVersion ? 'Current Production' : 'Archived Version'}
-                </span>
-             </h3>
-             {/* Delete Version button moved here to prevent accidental triggers */}
+             <div className="flex flex-col gap-1">
+                <h3 className="text-2xl font-bold text-slate-800 flex items-center gap-3">
+                    {selectedVersion}
+                    <span className={`text-xs font-normal text-white px-2 py-1 rounded-md uppercase tracking-wider ${selectedVersion === product.currentVersion ? 'bg-slate-900' : 'bg-slate-400'}`}>
+                    {selectedVersion === product.currentVersion ? 'Current Production' : 'Archived Version'}
+                    </span>
+                </h3>
+                {selectedVersion !== product.currentVersion && (
+                   <button 
+                      onClick={() => onSetCurrentVersion(selectedVersion)}
+                      className="text-[11px] font-bold text-emerald-600 hover:text-emerald-700 flex items-center gap-1 w-fit mt-1"
+                   >
+                      <Star size={12} fill="currentColor" /> {t({ en: 'Set as Current Production Version', zh: '設為目前的正式量產版本' })}
+                   </button>
+                )}
+             </div>
              <button 
                 onClick={() => onDeleteVersion(selectedVersion)} 
                 className="flex items-center gap-1 text-xs font-bold text-slate-400 hover:text-red-500 transition-colors px-3 py-1.5 rounded-lg hover:bg-red-50"
