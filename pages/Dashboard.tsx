@@ -1,7 +1,7 @@
 
 import React, { useState, useRef, useEffect, useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Search, ChevronRight, X, Upload, Pencil, Save, Star, Trash2, Image as ImageIcon, Loader2, ArrowUpDown } from 'lucide-react';
+import { Plus, Search, ChevronRight, X, Upload, Pencil, Save, Star, Trash2, Image as ImageIcon, Loader2, ArrowUpDown, Calendar } from 'lucide-react';
 import { ProductModel, LocalizedString, EcoStatus } from '../types';
 import { LanguageContext } from '../App';
 import { api } from '../services/api';
@@ -23,7 +23,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ products, seriesList, onAd
   const { language, t } = useContext(LanguageContext);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedSeries, setSelectedSeries] = useState<string>('ALL');
-  const [sortOrder, setSortOrder] = useState<SortType>('NAME_ASC');
+  // Changed default sort order to SKU_ASC as requested
+  const [sortOrder, setSortOrder] = useState<SortType>('SKU_ASC');
   
   // Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -149,6 +150,14 @@ export const Dashboard: React.FC<DashboardProps> = ({ products, seriesList, onAd
     handleCloseModal();
   };
 
+  // Helper to get latest implementation info
+  const getLatestProductionInfo = (p: ProductModel) => {
+    const prodChanges = (p.designHistory || [])
+      .filter(h => h.status === EcoStatus.IN_PRODUCTION && h.implementationDate)
+      .sort((a, b) => new Date(b.implementationDate!).getTime() - new Date(a.implementationDate!).getTime());
+    return prodChanges[0];
+  };
+
   return (
     <div className="p-8 w-full mx-auto relative">
       <header className="mb-8 flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-200 pb-8">
@@ -214,79 +223,89 @@ export const Dashboard: React.FC<DashboardProps> = ({ products, seriesList, onAd
 
       {/* Product Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
-        {filteredProducts.map((p) => (
-          <div 
-            key={p.id} 
-            className="group bg-white rounded-[2rem] border-2 border-slate-100 shadow-sm hover:shadow-2xl hover:shadow-slate-200/60 hover:border-slate-200 transition-all duration-300 overflow-hidden flex flex-col cursor-pointer active:scale-[0.98]"
-            onClick={() => navigate(`/product/${p.id}`)}
-          >
-            <div className="relative h-64 bg-slate-50 p-6 flex items-center justify-center overflow-hidden border-b border-slate-50">
-              {p.imageUrl ? (
-                <img 
-                  src={p.imageUrl} 
-                  alt={t(p.modelName)} 
-                  className="w-full h-full object-contain transition-transform duration-500 group-hover:scale-105" 
-                />
-              ) : (
-                <div className="w-full h-full flex flex-col items-center justify-center text-slate-300 bg-slate-100 rounded-2xl">
-                  <ImageIcon size={64} className="opacity-10 mb-2" />
-                  <span className="text-xs font-black uppercase tracking-widest opacity-30">No Preview</span>
+        {filteredProducts.map((p) => {
+          const productionInfo = getLatestProductionInfo(p);
+          return (
+            <div 
+              key={p.id} 
+              className="group bg-white rounded-[2rem] border-2 border-slate-100 shadow-sm hover:shadow-2xl hover:shadow-slate-200/60 hover:border-slate-200 transition-all duration-300 overflow-hidden flex flex-col cursor-pointer active:scale-[0.98]"
+              onClick={() => navigate(`/product/${p.id}`)}
+            >
+              <div className="relative h-64 bg-slate-50 p-6 flex items-center justify-center overflow-hidden border-b border-slate-50">
+                {p.imageUrl ? (
+                  <img 
+                    src={p.imageUrl} 
+                    alt={t(p.modelName)} 
+                    className="w-full h-full object-contain transition-transform duration-500 group-hover:scale-105" 
+                  />
+                ) : (
+                  <div className="w-full h-full flex flex-col items-center justify-center text-slate-300 bg-slate-100 rounded-2xl">
+                    <ImageIcon size={64} className="opacity-10 mb-2" />
+                    <span className="text-xs font-black uppercase tracking-widest opacity-30">No Preview</span>
+                  </div>
+                )}
+                
+                <div className="absolute top-4 right-4 flex flex-col gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-10">
+                  <button 
+                    onClick={(e) => { e.stopPropagation(); onToggleWatch(p.id); }}
+                    className={`p-2.5 rounded-full transition-all shadow-lg border ${p.isWatched ? 'bg-amber-400 text-white border-amber-300' : 'bg-white/95 text-slate-400 border-slate-100 hover:text-amber-500'}`}
+                  >
+                    <Star size={18} fill={p.isWatched ? 'currentColor' : 'none'} strokeWidth={2.5} />
+                  </button>
+                  <button 
+                    onClick={(e) => { e.stopPropagation(); handleStartEdit(p); }}
+                    className="p-2.5 bg-white/95 backdrop-blur-sm rounded-full text-slate-400 border border-slate-100 hover:text-slate-900 transition-all shadow-lg"
+                  >
+                    <Pencil size={18} strokeWidth={2.5} />
+                  </button>
+                  <button 
+                    onClick={(e) => { e.stopPropagation(); if(window.confirm('Delete product?')) onDeleteProduct(p.id); }}
+                    className="p-2.5 bg-white/95 backdrop-blur-sm rounded-full text-slate-400 border border-slate-100 hover:text-red-500 transition-all shadow-lg"
+                  >
+                    <Trash2 size={18} strokeWidth={2.5} />
+                  </button>
                 </div>
-              )}
-              
-              <div className="absolute top-4 right-4 flex flex-col gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-10">
-                <button 
-                  onClick={(e) => { e.stopPropagation(); onToggleWatch(p.id); }}
-                  className={`p-2.5 rounded-full transition-all shadow-lg border ${p.isWatched ? 'bg-amber-400 text-white border-amber-300' : 'bg-white/95 text-slate-400 border-slate-100 hover:text-amber-500'}`}
-                >
-                  <Star size={18} fill={p.isWatched ? 'currentColor' : 'none'} strokeWidth={2.5} />
-                </button>
-                <button 
-                  onClick={(e) => { e.stopPropagation(); handleStartEdit(p); }}
-                  className="p-2.5 bg-white/95 backdrop-blur-sm rounded-full text-slate-400 border border-slate-100 hover:text-slate-900 transition-all shadow-lg"
-                >
-                  <Pencil size={18} strokeWidth={2.5} />
-                </button>
-                <button 
-                  onClick={(e) => { e.stopPropagation(); if(window.confirm('Delete product?')) onDeleteProduct(p.id); }}
-                  className="p-2.5 bg-white/95 backdrop-blur-sm rounded-full text-slate-400 border border-slate-100 hover:text-red-500 transition-all shadow-lg"
-                >
-                  <Trash2 size={18} strokeWidth={2.5} />
-                </button>
               </div>
-            </div>
 
-            <div className="p-6 flex-1 flex flex-col">
-              <div className="flex flex-col gap-2 mb-4">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <h3 className="text-xl font-black text-slate-900 group-hover:text-intenza-600 transition-colors leading-tight">
-                    {t(p.modelName)}
-                  </h3>
-                  <span className="text-[11px] font-black bg-slate-900 text-white px-2.5 py-1 rounded-lg shadow-sm">
-                    {p.currentVersion}
+              <div className="p-6 flex-1 flex flex-col">
+                <div className="flex flex-col gap-2 mb-4">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <h3 className="text-xl font-black text-slate-900 group-hover:text-intenza-600 transition-colors leading-tight">
+                      {t(p.modelName)}
+                    </h3>
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-[11px] font-black bg-slate-900 text-white px-2.5 py-1 rounded-lg shadow-sm">
+                        {p.currentVersion}
+                      </span>
+                      {productionInfo && (
+                        <span className="text-[10px] font-bold text-slate-400 flex items-center gap-1 bg-slate-50 px-2 py-1 rounded-lg border border-slate-100">
+                          <Calendar size={10} /> {productionInfo.implementationDate}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  <span className="text-[11px] font-bold text-slate-400 tracking-wider uppercase">
+                    {t(p.series)}
                   </span>
                 </div>
-                <span className="text-[11px] font-bold text-slate-400 tracking-wider uppercase">
-                  {t(p.series)}
-                </span>
-              </div>
-              
-              <p className="text-sm text-slate-500 line-clamp-2 mb-6 leading-relaxed flex-1 font-medium">
-                {t(p.description)}
-              </p>
+                
+                <p className="text-sm text-slate-500 line-clamp-2 mb-6 leading-relaxed flex-1 font-medium">
+                  {t(p.description)}
+                </p>
 
-              <div className="pt-5 border-t-2 border-slate-50 flex items-center justify-between">
-                <div className="flex flex-col">
-                  <span className="text-[10px] font-black text-slate-300 uppercase tracking-[0.2em] mb-1">SKU Identity</span>
-                  <span className="text-sm font-bold text-slate-800 font-mono tracking-tight">{p.sku}</span>
-                </div>
-                <div className="w-10 h-10 rounded-full bg-slate-50 flex items-center justify-center text-slate-300 group-hover:bg-intenza-500 group-hover:text-white transition-all shadow-inner group-hover:shadow-lg group-hover:shadow-intenza-500/30">
-                  <ChevronRight size={24} strokeWidth={3} />
+                <div className="pt-5 border-t-2 border-slate-50 flex items-center justify-between">
+                  <div className="flex flex-col">
+                    <span className="text-[10px] font-black text-slate-300 uppercase tracking-[0.2em] mb-1">SKU Identity</span>
+                    <span className="text-sm font-bold text-slate-800 font-mono tracking-tight">{p.sku}</span>
+                  </div>
+                  <div className="w-10 h-10 rounded-full bg-slate-50 flex items-center justify-center text-slate-300 group-hover:bg-intenza-500 group-hover:text-white transition-all shadow-inner group-hover:shadow-lg group-hover:shadow-intenza-500/30">
+                    <ChevronRight size={24} strokeWidth={3} />
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
         {filteredProducts.length === 0 && (
           <div className="col-span-full py-20 flex flex-col items-center justify-center text-slate-400 animate-fade-in">
              <div className="w-20 h-20 bg-slate-100 rounded-full flex items-center justify-center mb-4">
