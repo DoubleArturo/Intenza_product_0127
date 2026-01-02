@@ -532,88 +532,104 @@ const Analytics: React.FC<AnalyticsProps> = ({ products, shipments, onImportData
                 <div className="mb-10 flex items-center justify-between">
                   <div>
                     <h3 className="text-2xl font-black text-slate-900 tracking-tight">Mechanical Durability Tracking</h3>
-                    <p className="text-sm text-slate-400 font-medium">Monitoring completion rates and structural test cycles.</p>
+                    <p className="text-sm text-slate-400 font-medium">Monitoring completion rates and structural test cycles grouped by product.</p>
                   </div>
                   <Zap className="text-emerald-500 opacity-20" size={48} />
                 </div>
                 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                   {filteredProducts.flatMap(p => (p.durabilityTests || []).map(test => ({ ...test, pId: p.id, modelName: t(p.modelName), sku: p.sku }))).map((test, idx) => (
-                      <div key={idx} onClick={() => navigate(`/product/${test.pId}`, { state: { activeTab: 'LIFE' }})} className="group bg-slate-50 hover:bg-white p-6 rounded-[2rem] border-2 border-transparent hover:border-emerald-100 transition-all cursor-pointer">
-                         <div className="flex justify-between items-start mb-4">
-                            <div>
-                               <span className="text-[10px] font-black text-emerald-500 uppercase tracking-widest bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-100">{test.category}</span>
-                               <h4 className="font-black text-slate-800 mt-2 uppercase text-sm tracking-tight">{test.modelName}</h4>
-                               <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{test.sku} • {t(test.testName)}</p>
-                            </div>
-                            <div className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest border shadow-sm ${
-                              test.status === TestStatus.PASS ? 'bg-emerald-500 text-white border-emerald-400' :
-                              test.status === TestStatus.FAIL ? 'bg-rose-500 text-white border-rose-400' :
-                              'bg-slate-100 text-slate-500 border-slate-200'
-                            }`}>{test.status}</div>
-                         </div>
-                         
-                         <div className="flex items-center justify-between mb-2">
-                            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Life Cycle Progress</span>
-                            <span className="text-sm font-black text-slate-900">{test.score}%</span>
-                         </div>
-                         <div className="w-full h-3 bg-slate-200 rounded-full overflow-hidden shadow-inner mb-4">
-                            <div className={`h-full transition-all duration-1000 ${test.status === TestStatus.PASS ? 'bg-emerald-500' : test.status === TestStatus.FAIL ? 'bg-rose-500' : 'bg-blue-500'}`} style={{ width: `${test.score}%` }}></div>
-                         </div>
-                         <div className="flex items-center justify-between text-[9px] font-bold text-slate-300 uppercase tracking-widest border-t border-slate-100 pt-3">
-                            <div className="flex items-center gap-1"><Clock size={10}/> Updated: {test.updatedDate}</div>
-                            <ArrowRight size={12}/>
-                         </div>
+                <div className="space-y-12">
+                   {filteredProducts.filter(p => (p.durabilityTests || []).length > 0).map(p => (
+                      <div key={p.id} className="space-y-6">
+                        <div className="flex items-center gap-4 border-b border-slate-100 pb-4">
+                           <div className="w-16 h-16 bg-white rounded-2xl border border-slate-100 overflow-hidden flex-shrink-0 shadow-sm">
+                              {p.imageUrl ? <img src={p.imageUrl} className="w-full h-full object-contain p-1" /> : <div className="w-full h-full flex items-center justify-center text-slate-200 bg-slate-50"><ImageIcon size={20}/></div>}
+                           </div>
+                           <div>
+                              <h4 className="text-lg font-black text-slate-900 uppercase tracking-tight">{t(p.modelName)}</h4>
+                              <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">{p.sku}</span>
+                           </div>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                           {(p.durabilityTests || []).map((test, idx) => (
+                              <div key={idx} onClick={() => navigate(`/product/${p.id}`, { state: { activeTab: 'LIFE' }})} className="group bg-slate-50 hover:bg-white p-6 rounded-[2rem] border-2 border-transparent hover:border-emerald-100 transition-all cursor-pointer shadow-sm">
+                                 <div className="flex justify-between items-start mb-4">
+                                    <div>
+                                       <span className="text-[10px] font-black text-emerald-500 uppercase tracking-widest bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-100">{test.category}</span>
+                                       <h4 className="font-black text-slate-800 mt-2 uppercase text-sm tracking-tight">{t(test.testName)}</h4>
+                                    </div>
+                                    <div className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest border shadow-sm ${
+                                      test.status === TestStatus.PASS ? 'bg-emerald-500 text-white border-emerald-400' :
+                                      test.status === TestStatus.FAIL ? 'bg-rose-500 text-white border-rose-400' :
+                                      'bg-slate-100 text-slate-500 border-slate-200'
+                                    }`}>{test.status}</div>
+                                 </div>
+                                 
+                                 <div className="flex items-center justify-between mb-2">
+                                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Life Cycle Progress</span>
+                                    <span className="text-sm font-black text-slate-900">{test.score}%</span>
+                                 </div>
+                                 <div className="w-full h-3 bg-slate-200 rounded-full overflow-hidden shadow-inner mb-4">
+                                    <div className={`h-full transition-all duration-1000 ${test.status === TestStatus.PASS ? 'bg-emerald-500' : test.status === TestStatus.FAIL ? 'bg-rose-500' : 'bg-blue-500'}`} style={{ width: `${test.score}%` }}></div>
+                                 </div>
+                                 <div className="flex items-center justify-between text-[9px] font-bold text-slate-300 uppercase tracking-widest border-t border-slate-100 pt-3">
+                                    <div className="flex items-center gap-1"><Clock size={10}/> Updated: {test.updatedDate}</div>
+                                    <ArrowRight size={12}/>
+                                 </div>
+                              </div>
+                           ))}
+                        </div>
                       </div>
                    ))}
                    {filteredProducts.every(p => (p.durabilityTests || []).length === 0) && (
-                     <div className="col-span-full py-20 text-center text-slate-300 font-bold uppercase tracking-widest">No durability tests found</div>
+                     <div className="py-20 text-center text-slate-300 font-bold uppercase tracking-widest">No durability tests found</div>
                    )}
                 </div>
               </div>
             )}
           </div>
 
-          <div className="grid grid-cols-1 gap-8">
-            {/* Color Analysis Section */}
-            <div className="bg-white rounded-[2.5rem] p-8 border border-slate-100 shadow-sm flex flex-col">
-              <div className="flex items-center gap-3 mb-8">
-                <div className="p-2 bg-slate-900 rounded-lg text-white">
-                  <Palette size={20} />
+          {viewMode === 'SHIPMENTS' && (
+            <div className="grid grid-cols-1 gap-8 animate-fade-in">
+              {/* Color Analysis Section */}
+              <div className="bg-white rounded-[2.5rem] p-8 border border-slate-100 shadow-sm flex flex-col">
+                <div className="flex items-center gap-3 mb-8">
+                  <div className="p-2 bg-slate-900 rounded-lg text-white">
+                    <Palette size={20} />
+                  </div>
+                  <h3 className="font-black text-xl text-slate-900 tracking-tight">Finishing Distribution</h3>
                 </div>
-                <h3 className="font-black text-xl text-slate-900 tracking-tight">Finishing Distribution</h3>
-              </div>
-              <div className="flex-1 grid grid-cols-1 xl:grid-cols-2 gap-6">
-                <div className="h-[250px]">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <PieChart>
-                      <Pie
-                        data={colorData}
-                        innerRadius={50}
-                        outerRadius={85}
-                        dataKey="value"
-                        paddingAngle={5}
-                      >
-                        {colorData.map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={COLOR_MAP[entry.name] || COLORS[index % COLORS.length]} />
-                        ))}
-                      </Pie>
-                      <Tooltip />
-                    </PieChart>
-                  </ResponsiveContainer>
-                </div>
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 self-center">
-                  {colorData.map(c => (
-                    <div key={c.name} className="flex flex-col items-center p-4 bg-slate-50 rounded-2xl border border-slate-100 hover:bg-white transition-all group">
-                        <div className="w-10 h-10 rounded-full mb-2 shadow-sm border border-slate-200" style={{ backgroundColor: COLOR_MAP[c.name] || '#e2e8f0' }} />
-                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{c.name}</span>
-                        <span className="text-xl font-black text-slate-900">{c.value.toLocaleString()}</span>
-                    </div>
-                  ))}
+                <div className="flex-1 grid grid-cols-1 xl:grid-cols-2 gap-6">
+                  <div className="h-[250px]">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie
+                          data={colorData}
+                          innerRadius={50}
+                          outerRadius={85}
+                          dataKey="value"
+                          paddingAngle={5}
+                        >
+                          {colorData.map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill={COLOR_MAP[entry.name] || COLORS[index % COLORS.length]} />
+                          ))}
+                        </Pie>
+                        <Tooltip />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  </div>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 self-center">
+                    {colorData.map(c => (
+                      <div key={c.name} className="flex flex-col items-center p-4 bg-slate-50 rounded-2xl border border-slate-100 hover:bg-white transition-all group">
+                          <div className="w-10 h-10 rounded-full mb-2 shadow-sm border border-slate-200" style={{ backgroundColor: COLOR_MAP[c.name] || '#e2e8f0' }} />
+                          <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{c.name}</span>
+                          <span className="text-xl font-black text-slate-900">{c.value.toLocaleString()}</span>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
+          )}
         </div>
 
         {/* Sidebar Analytics */}
