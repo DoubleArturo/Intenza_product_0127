@@ -6,8 +6,8 @@ import {
 } from 'recharts';
 import { 
   ArrowLeft, PieChart as PieIcon, BarChart as BarIcon, Search, FileSpreadsheet, 
-  Layers, Palette, Box, Activity, ChevronDown, 
-  Image as ImageIcon, ClipboardList, User, Globe
+  Palette, Box, Activity, ChevronDown, 
+  Image as ImageIcon, ClipboardList, User
 } from 'lucide-react';
 import { ShipmentData, ChartViewType, ProductModel, Tester } from '../types';
 import GeminiInsight from '../components/GeminiInsight';
@@ -439,8 +439,8 @@ const Analytics: React.FC<AnalyticsProps> = ({ products, shipments, onImportData
                         {colorData.map((entry, index) => (
                           <Cell key={`cell-${index}`} fill={COLOR_MAP[entry.name] || COLORS[index % COLORS.length]} />
                         ))}
-                        <Tooltip />
                       </Pie>
+                      <Tooltip />
                     </PieChart>
                   </ResponsiveContainer>
                 </div>

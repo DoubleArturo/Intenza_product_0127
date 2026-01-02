@@ -75,6 +75,11 @@ export const Dashboard: React.FC<DashboardProps> = ({ products, seriesList, onAd
     
     return matchesSearch && matchesSeries;
   }).sort((a, b) => {
+    // Priority 1: Watched (starred) items always come first
+    if (a.isWatched && !b.isWatched) return -1;
+    if (!a.isWatched && b.isWatched) return 1;
+
+    // Priority 2: Selected sort order
     if (sortOrder === 'SKU_ASC') {
       return a.sku.localeCompare(b.sku, undefined, { numeric: true });
     } else if (sortOrder === 'SKU_DESC') {
