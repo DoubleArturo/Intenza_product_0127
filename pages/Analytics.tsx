@@ -7,12 +7,14 @@ import {
 import { 
   ArrowLeft, PieChart as PieIcon, BarChart as BarIcon, Search, FileSpreadsheet, 
   Palette, Box, Activity, ChevronDown, 
-  Image as ImageIcon, ClipboardList, User
+  Image as ImageIcon, ClipboardList, User, ShieldCheck, Zap, ArrowRight,
+  CheckCircle, AlertCircle, Clock, Info
 } from 'lucide-react';
-import { ShipmentData, ChartViewType, ProductModel, Tester } from '../types';
+import { ShipmentData, ChartViewType, ProductModel, Tester, TestStatus } from '../types';
 import GeminiInsight from '../components/GeminiInsight';
 import * as XLSX from 'xlsx';
 import { LanguageContext } from '../App';
+import { useNavigate } from 'react-router-dom';
 
 const COLORS = ['#0f172a', '#e3261b', '#94a3b8', '#fbbf24', '#f63e32', '#475569', '#3b82f6', '#10b981', '#8b5cf6', '#d946ef', '#06b6d4'];
 
@@ -35,18 +37,21 @@ interface AnalyticsProps {
 }
 
 type DimensionFilter = 'DATA_DRILL' | 'BUYER' | 'COLOR';
+type ViewMode = 'SHIPMENTS' | 'ERGONOMICS' | 'DURABILITY';
 
 const Analytics: React.FC<AnalyticsProps> = ({ products, shipments, onImportData, onBatchAddProducts, showAiInsights }) => {
   const { language, t } = useContext(LanguageContext);
+  const navigate = useNavigate();
   
   const [chartType, setChartType] = useState<ChartViewType>('PIE');
+  const [viewMode, setViewMode] = useState<ViewMode>('SHIPMENTS');
   const [drillPath, setDrillPath] = useState<{ level: string, label: string, filterVal: string }[]>([]);
   const [dimension, setDimension] = useState<DimensionFilter>('DATA_DRILL');
   const [traceSearchQuery, setTraceSearchQuery] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   /**
-   * Helper to format version string with uppercase V
+   * Helper to format version string
    */
   const formatVersion = (v: string) => {
     const clean = (v || '1.0').toUpperCase().replace('V', '');
@@ -112,6 +117,13 @@ const Analytics: React.FC<AnalyticsProps> = ({ products, shipments, onImportData
     return data;
   }, [shipments, drillPath]);
 
+  // Derive filtered products based on the selection path
+  const filteredProducts = useMemo(() => {
+    const visibleSkus = new Set(filteredShipments.map(s => s.sku));
+    if (drillPath.length === 0) return products;
+    return products.filter(p => visibleSkus.has(p.sku));
+  }, [products, filteredShipments, drillPath]);
+
   const chartData = useMemo(() => {
     const aggregated: Record<string, number> = {};
     const meta: Record<string, { sku?: string, imageUrl?: string, fullName?: string }> = {};
@@ -161,6 +173,7 @@ const Analytics: React.FC<AnalyticsProps> = ({ products, shipments, onImportData
   const handleResetDrill = (dim: DimensionFilter) => {
     setDimension(dim);
     setDrillPath([]);
+    setViewMode('SHIPMENTS');
   };
 
   const colorData = useMemo(() => {
@@ -290,7 +303,7 @@ const Analytics: React.FC<AnalyticsProps> = ({ products, shipments, onImportData
       <header className="mb-10 flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-200 pb-8">
         <div>
           <h1 className="text-4xl font-black text-slate-900 tracking-tight">Product Dashboard</h1>
-          <p className="text-slate-500 mt-2 font-medium">Drill-down analytics for Customers, SKUs, and Market versions.</p>
+          <p className="text-slate-500 mt-2 font-medium">Quality metrics and shipment analytics at a glance.</p>
         </div>
         <div className="flex gap-3">
           <button onClick={() => fileInputRef.current?.click()} className="flex items-center gap-2 bg-white border-2 border-slate-100 text-slate-700 px-6 py-3 rounded-2xl font-black text-sm shadow-sm hover:border-slate-900 transition-all active:scale-95">
@@ -326,98 +339,243 @@ const Analytics: React.FC<AnalyticsProps> = ({ products, shipments, onImportData
             </div>
 
             <div className="flex items-center gap-4">
-              <div className="flex bg-slate-100 p-1 rounded-xl shadow-inner">
-                <button onClick={() => handleResetDrill('DATA_DRILL')} className={`px-4 py-2 rounded-lg text-xs font-black transition-all ${dimension === 'DATA_DRILL' ? 'bg-white shadow-md text-slate-900' : 'text-slate-400'}`}>BY METRIC</button>
-                <button onClick={() => handleResetDrill('BUYER')} className={`px-4 py-2 rounded-lg text-xs font-black transition-all ${dimension === 'BUYER' ? 'bg-white shadow-md text-slate-900' : 'text-slate-400'}`}>BY BUYER</button>
-                <button onClick={() => handleResetDrill('COLOR')} className={`px-4 py-2 rounded-lg text-xs font-black transition-all ${dimension === 'COLOR' ? 'bg-white shadow-md text-slate-900' : 'text-slate-400'}`}>BY COLOR</button>
+              {/* Main View Mode Tabs */}
+              <div className="flex bg-slate-100 p-1 rounded-xl shadow-inner mr-4">
+                <button 
+                  onClick={() => setViewMode('SHIPMENTS')} 
+                  className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-black transition-all ${viewMode === 'SHIPMENTS' ? 'bg-white shadow-md text-intenza-600' : 'text-slate-400'}`}
+                >
+                  <BarIcon size={14}/> SHIPMENTS
+                </button>
+                <button 
+                  onClick={() => setViewMode('ERGONOMICS')} 
+                  className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-black transition-all ${viewMode === 'ERGONOMICS' ? 'bg-white shadow-md text-indigo-600' : 'text-slate-400'}`}
+                >
+                  <ShieldCheck size={14}/> ERGO
+                </button>
+                <button 
+                  onClick={() => setViewMode('DURABILITY')} 
+                  className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-black transition-all ${viewMode === 'DURABILITY' ? 'bg-white shadow-md text-emerald-600' : 'text-slate-400'}`}
+                >
+                  <Zap size={14}/> DURABILITY
+                </button>
               </div>
-              <div className="flex bg-slate-100 p-1 rounded-xl shadow-inner">
-                <button onClick={() => setChartType('PIE')} className={`p-2 rounded-lg transition-all ${chartType === 'PIE' ? 'bg-white shadow-md text-slate-900' : 'text-slate-400'}`}><PieIcon size={18}/></button>
-                <button onClick={() => setChartType('BAR')} className={`p-2 rounded-lg transition-all ${chartType === 'BAR' ? 'bg-white shadow-md text-slate-900' : 'text-slate-400'}`}><BarIcon size={18}/></button>
-              </div>
+
+              {viewMode === 'SHIPMENTS' && (
+                <>
+                  <div className="flex bg-slate-100 p-1 rounded-xl shadow-inner">
+                    <button onClick={() => handleResetDrill('DATA_DRILL')} className={`px-4 py-2 rounded-lg text-xs font-black transition-all ${dimension === 'DATA_DRILL' ? 'bg-white shadow-md text-slate-900' : 'text-slate-400'}`}>BY METRIC</button>
+                    <button onClick={() => handleResetDrill('BUYER')} className={`px-4 py-2 rounded-lg text-xs font-black transition-all ${dimension === 'BUYER' ? 'bg-white shadow-md text-slate-900' : 'text-slate-400'}`}>BY BUYER</button>
+                    <button onClick={() => handleResetDrill('COLOR')} className={`px-4 py-2 rounded-lg text-xs font-black transition-all ${dimension === 'COLOR' ? 'bg-white shadow-md text-slate-900' : 'text-slate-400'}`}>BY COLOR</button>
+                  </div>
+                  <div className="flex bg-slate-100 p-1 rounded-xl shadow-inner">
+                    <button onClick={() => setChartType('PIE')} className={`p-2 rounded-lg transition-all ${chartType === 'PIE' ? 'bg-white shadow-md text-slate-900' : 'text-slate-400'}`}><PieIcon size={18}/></button>
+                    <button onClick={() => setChartType('BAR')} className={`p-2 rounded-lg transition-all ${chartType === 'BAR' ? 'bg-white shadow-md text-slate-900' : 'text-slate-400'}`}><BarIcon size={18}/></button>
+                  </div>
+                </>
+              )}
             </div>
           </div>
 
-          {/* Main Chart Area */}
+          {/* Main Content Area */}
           <div className="bg-white rounded-[2.5rem] p-10 border border-slate-100 shadow-sm min-h-[550px] flex flex-col relative">
-            <div className="absolute top-10 right-10 flex flex-col items-end">
-               <span className="text-[10px] font-black text-slate-300 uppercase tracking-widest">Active Metric</span>
-               <span className="text-xs font-black text-intenza-600 uppercase tracking-tight">Units Shipped</span>
-            </div>
             
-            <div className="flex-1 mt-6">
-              <ResponsiveContainer width="100%" height={500}>
-                {chartType === 'PIE' ? (
-                  <PieChart>
-                    <Pie 
-                      data={chartData} 
-                      cx="50%" cy="50%" 
-                      innerRadius="65%" outerRadius="90%" 
-                      dataKey="value" 
-                      onClick={handleDrill}
-                      cursor="pointer"
-                      stroke="#fff"
-                      strokeWidth={4}
-                      paddingAngle={2}
-                    >
-                      {chartData.map((entry, i) => (
-                        <Cell 
-                          key={`cell-${i}`} 
-                          fill={currentLevel === 'COLOR' ? (COLOR_MAP[entry.name] || COLORS[i % COLORS.length]) : COLORS[i % COLORS.length]} 
-                          className="hover:opacity-80 transition-opacity" 
+            {viewMode === 'SHIPMENTS' && (
+              <>
+                <div className="absolute top-10 right-10 flex flex-col items-end">
+                   <span className="text-[10px] font-black text-slate-300 uppercase tracking-widest">Active Metric</span>
+                   <span className="text-xs font-black text-intenza-600 uppercase tracking-tight">Units Shipped</span>
+                </div>
+                
+                <div className="flex-1 mt-6 animate-fade-in">
+                  <ResponsiveContainer width="100%" height={500}>
+                    {chartType === 'PIE' ? (
+                      <PieChart>
+                        <Pie 
+                          data={chartData} 
+                          cx="50%" cy="50%" 
+                          innerRadius="65%" outerRadius="90%" 
+                          dataKey="value" 
+                          onClick={handleDrill}
+                          cursor="pointer"
+                          stroke="#fff"
+                          strokeWidth={4}
+                          paddingAngle={2}
+                        >
+                          {chartData.map((entry, i) => (
+                            <Cell 
+                              key={`cell-${i}`} 
+                              fill={currentLevel === 'COLOR' ? (COLOR_MAP[entry.name] || COLORS[i % COLORS.length]) : COLORS[i % COLORS.length]} 
+                              className="hover:opacity-80 transition-opacity" 
+                            />
+                          ))}
+                          <Label 
+                            content={({ viewBox }: any) => {
+                              const { cx, cy } = viewBox;
+                              return (
+                                <text x={cx} y={cy} textAnchor="middle" dominantBaseline="central">
+                                  <tspan x={cx} y={cy - 12} className="text-5xl font-black fill-slate-900 tracking-tighter">{totalQuantity.toLocaleString()}</tspan>
+                                  <tspan x={cx} y={cy + 25} className="text-xs font-black uppercase tracking-[0.2em] fill-slate-300">Total Units Filtered</tspan>
+                                </text>
+                              );
+                            }}
+                          />
+                        </Pie>
+                        <Tooltip content={<CustomTooltip />} />
+                        <Legend verticalAlign="bottom" height={40} iconType="circle" wrapperStyle={{ paddingTop: '20px', fontWeight: 'bold', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.1em' }} />
+                      </PieChart>
+                    ) : (
+                      <BarChart data={chartData} margin={{ top: 20, right: 30, left: 20, bottom: 90 }}>
+                        <CartesianGrid strokeDasharray="6 6" vertical={false} stroke="#f1f5f9" />
+                        <XAxis 
+                          dataKey="name" 
+                          axisLine={false} 
+                          tickLine={false} 
+                          interval={0}
+                          height={100}
+                          tick={<CustomXAxisTick />}
                         />
-                      ))}
-                      <Label 
-                        content={({ viewBox }: any) => {
-                          const { cx, cy } = viewBox;
-                          return (
-                            <text x={cx} y={cy} textAnchor="middle" dominantBaseline="central">
-                              <tspan x={cx} y={cy - 12} className="text-5xl font-black fill-slate-900 tracking-tighter">{totalQuantity.toLocaleString()}</tspan>
-                              <tspan x={cx} y={cy + 25} className="text-xs font-black uppercase tracking-[0.2em] fill-slate-300">Total Units Filtered</tspan>
-                            </text>
-                          );
-                        }}
-                      />
-                    </Pie>
-                    <Tooltip content={<CustomTooltip />} />
-                    <Legend verticalAlign="bottom" height={40} iconType="circle" wrapperStyle={{ paddingTop: '20px', fontWeight: 'bold', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.1em' }} />
-                  </PieChart>
-                ) : (
-                  <BarChart data={chartData} margin={{ top: 20, right: 30, left: 20, bottom: 90 }}>
-                    <CartesianGrid strokeDasharray="6 6" vertical={false} stroke="#f1f5f9" />
-                    <XAxis 
-                      dataKey="name" 
-                      axisLine={false} 
-                      tickLine={false} 
-                      interval={0}
-                      height={100}
-                      tick={<CustomXAxisTick />}
-                    />
-                    <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: '#cbd5e1', fontWeight: 'bold' }} />
-                    <Tooltip content={<CustomTooltip />} cursor={{ fill: '#f8fafc' }} />
-                    <Bar 
-                      dataKey="value" 
-                      radius={[12, 12, 0, 0]} 
-                      onClick={handleDrill} 
-                      cursor="pointer"
-                      barSize={50}
-                    >
-                      {chartData.map((entry, i) => (
-                        <Cell 
-                          key={`cell-${i}`} 
-                          fill={currentLevel === 'COLOR' ? (COLOR_MAP[entry.name] || COLORS[i % COLORS.length]) : COLORS[i % COLORS.length]} 
-                          className="hover:brightness-95 transition-all" 
-                        />
-                      ))}
-                    </Bar>
-                  </BarChart>
-                )}
-              </ResponsiveContainer>
-            </div>
+                        <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: '#cbd5e1', fontWeight: 'bold' }} />
+                        <Tooltip content={<CustomTooltip />} cursor={{ fill: '#f8fafc' }} />
+                        <Bar 
+                          dataKey="value" 
+                          radius={[12, 12, 0, 0]} 
+                          onClick={handleDrill} 
+                          cursor="pointer"
+                          barSize={50}
+                        >
+                          {chartData.map((entry, i) => (
+                            <Cell 
+                              key={`cell-${i}`} 
+                              fill={currentLevel === 'COLOR' ? (COLOR_MAP[entry.name] || COLORS[i % COLORS.length]) : COLORS[i % COLORS.length]} 
+                              className="hover:brightness-95 transition-all" 
+                            />
+                          ))}
+                        </Bar>
+                      </BarChart>
+                    )}
+                  </ResponsiveContainer>
+                </div>
+              </>
+            )}
+
+            {viewMode === 'ERGONOMICS' && (
+              <div className="flex-1 animate-fade-in">
+                <div className="mb-10 flex items-center justify-between">
+                  <div>
+                    <h3 className="text-2xl font-black text-slate-900 tracking-tight">Human Factors Verification Progress</h3>
+                    <p className="text-sm text-slate-400 font-medium">Tracking PASS/NG ratios and decision statuses for active projects.</p>
+                  </div>
+                  <ShieldCheck className="text-indigo-600 opacity-20" size={48} />
+                </div>
+                
+                <div className="space-y-4">
+                  {filteredProducts.map(p => {
+                    // Fix: Explicitly type the reducers to avoid 'unknown' errors
+                    const totalTasks = (p.ergoProjects || []).reduce((acc: number, proj) => {
+                      const taskLists = Object.values(proj.tasks || {}) as any[][];
+                      return acc + taskLists.reduce((taskAcc: number, taskList) => taskAcc + taskList.length, 0);
+                    }, 0);
+                    
+                    const passedTasks = (p.ergoProjects || []).reduce((acc: number, proj) => {
+                      const taskLists = Object.values(proj.tasks || {}) as any[][];
+                      return acc + taskLists.reduce((taskAcc: number, taskList) => {
+                        return taskAcc + taskList.filter(t => t.ngReasons.length === 0 && t.passTesterIds.length > 0).length;
+                      }, 0);
+                    }, 0);
+
+                    const progress = totalTasks > 0 ? (passedTasks / totalTasks) * 100 : 0;
+
+                    return (
+                      <div key={p.id} onClick={() => navigate(`/product/${p.id}`, { state: { activeTab: 'ERGO' }})} className="group p-6 bg-slate-50 hover:bg-white border-2 border-transparent hover:border-indigo-100 rounded-3xl transition-all cursor-pointer flex items-center gap-6">
+                        <div className="w-16 h-16 bg-white rounded-2xl border border-slate-100 overflow-hidden flex-shrink-0">
+                          {p.imageUrl ? <img src={p.imageUrl} className="w-full h-full object-contain p-1" /> : <div className="w-full h-full flex items-center justify-center text-slate-200"><ImageIcon size={20}/></div>}
+                        </div>
+                        <div className="flex-1">
+                          <div className="flex items-center justify-between mb-3">
+                            <div>
+                              <h4 className="font-black text-slate-800 uppercase text-sm tracking-tight">{t(p.modelName)}</h4>
+                              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{p.sku}</span>
+                            </div>
+                            <div className="flex items-center gap-4">
+                               <div className="text-right">
+                                  <div className="text-[10px] font-black text-slate-300 uppercase">Verification Rate</div>
+                                  <div className="text-sm font-black text-indigo-600">{Math.round(progress)}%</div>
+                               </div>
+                               <ArrowRight size={16} className="text-slate-300 group-hover:translate-x-1 transition-transform" />
+                            </div>
+                          </div>
+                          <div className="w-full h-2.5 bg-slate-200 rounded-full overflow-hidden flex shadow-inner">
+                            <div className="h-full bg-indigo-500 transition-all duration-1000" style={{ width: `${progress}%` }}></div>
+                          </div>
+                        </div>
+                        <div className="w-32 grid grid-cols-2 gap-2 text-center">
+                          <div className="bg-white rounded-xl p-2 border border-slate-100">
+                             <div className="text-[9px] font-black text-emerald-500 uppercase">Pass</div>
+                             <div className="text-base font-black text-slate-900">{passedTasks}</div>
+                          </div>
+                          <div className="bg-white rounded-xl p-2 border border-slate-100">
+                             <div className="text-[9px] font-black text-rose-500 uppercase">NG</div>
+                             <div className="text-base font-black text-slate-900">{totalTasks - passedTasks}</div>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                  {filteredProducts.length === 0 && <div className="py-20 text-center text-slate-300 font-bold uppercase tracking-widest">No evaluation projects found</div>}
+                </div>
+              </div>
+            )}
+
+            {viewMode === 'DURABILITY' && (
+              <div className="flex-1 animate-fade-in">
+                <div className="mb-10 flex items-center justify-between">
+                  <div>
+                    <h3 className="text-2xl font-black text-slate-900 tracking-tight">Mechanical Durability Tracking</h3>
+                    <p className="text-sm text-slate-400 font-medium">Monitoring completion rates and structural test cycles.</p>
+                  </div>
+                  <Zap className="text-emerald-500 opacity-20" size={48} />
+                </div>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                   {filteredProducts.flatMap(p => (p.durabilityTests || []).map(test => ({ ...test, pId: p.id, modelName: t(p.modelName), sku: p.sku }))).map((test, idx) => (
+                      <div key={idx} onClick={() => navigate(`/product/${test.pId}`, { state: { activeTab: 'LIFE' }})} className="group bg-slate-50 hover:bg-white p-6 rounded-[2rem] border-2 border-transparent hover:border-emerald-100 transition-all cursor-pointer">
+                         <div className="flex justify-between items-start mb-4">
+                            <div>
+                               <span className="text-[10px] font-black text-emerald-500 uppercase tracking-widest bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-100">{test.category}</span>
+                               <h4 className="font-black text-slate-800 mt-2 uppercase text-sm tracking-tight">{test.modelName}</h4>
+                               <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{test.sku} • {t(test.testName)}</p>
+                            </div>
+                            <div className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest border shadow-sm ${
+                              test.status === TestStatus.PASS ? 'bg-emerald-500 text-white border-emerald-400' :
+                              test.status === TestStatus.FAIL ? 'bg-rose-500 text-white border-rose-400' :
+                              'bg-slate-100 text-slate-500 border-slate-200'
+                            }`}>{test.status}</div>
+                         </div>
+                         
+                         <div className="flex items-center justify-between mb-2">
+                            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Life Cycle Progress</span>
+                            <span className="text-sm font-black text-slate-900">{test.score}%</span>
+                         </div>
+                         <div className="w-full h-3 bg-slate-200 rounded-full overflow-hidden shadow-inner mb-4">
+                            <div className={`h-full transition-all duration-1000 ${test.status === TestStatus.PASS ? 'bg-emerald-500' : test.status === TestStatus.FAIL ? 'bg-rose-500' : 'bg-blue-500'}`} style={{ width: `${test.score}%` }}></div>
+                         </div>
+                         <div className="flex items-center justify-between text-[9px] font-bold text-slate-300 uppercase tracking-widest border-t border-slate-100 pt-3">
+                            <div className="flex items-center gap-1"><Clock size={10}/> Updated: {test.updatedDate}</div>
+                            <ArrowRight size={12}/>
+                         </div>
+                      </div>
+                   ))}
+                   {filteredProducts.every(p => (p.durabilityTests || []).length === 0) && (
+                     <div className="col-span-full py-20 text-center text-slate-300 font-bold uppercase tracking-widest">No durability tests found</div>
+                   )}
+                </div>
+              </div>
+            )}
           </div>
 
           <div className="grid grid-cols-1 gap-8">
-            {/* Color Analysis with Integrated Chart */}
+            {/* Color Analysis Section */}
             <div className="bg-white rounded-[2.5rem] p-8 border border-slate-100 shadow-sm flex flex-col">
               <div className="flex items-center gap-3 mb-8">
                 <div className="p-2 bg-slate-900 rounded-lg text-white">
@@ -498,8 +656,8 @@ const Analytics: React.FC<AnalyticsProps> = ({ products, shipments, onImportData
 
           {showAiInsights && (
             <GeminiInsight 
-              context={`Inventory Analysis. Active Level: ${currentLevel}. Active Filters: ${drillPath.map(p=>`${p.level}:${p.label}`).join(', ')}. Focus: Market trends and stock movement.`} 
-              data={chartData} 
+              context={`Quality Analytics Review. Active View: ${viewMode}. Filtered Products: ${filteredProducts.length}. Drill Path: ${drillPath.map(p=>`${p.level}:${p.label}`).join(', ')}.`} 
+              data={{ shipments: filteredShipments, products: filteredProducts }} 
             />
           )}
 
