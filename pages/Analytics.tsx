@@ -7,9 +7,9 @@ import {
 import { 
   ArrowLeft, PieChart as PieIcon, BarChart as BarIcon, Search, FileSpreadsheet, 
   Palette, Box, Activity, ChevronDown, 
-  Image as ImageIcon, ClipboardList, User
+  Image as ImageIcon, ClipboardList, User, CheckCircle2, Clock, AlertCircle, Timer, Zap
 } from 'lucide-react';
-import { ShipmentData, ChartViewType, ProductModel, Tester } from '../types';
+import { ShipmentData, ChartViewType, ProductModel, Tester, TestStatus } from '../types';
 import GeminiInsight from '../components/GeminiInsight';
 import * as XLSX from 'xlsx';
 import { LanguageContext } from '../App';
@@ -23,6 +23,14 @@ const COLOR_MAP: Record<string, string> = {
   'Red': '#ef4444',
   'Silver': '#94a3b8',
   'Others': '#e2e8f0'
+};
+
+const TEST_STATUS_COLORS: Record<string, string> = {
+  [TestStatus.PASS]: 'bg-emerald-500',
+  [TestStatus.FAIL]: 'bg-red-500',
+  [TestStatus.WARNING]: 'bg-amber-500',
+  [TestStatus.ONGOING]: 'bg-blue-500',
+  [TestStatus.PENDING]: 'bg-slate-300',
 };
 
 interface AnalyticsProps {
@@ -45,17 +53,11 @@ const Analytics: React.FC<AnalyticsProps> = ({ products, shipments, onImportData
   const [traceSearchQuery, setTraceSearchQuery] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  /**
-   * Helper to format version string with uppercase V
-   */
   const formatVersion = (v: string) => {
     const clean = (v || '1.0').toUpperCase().replace('V', '');
     return `V${clean}`;
   };
 
-  /**
-   * Enhanced Drill-Down Logic
-   */
   const currentLevel = useMemo(() => {
     const depth = drillPath.length;
     
@@ -183,6 +185,26 @@ const Analytics: React.FC<AnalyticsProps> = ({ products, shipments, onImportData
       s.buyer?.toLowerCase().includes(q)
     ).slice(0, 10);
   }, [traceSearchQuery, shipments]);
+
+  const durabilityProgressData = useMemo(() => {
+    return products.map(p => {
+      const tests = p.durabilityTests || [];
+      const totalTests = tests.length;
+      const completedScore = tests.length > 0 
+        ? tests.reduce((acc, curr) => acc + curr.score, 0) / tests.length 
+        : 0;
+      
+      return {
+        id: p.id,
+        name: t(p.modelName),
+        sku: p.sku,
+        imageUrl: p.imageUrl,
+        totalTests,
+        avgProgress: Math.round(completedScore),
+        tests
+      };
+    }).filter(p => p.totalTests > 0).sort((a, b) => b.avgProgress - a.avgProgress);
+  }, [products, t]);
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -416,7 +438,69 @@ const Analytics: React.FC<AnalyticsProps> = ({ products, shipments, onImportData
             </div>
           </div>
 
-          <div className="grid grid-cols-1 gap-8">
+          <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
+            {/* Durability Progress List Visualization */}
+            <div className="bg-white rounded-[2.5rem] p-8 border border-slate-100 shadow-sm flex flex-col">
+              <div className="flex items-center justify-between mb-8">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-slate-900 rounded-lg text-white">
+                    <Activity size={20} />
+                  </div>
+                  <h3 className="font-black text-xl text-slate-900 tracking-tight">Durability Testing Overview</h3>
+                </div>
+                <div className="flex items-center gap-1.5 bg-slate-50 px-3 py-1.5 rounded-full border border-slate-100">
+                  <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></div>
+                  <span className="text-[10px] font-black uppercase text-slate-500 tracking-widest">Active Trials</span>
+                </div>
+              </div>
+
+              <div className="space-y-6 flex-1 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
+                {durabilityProgressData.length === 0 ? (
+                  <div className="text-center py-20 bg-slate-50/50 rounded-3xl border border-dashed border-slate-200">
+                     <Timer size={40} className="mx-auto text-slate-300 mb-3 opacity-20" />
+                     <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">No Active Durability Tests</p>
+                  </div>
+                ) : durabilityProgressData.map(p => (
+                  <div key={p.id} className="group p-5 bg-slate-50/50 hover:bg-white rounded-2xl border border-slate-100 hover:border-slate-300 transition-all">
+                    <div className="flex items-center gap-4 mb-4">
+                      <div className="w-12 h-12 bg-white rounded-xl border border-slate-200 p-1 flex-shrink-0">
+                         {p.imageUrl ? (
+                           <img src={p.imageUrl} alt={p.name} className="w-full h-full object-contain" />
+                         ) : (
+                           <Box className="w-full h-full text-slate-200 p-2" />
+                         )}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                         <h4 className="font-black text-sm text-slate-900 truncate uppercase tracking-tight">{p.name}</h4>
+                         <p className="text-[10px] font-mono text-slate-400 font-bold">{p.sku}</p>
+                      </div>
+                      <div className="text-right">
+                         <span className="text-lg font-black text-slate-900">{p.avgProgress}%</span>
+                         <span className="block text-[8px] font-black text-slate-400 uppercase tracking-widest">Total Progress</span>
+                      </div>
+                    </div>
+                    
+                    <div className="relative w-full h-1.5 bg-slate-200 rounded-full overflow-hidden mb-4">
+                       <div 
+                         className="absolute top-0 left-0 h-full bg-slate-900 transition-all duration-1000"
+                         style={{ width: `${p.avgProgress}%` }}
+                       ></div>
+                    </div>
+
+                    <div className="flex flex-wrap gap-2">
+                      {p.tests.map(t => (
+                        <div key={t.id} className="flex items-center gap-1.5 px-2 py-1 bg-white border border-slate-100 rounded-lg group/test hover:border-slate-300 transition-colors">
+                           <div className={`w-1.5 h-1.5 rounded-full ${TEST_STATUS_COLORS[t.status] || 'bg-slate-300'}`}></div>
+                           <span className="text-[9px] font-black text-slate-500 uppercase tracking-tighter truncate max-w-[80px]">{t.testName.en}</span>
+                           <span className="text-[9px] font-mono font-bold text-slate-400">{t.score}%</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
             {/* Color Analysis with Integrated Chart */}
             <div className="bg-white rounded-[2.5rem] p-8 border border-slate-100 shadow-sm flex flex-col">
               <div className="flex items-center gap-3 mb-8">
