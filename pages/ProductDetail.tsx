@@ -92,6 +92,13 @@ const ProductDetail: React.FC<ProductDetailProps> = ({ products, testers = [], o
   
   const handleSaveEco = async (ecoData: any) => {
       let updatedDesignHistory;
+      let newCurrentVersion = product.currentVersion;
+
+      // If an ECO is set to "In Production", update the global product version
+      if (ecoData.status === EcoStatus.IN_PRODUCTION) {
+          newCurrentVersion = ecoData.version;
+      }
+
       if (editingEco) {
           updatedDesignHistory = product.designHistory.map(eco => 
               eco.id === editingEco.id ? { ...eco, ...ecoData } : eco
@@ -100,18 +107,22 @@ const ProductDetail: React.FC<ProductDetailProps> = ({ products, testers = [], o
           const newEco = { ...ecoData, id: `eco-${Date.now()}` };
           updatedDesignHistory = [...product.designHistory, newEco];
       }
-      await onUpdateProduct({ ...product, designHistory: updatedDesignHistory });
+      await onUpdateProduct({ ...product, designHistory: updatedDesignHistory, currentVersion: newCurrentVersion });
       handleCloseEcoModal();
   };
 
   const handleDeleteEco = (ecoId: string) => {
-    const updatedDesignHistory = product.designHistory.filter(eco => eco.id !== ecoId);
-    onUpdateProduct({ ...product, designHistory: updatedDesignHistory });
+    if (window.confirm('確定要刪除此 ECO 記錄嗎？')) {
+      const updatedDesignHistory = product.designHistory.filter(eco => eco.id !== ecoId);
+      onUpdateProduct({ ...product, designHistory: updatedDesignHistory });
+    }
   };
   
   const handleDeleteVersion = (versionToDelete: string) => {
-    const updatedDesignHistory = product.designHistory.filter(eco => eco.version !== versionToDelete);
-    onUpdateProduct({ ...product, designHistory: updatedDesignHistory });
+    if (window.confirm(`⚠️ 警告：這將會刪除版本 ${versionToDelete} 下的所有 ECO 資訊，此動作無法復原。確定要繼續嗎？`)) {
+      const updatedDesignHistory = product.designHistory.filter(eco => eco.version !== versionToDelete);
+      onUpdateProduct({ ...product, designHistory: updatedDesignHistory });
+    }
   };
 
   // Durability Test Handlers
@@ -265,7 +276,7 @@ const ecoStatusStyles: { [key in EcoStatus]: string } = {
     [EcoStatus.EVALUATING]: 'bg-blue-100 text-blue-800 border-blue-200',
     [EcoStatus.DESIGNING]: 'bg-amber-100 text-amber-800 border-amber-200',
     [EcoStatus.DESIGN_COMPLETE]: 'bg-green-100 text-green-800 border-green-200',
-    [EcoStatus.IN_PRODUCTION]: 'bg-slate-200 text-slate-800 border-slate-300',
+    [EcoStatus.IN_PRODUCTION]: 'bg-slate-900 text-white border-slate-800',
 };
 
 const ecoStatusTranslations: { [key in EcoStatus]: string } = {
@@ -323,31 +334,99 @@ const DesignSection = ({ product, onAddEco, onEditEco, onDeleteEco, onDeleteVers
           {versions.map((version) => (
             <div key={version} className="relative group flex items-center">
               <button onClick={() => setSelectedVersion(version)} className={`py-4 text-sm font-medium border-b-2 transition-all whitespace-nowrap px-2 ${selectedVersion === version ? 'border-intenza-600 text-intenza-600' : 'border-transparent text-slate-400 hover:text-slate-600 hover:border-slate-200'}`}>{version}</button>
-              {version !== product.currentVersion && (<button onClick={(e) => { e.stopPropagation(); onDeleteVersion(version); }} title={`Delete Version ${version}`} className="absolute -right-2 top-1/2 -translate-y-1/2 ml-2 p-1 rounded-full text-slate-300 hover:bg-red-50 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all"><X size={14} /></button>)}
             </div>
           ))}
         </div>
         <div className="p-8 bg-white">
-          <h3 className="text-2xl font-bold text-slate-800 flex items-center gap-3 mb-6">{selectedVersion}<span className={`text-xs font-normal text-white px-2 py-1 rounded-md uppercase tracking-wider ${selectedVersion === product.currentVersion ? 'bg-slate-900' : 'bg-slate-400'}`}>{selectedVersion === product.currentVersion ? 'Current' : 'Archived'}</span></h3>
-          {activeChanges.length === 0 ? (<div className="flex flex-col items-center justify-center py-12 text-center"><div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mb-4 text-slate-300"><GitCommit size={32} /></div><h4 className="text-slate-900 font-medium">No Change Records</h4><p className="text-slate-500 text-sm mt-1 max-w-sm">No Engineering Change Orders (ECO) recorded for this version.</p></div>) : (<div className="space-y-6">{activeChanges.map((change) => (<div key={change.id} className="group relative rounded-lg transition-colors hover:bg-slate-50/50 -m-3 p-3"><div className="flex flex-col md:flex-row gap-6"><div className="md:w-48 flex-shrink-0"><div className="flex items-center gap-3 mb-2"><span className="font-mono text-sm font-bold text-intenza-600 bg-intenza-50 px-2 py-1 rounded border border-intenza-100">{change.ecoNumber}</span></div><div className="flex items-center gap-2 text-slate-500 text-sm mt-2"><Calendar size={14} />{change.date}</div></div><div className="flex-1"><div className="flex items-start justify-between"><h4 className="text-lg font-medium text-slate-900 mb-3 leading-snug pr-4">{t(change.description)}</h4><div className="flex flex-col items-end gap-1"><span className={`px-2 py-0.5 text-xs font-semibold rounded-full border whitespace-nowrap ${ecoStatusStyles[change.status]}`}>{language === 'en' ? change.status : ecoStatusTranslations[change.status]}</span>{change.status === EcoStatus.IN_PRODUCTION && change.implementationDate && (<span className="text-xs text-slate-500 font-mono">{change.implementationDate}</span>)}</div></div>{change.imageUrls && change.imageUrls.length > 0 && (<div className="mb-4 flex flex-wrap gap-2">{change.imageUrls.map((url, imgIndex) => (
-             <div key={imgIndex} className="inline-block group/image relative">
-                {isVideo(url) ? (
-                    <video src={url} controls className="h-32 w-auto rounded-lg border border-slate-200 shadow-sm" />
-                ) : (
-                    <a href={url} target="_blank" rel="noopener noreferrer"><img src={url} alt="" className="h-32 w-auto rounded-lg border border-slate-200 shadow-sm hover:shadow-md transition-shadow object-cover" onError={(e) => { (e.target as HTMLImageElement).src = 'https://via.placeholder.com/200x200?text=Error'; }} /></a>
-                )}
-             </div>
-          ))}</div>)}<div className="bg-slate-50 rounded-xl p-4 border border-slate-100 grid grid-cols-1 sm:grid-cols-2 gap-4 transition-colors group-hover:border-slate-200"><div><div className="flex items-center gap-2 text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2"><Layers size={14} /> Affected Batches</div><div className="flex flex-wrap gap-2">{change.affectedBatches.map((b) => (<span key={b} className="text-xs bg-white border border-slate-200 px-1.5 py-0.5 rounded-md text-slate-700 font-mono shadow-sm">{b}</span>))}</div></div><div><div className="flex items-center gap-2 text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2"><Users size={14} /> Impacted Customers</div><p className="text-sm text-slate-600 leading-relaxed">{change.affectedCustomers.join(', ')}</p></div></div>{change.sourceFeedback && (<button onClick={() => handleLinkBack(change.sourceFeedback)} className="mt-2 text-xs text-blue-600 font-semibold flex items-center gap-1 hover:underline"><LinkIcon size={12}/> View Source Feedback</button>)}
-          {change.sourceFeedbacks && change.sourceFeedbacks.length > 0 && (
-              <div className="mt-2 flex flex-col gap-1">
-                  {change.sourceFeedbacks.map((fb, idx) => (
-                      <button key={idx} onClick={() => handleLinkBack(fb)} className="text-xs text-blue-600 font-semibold flex items-center gap-1 hover:underline w-fit">
-                          <LinkIcon size={12}/> View Feedback Source #{idx + 1}
-                      </button>
-                  ))}
-              </div>
+          <div className="flex items-center justify-between mb-8 border-b border-slate-50 pb-4">
+             <h3 className="text-2xl font-bold text-slate-800 flex items-center gap-3">
+                {selectedVersion}
+                <span className={`text-xs font-normal text-white px-2 py-1 rounded-md uppercase tracking-wider ${selectedVersion === product.currentVersion ? 'bg-slate-900' : 'bg-slate-400'}`}>
+                  {selectedVersion === product.currentVersion ? 'Current Production' : 'Archived Version'}
+                </span>
+             </h3>
+             {/* Delete Version button moved here to prevent accidental triggers */}
+             <button 
+                onClick={() => onDeleteVersion(selectedVersion)} 
+                className="flex items-center gap-1 text-xs font-bold text-slate-400 hover:text-red-500 transition-colors px-3 py-1.5 rounded-lg hover:bg-red-50"
+             >
+                <Trash2 size={14} /> 刪除此版本及其所有 ECO
+             </button>
+          </div>
+          
+          {activeChanges.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-12 text-center">
+               <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mb-4 text-slate-300"><GitCommit size={32} /></div>
+               <h4 className="text-slate-900 font-medium">No Change Records</h4>
+               <p className="text-slate-500 text-sm mt-1 max-w-sm">No Engineering Change Orders (ECO) recorded for this version.</p>
+            </div>
+          ) : (
+            <div className="space-y-6">
+               {activeChanges.map((change) => (
+                  <div key={change.id} className="group relative rounded-lg transition-colors hover:bg-slate-50/50 -m-3 p-3">
+                     <div className="flex flex-col md:flex-row gap-6">
+                        <div className="md:w-48 flex-shrink-0">
+                           <div className="flex items-center gap-3 mb-2">
+                              <span className="font-mono text-sm font-bold text-intenza-600 bg-intenza-50 px-2 py-1 rounded border border-intenza-100">{change.ecoNumber}</span>
+                           </div>
+                           <div className="flex flex-col gap-1.5 text-slate-500 text-[10px] font-bold uppercase tracking-wider mt-2">
+                              <div className="flex items-center gap-2"><Calendar size={12} className="text-slate-400" />ECO Date: {change.date}</div>
+                              {change.implementationDate && (
+                                <div className="flex items-center gap-2 text-emerald-600"><Check size={12}/>Production: {change.implementationDate}</div>
+                              )}
+                           </div>
+                        </div>
+                        <div className="flex-1">
+                           <div className="flex items-start justify-between">
+                              <h4 className="text-lg font-medium text-slate-900 mb-3 leading-snug pr-4">{t(change.description)}</h4>
+                              <div className="flex flex-col items-end gap-1">
+                                 <span className={`px-2 py-0.5 text-xs font-semibold rounded-full border whitespace-nowrap ${ecoStatusStyles[change.status]}`}>{language === 'en' ? change.status : ecoStatusTranslations[change.status]}</span>
+                              </div>
+                           </div>
+                           {change.imageUrls && change.imageUrls.length > 0 && (
+                              <div className="mb-4 flex flex-wrap gap-2">
+                                 {change.imageUrls.map((url, imgIndex) => (
+                                    <div key={imgIndex} className="inline-block group/image relative">
+                                       {isVideo(url) ? (
+                                          <video src={url} controls className="h-32 w-auto rounded-lg border border-slate-200 shadow-sm" />
+                                       ) : (
+                                          <a href={url} target="_blank" rel="noopener noreferrer">
+                                             <img src={url} alt="" className="h-32 w-auto rounded-lg border border-slate-200 shadow-sm hover:shadow-md transition-shadow object-cover" onError={(e) => { (e.target as HTMLImageElement).src = 'https://via.placeholder.com/200x200?text=Error'; }} />
+                                          </a>
+                                       )}
+                                    </div>
+                                 ))}
+                              </div>
+                           )}
+                           <div className="bg-slate-50 rounded-xl p-4 border border-slate-100 grid grid-cols-1 sm:grid-cols-2 gap-4 transition-colors group-hover:border-slate-200">
+                              <div>
+                                 <div className="flex items-center gap-2 text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2"><Layers size={14} /> Affected Batches</div>
+                                 <div className="flex flex-wrap gap-2">{change.affectedBatches.map((b) => (<span key={b} className="text-xs bg-white border border-slate-200 px-1.5 py-0.5 rounded-md text-slate-700 font-mono shadow-sm">{b}</span>))}</div>
+                              </div>
+                              <div>
+                                 <div className="flex items-center gap-2 text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2"><Users size={14} /> Impacted Customers</div>
+                                 <p className="text-sm text-slate-600 leading-relaxed">{change.affectedCustomers.join(', ')}</p>
+                              </div>
+                           </div>
+                           {change.sourceFeedbacks && change.sourceFeedbacks.length > 0 && (
+                              <div className="mt-2 flex flex-col gap-1">
+                                 {change.sourceFeedbacks.map((fb, idx) => (
+                                    <button key={idx} onClick={() => handleLinkBack(fb)} className="text-xs text-blue-600 font-semibold flex items-center gap-1 hover:underline w-fit">
+                                       <LinkIcon size={12}/> View Feedback Source #{idx + 1}
+                                    </button>
+                                 ))}
+                              </div>
+                           )}
+                        </div>
+                     </div>
+                     <div className="absolute top-2 right-2 flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button onClick={() => onEditEco(change)} className="p-2 bg-slate-100 rounded-full text-slate-500 hover:bg-slate-200 hover:text-slate-800"><Pencil size={14} /></button>
+                        <button onClick={() => onDeleteEco(change.id)} className="p-2 bg-red-50 rounded-full text-red-500 hover:bg-red-100 hover:text-red-700"><Trash2 size={14} /></button>
+                     </div>
+                  </div>
+               ))}
+            </div>
           )}
-          </div></div><div className="absolute top-2 right-2 flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity"><button onClick={() => onEditEco(change)} className="p-2 bg-slate-100 rounded-full text-slate-500 hover:bg-slate-200 hover:text-slate-800"><Pencil size={14} /></button><button onClick={() => onDeleteEco(change.id)} className="p-2 bg-red-50 rounded-full text-red-500 hover:bg-red-100 hover:text-red-700"><Trash2 size={14} /></button></div></div>))}</div>)}
         </div>
       </div>
     </div>
@@ -1185,6 +1264,14 @@ const EcoModal = ({ isOpen, onClose, onSave, eco, productVersions, product }: an
      }
   }
 
+  const validateAndSave = () => {
+    if (formData.status === EcoStatus.IN_PRODUCTION && !formData.implementationDate) {
+      alert('請填寫導入量產日期（出貨日期）');
+      return;
+    }
+    onSave(formData);
+  };
+
   if (!isOpen) return null;
 
   return (
@@ -1200,11 +1287,15 @@ const EcoModal = ({ isOpen, onClose, onSave, eco, productVersions, product }: an
                 <div><label className="block text-xs font-bold text-slate-500 uppercase mb-1">Date</label><input type="date" value={formData.date} onChange={e => setFormData({...formData, date: e.target.value})} className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg outline-none focus:ring-2 focus:ring-intenza-500/20 text-sm" /></div>
              </div>
              <div className="grid grid-cols-2 gap-6">
-                <div><label className="block text-xs font-bold text-slate-500 uppercase mb-1">Target Version</label>
-                   <select value={formData.version} onChange={e => setFormData({...formData, version: e.target.value})} className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg outline-none focus:ring-2 focus:ring-intenza-500/20 text-sm">
-                      {productVersions.map((v: string) => <option key={v} value={v}>{v}</option>)}
-                      <option value={`v${(parseFloat(product.currentVersion.replace('v', '')) + 0.1).toFixed(1)}`}>New Version</option>
-                   </select>
+                <div>
+                   <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Target Version (手動輸入)</label>
+                   <input 
+                      type="text" 
+                      value={formData.version} 
+                      onChange={e => setFormData({...formData, version: e.target.value})} 
+                      className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg outline-none focus:ring-2 focus:ring-intenza-500/20 text-sm font-bold"
+                      placeholder="e.g. v2.5"
+                   />
                 </div>
                 <div><label className="block text-xs font-bold text-slate-500 uppercase mb-1">Status</label>
                    <select value={formData.status} onChange={e => setFormData({...formData, status: e.target.value as EcoStatus})} className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg outline-none focus:ring-2 focus:ring-intenza-500/20 text-sm">
@@ -1212,6 +1303,21 @@ const EcoModal = ({ isOpen, onClose, onSave, eco, productVersions, product }: an
                    </select>
                 </div>
              </div>
+             
+             {formData.status === EcoStatus.IN_PRODUCTION && (
+                <div className="p-4 bg-emerald-50 rounded-xl border border-emerald-100 animate-fade-in">
+                   <label className="block text-xs font-black text-emerald-800 uppercase tracking-widest mb-2">導入量產日期 (開始出貨日) *</label>
+                   <input 
+                      type="date" 
+                      required
+                      value={formData.implementationDate} 
+                      onChange={e => setFormData({...formData, implementationDate: e.target.value})} 
+                      className="w-full px-4 py-2 bg-white border border-emerald-200 rounded-lg outline-none focus:ring-2 focus:ring-emerald-500/20 text-sm font-bold"
+                   />
+                   <p className="text-[10px] text-emerald-600 mt-2 font-medium italic">此版本將會更新為產品目前的正式量產版本。</p>
+                </div>
+             )}
+
              <div><label className="block text-xs font-bold text-slate-500 uppercase mb-1">Description</label><textarea rows={3} value={formData.description[language]} onChange={e => setFormData({...formData, description: {...formData.description, [language]: e.target.value}})} className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg outline-none focus:ring-2 focus:ring-intenza-500/20 text-sm resize-none" placeholder="Details of the design change..." /></div>
              <div><label className="block text-xs font-bold text-slate-500 uppercase mb-1">Attachments (Images/Videos)</label>
                 <div className="flex flex-wrap gap-2 mt-2">
@@ -1228,7 +1334,7 @@ const EcoModal = ({ isOpen, onClose, onSave, eco, productVersions, product }: an
           </div>
           <div className="p-6 border-t border-slate-100 bg-slate-50 flex justify-end gap-3 sticky bottom-0">
              <button onClick={onClose} className="px-5 py-2 text-slate-600 font-bold hover:bg-slate-200 rounded-lg">Cancel</button>
-             <button onClick={() => onSave(formData)} className="px-5 py-2 bg-slate-900 text-white font-bold rounded-lg shadow-lg">Save ECO</button>
+             <button onClick={validateAndSave} className="px-5 py-2 bg-slate-900 text-white font-bold rounded-lg shadow-lg">Save ECO</button>
           </div>
        </div>
     </div>

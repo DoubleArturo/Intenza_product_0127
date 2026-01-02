@@ -23,7 +23,6 @@ export const Dashboard: React.FC<DashboardProps> = ({ products, seriesList, onAd
   const { language, t } = useContext(LanguageContext);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedSeries, setSelectedSeries] = useState<string>('ALL');
-  // Changed default sort order to SKU_ASC as requested
   const [sortOrder, setSortOrder] = useState<SortType>('SKU_ASC');
   
   // Modal State
@@ -76,17 +75,14 @@ export const Dashboard: React.FC<DashboardProps> = ({ products, seriesList, onAd
     
     return matchesSearch && matchesSeries;
   }).sort((a, b) => {
-    // Priority 1: Watched (starred) items always come first
     if (a.isWatched && !b.isWatched) return -1;
     if (!a.isWatched && b.isWatched) return 1;
 
-    // Priority 2: Selected sort order
     if (sortOrder === 'SKU_ASC') {
       return a.sku.localeCompare(b.sku, undefined, { numeric: true });
     } else if (sortOrder === 'SKU_DESC') {
       return b.sku.localeCompare(a.sku, undefined, { numeric: true });
     }
-    // Default: Sort by model name Asc
     return t(a.modelName).localeCompare(t(b.modelName), undefined, { numeric: true, sensitivity: 'base' });
   });
 
@@ -150,7 +146,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ products, seriesList, onAd
     handleCloseModal();
   };
 
-  // Helper to get latest implementation info
+  // Helper to get latest production info based on implementation date
   const getLatestProductionInfo = (p: ProductModel) => {
     const prodChanges = (p.designHistory || [])
       .filter(h => h.status === EcoStatus.IN_PRODUCTION && h.implementationDate)
@@ -174,7 +170,6 @@ export const Dashboard: React.FC<DashboardProps> = ({ products, seriesList, onAd
         </button>
       </header>
 
-      {/* Filters & Sorting */}
       <div className="flex flex-col xl:flex-row gap-6 mb-10 items-start xl:items-center">
         <div className="flex items-center bg-slate-200/50 rounded-xl p-1.5 overflow-x-auto max-w-full no-scrollbar shadow-inner">
           {seriesTabs.map((s) => (
@@ -221,10 +216,12 @@ export const Dashboard: React.FC<DashboardProps> = ({ products, seriesList, onAd
         </div>
       </div>
 
-      {/* Product Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
         {filteredProducts.map((p) => {
           const productionInfo = getLatestProductionInfo(p);
+          // Determine version to display on card
+          const displayVersion = productionInfo ? productionInfo.version : p.currentVersion;
+          
           return (
             <div 
               key={p.id} 
@@ -275,9 +272,9 @@ export const Dashboard: React.FC<DashboardProps> = ({ products, seriesList, onAd
                     </h3>
                     <div className="flex items-center gap-1.5">
                       <span className="text-[11px] font-black bg-slate-900 text-white px-2.5 py-1 rounded-lg shadow-sm">
-                        {p.currentVersion}
+                        {displayVersion}
                       </span>
-                      {productionInfo && (
+                      {productionInfo && productionInfo.implementationDate && (
                         <span className="text-[10px] font-bold text-slate-400 flex items-center gap-1 bg-slate-50 px-2 py-1 rounded-lg border border-slate-100">
                           <Calendar size={10} /> {productionInfo.implementationDate}
                         </span>
@@ -317,7 +314,6 @@ export const Dashboard: React.FC<DashboardProps> = ({ products, seriesList, onAd
         )}
       </div>
 
-      {/* Product Modal */}
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md animate-fade-in">
           <div className="bg-white rounded-[2.5rem] shadow-2xl w-full max-w-xl animate-slide-up overflow-hidden border border-white/20">
@@ -375,7 +371,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ products, seriesList, onAd
                 </div>
 
                 <div>
-                  <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-3">Initial Version</label>
+                  <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-3">Current Version</label>
                   <input required type="text" value={formData.version} onChange={(e) => setFormData({...formData, version: e.target.value})} className="w-full px-5 py-3.5 bg-slate-50 border-2 border-slate-100 rounded-2xl focus:border-slate-900 focus:bg-white outline-none transition-all font-bold" placeholder="v1.0" />
                 </div>
               </div>
