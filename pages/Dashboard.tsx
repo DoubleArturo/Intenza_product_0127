@@ -1,5 +1,5 @@
 
-import React, { useState, useRef, useEffect, useContext, useMemo } from 'react';
+import React, { useState, useRef, useEffect, useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Plus, Search, ChevronRight, X, Upload, Pencil, Save, Star, Trash2, Image as ImageIcon, Loader2, ArrowUpDown, Calendar } from 'lucide-react';
 import { ProductModel, LocalizedString, EcoStatus } from '../types';
@@ -23,8 +23,10 @@ export const Dashboard: React.FC<DashboardProps> = ({ products, seriesList, onAd
   const { language, t } = useContext(LanguageContext);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedSeries, setSelectedSeries] = useState<string>('ALL');
+  // Default sort order changed to SKU_ASC per user request
   const [sortOrder, setSortOrder] = useState<SortType>('SKU_ASC');
   
+  // Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
@@ -74,9 +76,11 @@ export const Dashboard: React.FC<DashboardProps> = ({ products, seriesList, onAd
     
     return matchesSearch && matchesSeries;
   }).sort((a, b) => {
+    // Priority 1: Watched (starred) items always come first
     if (a.isWatched && !b.isWatched) return -1;
     if (!a.isWatched && b.isWatched) return 1;
 
+    // Priority 2: Selected sort order
     if (sortOrder === 'SKU_ASC') {
       return a.sku.localeCompare(b.sku, undefined, { numeric: true });
     } else if (sortOrder === 'SKU_DESC') {
@@ -147,23 +151,10 @@ export const Dashboard: React.FC<DashboardProps> = ({ products, seriesList, onAd
     handleCloseModal();
   };
 
-  /**
-   * Helper to find the latest version info based on implementation date.
-   * If there are ECOs in production, the one with the date closest to current (latest in history) is shown.
-   */
-  const getLatestProductionInfo = (p: ProductModel) => {
-    const productionEcos = p.designHistory
-      .filter(eco => eco.status === EcoStatus.IN_PRODUCTION && eco.implementationDate)
-      .sort((a, b) => new Date(b.implementationDate!).getTime() - new Date(a.implementationDate!).getTime());
-    
-    if (productionEcos.length > 0) {
-      return {
-        version: productionEcos[0].version,
-        date: productionEcos[0].implementationDate
-      };
-    }
-    // Fallback to model's default currentVersion if no production ECOs are found
-    return { version: p.currentVersion, date: null };
+  // Helper to find the production implementation date for a product
+  const getProdDate = (p: ProductModel) => {
+    const prodEco = p.designHistory.find(eco => eco.version === p.currentVersion && eco.status === EcoStatus.IN_PRODUCTION);
+    return prodEco?.implementationDate;
   };
 
   return (
@@ -182,6 +173,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ products, seriesList, onAd
         </button>
       </header>
 
+      {/* Filters & Sorting */}
       <div className="flex flex-col xl:flex-row gap-6 mb-10 items-start xl:items-center">
         <div className="flex items-center bg-slate-200/50 rounded-xl p-1.5 overflow-x-auto max-w-full no-scrollbar shadow-inner">
           {seriesTabs.map((s) => (
@@ -228,9 +220,10 @@ export const Dashboard: React.FC<DashboardProps> = ({ products, seriesList, onAd
         </div>
       </div>
 
+      {/* Product Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
         {filteredProducts.map((p) => {
-          const latestInfo = getLatestProductionInfo(p);
+          const prodDate = getProdDate(p);
           return (
             <div 
               key={p.id} 
@@ -282,11 +275,11 @@ export const Dashboard: React.FC<DashboardProps> = ({ products, seriesList, onAd
                   </div>
                   <div className="flex items-center gap-2">
                     <span className="text-[11px] font-black bg-slate-900 text-white px-2.5 py-1 rounded-lg shadow-sm">
-                      {latestInfo.version}
+                      {p.currentVersion}
                     </span>
-                    {latestInfo.date && (
+                    {prodDate && (
                       <span className="flex items-center gap-1 text-[10px] font-bold text-slate-500 uppercase tracking-tighter">
-                        <Calendar size={10} className="text-slate-400" /> {latestInfo.date}
+                        <Calendar size={10} className="text-slate-400" /> {prodDate}
                       </span>
                     )}
                   </div>
@@ -323,6 +316,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ products, seriesList, onAd
         )}
       </div>
 
+      {/* Product Modal */}
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md animate-fade-in">
           <div className="bg-white rounded-[2.5rem] shadow-2xl w-full max-w-xl animate-slide-up overflow-hidden border border-white/20">
