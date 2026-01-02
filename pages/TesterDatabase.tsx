@@ -1,7 +1,9 @@
+
 import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { ArrowLeft, Plus, Star, Upload, Ruler, Clock, User, X, Filter, Search, RotateCcw, Pencil, Trash2, CheckCircle } from 'lucide-react';
+import { ArrowLeft, Plus, Star, Upload, Ruler, Clock, User, X, Filter, Search, RotateCcw, Pencil, Trash2, CheckCircle, Loader2 } from 'lucide-react';
 import { Tester, Gender } from '../types';
+import { api } from '../services/api';
 
 interface TesterDatabaseProps {
   testers: Tester[];
@@ -16,6 +18,7 @@ const TesterDatabase: React.FC<TesterDatabaseProps> = ({ testers, onAddTester, o
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingTester, setEditingTester] = useState<Tester | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
   
   // Selection Mode State
   const selectionMode = location.state?.selectionMode || false;
@@ -76,16 +79,29 @@ const TesterDatabase: React.FC<TesterDatabaseProps> = ({ testers, onAddTester, o
       }
   }, [isModalOpen, editingTester]);
 
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      const url = URL.createObjectURL(file);
-      setFormData({ ...formData, imageUrl: url });
+      try {
+        setIsUploading(true);
+        // 將檔案上傳至 Vercel Blob 獲取永久 URL
+        const blobUrl = await api.uploadImage(file);
+        setFormData(prev => ({ ...prev, imageUrl: blobUrl }));
+      } catch (err) {
+        console.error("Tester photo upload failed:", err);
+        alert("照片上傳失敗，請檢查網路連線");
+      } finally {
+        setIsUploading(false);
+      }
     }
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (isUploading) {
+      alert("照片正在上傳中，請稍候");
+      return;
+    }
     if (editingTester) {
         onUpdateTester({ ...editingTester, ...formData });
     } else {
@@ -265,17 +281,24 @@ const TesterDatabase: React.FC<TesterDatabaseProps> = ({ testers, onAddTester, o
             <form onSubmit={handleSubmit} className="p-6 space-y-5">
                <div className="flex justify-center">
                   <div 
-                     onClick={() => fileInputRef.current?.click()}
+                     onClick={() => !isUploading && fileInputRef.current?.click()}
                      className="relative w-32 h-32 rounded-full border-2 border-dashed border-slate-300 bg-slate-50 flex flex-col items-center justify-center cursor-pointer hover:border-intenza-400 hover:bg-intenza-50 transition-all overflow-hidden group"
                    >
                      {formData.imageUrl ? (
                        <img src={formData.imageUrl} alt="Preview" className="w-full h-full object-cover" />
                      ) : (
                        <div className="text-center text-slate-400 group-hover:text-intenza-500">
-                         <User size={32} />
-                         <span className="text-xs mt-1 block">Upload</span>
+                         {isUploading ? <Loader2 size={32} className="animate-spin mx-auto text-intenza-600" /> : <User size={32} />}
+                         <span className="text-xs mt-1 block">{isUploading ? 'Uploading...' : 'Upload'}</span>
                        </div>
                      )}
+                     
+                     {formData.imageUrl && isUploading && (
+                        <div className="absolute inset-0 bg-white/60 flex items-center justify-center">
+                           <Loader2 size={24} className="animate-spin text-intenza-600" />
+                        </div>
+                     )}
+
                      <input 
                        ref={fileInputRef}
                        type="file" 
@@ -332,7 +355,11 @@ const TesterDatabase: React.FC<TesterDatabaseProps> = ({ testers, onAddTester, o
                  </div>
                </div>
 
-               <button type="submit" className="w-full py-3 bg-slate-900 text-white font-bold rounded-xl hover:bg-slate-800 transition-colors shadow-lg shadow-slate-900/20 mt-2">
+               <button 
+                type="submit" 
+                disabled={isUploading}
+                className="w-full py-3 bg-slate-900 text-white font-bold rounded-xl hover:bg-slate-800 transition-colors shadow-lg shadow-slate-900/20 mt-2 disabled:opacity-50 disabled:bg-slate-400"
+               >
                  {editingTester ? 'Save Changes' : 'Create Profile'}
                </button>
             </form>
@@ -356,6 +383,7 @@ const TesterCard: React.FC<{ tester: Tester, onDelete: () => void, onEdit: () =>
             src={tester.imageUrl} 
             alt={tester.name} 
             className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" 
+            onError={(e) => { (e.target as HTMLImageElement).src = 'https://via.placeholder.com/400x600?text=No+Photo'; }}
         />
         
         {isSelected && (
