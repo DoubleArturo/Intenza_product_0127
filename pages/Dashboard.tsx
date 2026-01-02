@@ -281,9 +281,6 @@ export const Dashboard: React.FC<DashboardProps> = ({ products, seriesList, onAd
                       )}
                     </div>
                   </div>
-                  <span className="text-[11px] font-bold text-slate-400 tracking-wider uppercase">
-                    {t(p.series)}
-                  </span>
                 </div>
                 
                 <p className="text-sm text-slate-500 line-clamp-2 mb-6 leading-relaxed flex-1 font-medium">
