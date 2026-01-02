@@ -36,7 +36,7 @@ const ProductDetail: React.FC<ProductDetailProps> = ({ products, testers = [], o
     if (!product) return 0;
     let count = 0;
     product.ergoProjects.forEach(p => {
-        (['Strength Curve', 'Experience', 'Stroke', 'Other Suggestion'] as ErgoProjectCategory[]).forEach(cat => {
+        (['Resistance profile', 'Experience', 'Stroke', 'Other Suggestion'] as ErgoProjectCategory[]).forEach(cat => {
             p.tasks[cat]?.forEach(t => {
                 count += t.ngReasons.filter(ng => 
                     !ng.decisionStatus || 
@@ -94,7 +94,6 @@ const ProductDetail: React.FC<ProductDetailProps> = ({ products, testers = [], o
       let updatedDesignHistory;
       let newCurrentVersion = product.currentVersion;
 
-      // If an ECO is set to "In Production", update the global product version
       if (ecoData.status === EcoStatus.IN_PRODUCTION) {
           newCurrentVersion = ecoData.version;
       }
@@ -129,7 +128,6 @@ const ProductDetail: React.FC<ProductDetailProps> = ({ products, testers = [], o
     onUpdateProduct({ ...product, currentVersion: version });
   };
 
-  // Durability Test Handlers
   const handleOpenTestModal = (test: TestResult | null = null) => {
     setEditingTest(test);
     setIsTestModalOpen(true);
@@ -271,6 +269,13 @@ export default ProductDetail;
 
 // --- Sub-components & Modals ---
 
+interface ProductDetailProps {
+  products: ProductModel[];
+  testers?: Tester[];
+  onUpdateProduct: (product: ProductModel) => Promise<void>;
+  showAiInsights: boolean;
+}
+
 const TabButton = ({ active, onClick, icon, label }: any) => (
   <button onClick={onClick} className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-all ${active ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-200/50'}`}>
     {icon}{label}
@@ -308,7 +313,7 @@ const ngDecisionTranslations: { [key in NgDecisionStatus]: string } = {
 };
 
 const categoryStyles: Record<ErgoProjectCategory, { bg: string, border: string, text: string }> = {
-  'Strength Curve': { bg: 'bg-[#eef2ff]', border: 'border-indigo-100', text: 'text-indigo-900' },
+  'Resistance profile': { bg: 'bg-[#eef2ff]', border: 'border-indigo-100', text: 'text-indigo-900' },
   'Experience': { bg: 'bg-[#f0fdfa]', border: 'border-teal-100', text: 'text-teal-900' },
   'Stroke': { bg: 'bg-[#fff7ed]', border: 'border-orange-100', text: 'text-orange-900' },
   'Other Suggestion': { bg: 'bg-slate-50', border: 'border-slate-200', text: 'text-slate-700' }
@@ -473,7 +478,7 @@ const ErgoSection = ({ product, testers, onUpdateProduct, highlightedFeedback }:
       date: new Date().toISOString().split('T')[0],
       testerIds: selectedTesterIds,
       overallStatus: ProjectOverallStatus.PENDING,
-      tasks: { 'Strength Curve': [], 'Experience': [], 'Stroke': [], 'Other Suggestion': [] },
+      tasks: { 'Resistance profile': [], 'Experience': [], 'Stroke': [], 'Other Suggestion': [] },
       uniqueNgReasons: {}
     };
     onUpdateProduct({ ...product, ergoProjects: [...product.ergoProjects, newProject] });
@@ -697,7 +702,7 @@ const ErgoSection = ({ product, testers, onUpdateProduct, highlightedFeedback }:
       setFeedbackStatusModal({ isOpen: false, feedback: null });
   };
 
-  const categoryTranslations: Record<ErgoProjectCategory, string> = { 'Strength Curve': 'Strength Curve', 'Experience': 'Ergonomic Operation Experience', 'Stroke': 'Exercise Stroke', 'Other Suggestion': 'Other Suggestions' };
+  const categoryTranslations: Record<ErgoProjectCategory, string> = { 'Resistance profile': 'Resistance profile', 'Experience': 'Ergonomic Operation Experience', 'Stroke': 'Exercise Stroke', 'Other Suggestion': 'Other Suggestions' };
   const activeEcosList = product.designHistory.filter(e => e.status !== EcoStatus.IN_PRODUCTION && e.status !== EcoStatus.DESIGN_COMPLETE);
 
   return (
@@ -752,7 +757,7 @@ const ErgoSection = ({ product, testers, onUpdateProduct, highlightedFeedback }:
                     <button onClick={() => setFeedbackModalState({ isOpen: true, feedback: null })} className="text-xs font-medium bg-intenza-600 text-white px-3 py-1.5 rounded-md hover:bg-intenza-700 flex items-center gap-1 shadow-lg shadow-intenza-900/10"><Plus size={12}/>Add</button>
                 </div>
                 <div className="p-6 overflow-y-auto flex-1 space-y-6">
-                    {(['Strength Curve', 'Experience', 'Stroke', 'Other Suggestion'] as ErgoProjectCategory[]).map(cat => (
+                    {(['Resistance profile', 'Experience', 'Stroke', 'Other Suggestion'] as ErgoProjectCategory[]).map(cat => (
                         <div key={cat}>
                              <h4 className="font-semibold text-xs text-slate-400 mb-3 uppercase tracking-wider pl-1 border-l-2 border-slate-300">{language === 'en' ? cat : categoryTranslations[cat]}</h4>
                              <div className="space-y-3">
@@ -917,7 +922,7 @@ const ProjectCard = ({ project, testers, product, onOpenAddTask, onEditTaskName,
         </div>
       </div>
       <div className="p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-         {(['Strength Curve', 'Experience', 'Stroke', 'Other Suggestion'] as ErgoProjectCategory[]).map(cat => (
+         {(['Resistance profile', 'Experience', 'Stroke', 'Other Suggestion'] as ErgoProjectCategory[]).map(cat => (
              <div key={cat} className="flex flex-col h-full">
                 <div className="flex items-center justify-between mb-4"><h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider">{language === 'en' ? cat : categoryTranslations[cat]}</h4><button onClick={() => onOpenAddTask(project.id, cat)} className="text-slate-400 hover:text-slate-900"><Plus size={16}/></button></div>
                 <div className="space-y-3 flex-1">
@@ -1227,7 +1232,7 @@ const FeedbackModal = ({ isOpen, onClose, onSave, feedback, product }: any) => {
     const { t } = useContext(LanguageContext);
     const [formData, setFormData] = useState({
         date: feedback?.date || new Date().toISOString().split('T')[0],
-        category: feedback?.category || 'Strength Curve' as ErgoProjectCategory,
+        category: feedback?.category || 'Resistance profile' as ErgoProjectCategory,
         content: feedback ? t(feedback.content) : '',
         source: feedback?.source || ''
     });
@@ -1241,7 +1246,7 @@ const FeedbackModal = ({ isOpen, onClose, onSave, feedback, product }: any) => {
                         <div><label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Date</label><input type="date" className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm" value={formData.date} onChange={e => setFormData({...formData, date: e.target.value})} /></div>
                         <div><label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Source</label><input required className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm" placeholder="e.g. Equinox" value={formData.source} onChange={e => setFormData({...formData, source: e.target.value})} /></div>
                     </div>
-                    <div><label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Category</label><select className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm" value={formData.category} onChange={e => setFormData({...formData, category: e.target.value as ErgoProjectCategory})}><option value="Strength Curve">Strength Curve</option><option value="Experience">Experience</option><option value="Stroke">Stroke</option><option value="Other Suggestion">Other Suggestion</option></select></div>
+                    <div><label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Category</label><select className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm" value={formData.category} onChange={e => setFormData({...formData, category: e.target.value as ErgoProjectCategory})}><option value="Resistance profile">Resistance profile</option><option value="Experience">Experience</option><option value="Stroke">Stroke</option><option value="Other Suggestion">Other Suggestion</option></select></div>
                     <div><label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Content</label><textarea required className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm resize-none" rows={4} value={formData.content} onChange={e => setFormData({...formData, content: e.target.value})} /></div>
                     <div className="flex gap-3 pt-2">
                         <button type="button" onClick={onClose} className="flex-1 py-2 text-slate-500 font-bold hover:bg-slate-50 rounded-lg">Cancel</button>
@@ -1256,7 +1261,7 @@ const FeedbackModal = ({ isOpen, onClose, onSave, feedback, product }: any) => {
 const FeedbackStatusDecisionModal = ({ isOpen, onClose, feedback, onUpdateStatus }: any) => {
     return (
         <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm animate-fade-in">
-            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm animate-slide-up p-6 space-y-4">
+            <div className="bg-white rounded-2xl shadow-2xl w-full max-sm animate-slide-up p-6 space-y-4">
                 <h3 className="text-lg font-bold">Feedback Status</h3>
                 <div className="grid grid-cols-1 gap-2">
                     <button onClick={() => onUpdateStatus(feedback.id, 'PENDING')} className="py-2 bg-amber-50 text-amber-700 border border-amber-200 font-bold rounded-lg text-xs uppercase">Pending</button>

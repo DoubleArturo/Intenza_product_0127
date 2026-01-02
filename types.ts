@@ -39,7 +39,7 @@ export enum EcoStatus {
 }
 
 export type FeedbackType = 'EVALUATION' | 'COMPLAINT';
-export type ErgoProjectCategory = 'Strength Curve' | 'Experience' | 'Stroke' | 'Other Suggestion';
+export type ErgoProjectCategory = 'Resistance profile' | 'Experience' | 'Stroke' | 'Other Suggestion';
 export type Gender = 'Male' | 'Female';
 
 export interface ErgoFeedback {
