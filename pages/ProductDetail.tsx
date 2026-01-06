@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect, useContext, useRef } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
-import { ArrowLeft, GitCommit, UserCheck, Activity, AlertTriangle, CheckCircle, Clock, Calendar, Layers, Users, Plus, X, Pencil, Trash2, Upload, MessageSquare, ChevronsRight, ChevronsLeft, Tag, FileText, User, Database, Mars, Venus, Link as LinkIcon, Search, ClipboardList, ListPlus, Check, ChevronDown, RefreshCw, HelpCircle, BarChart3, AlertCircle, PlayCircle, Loader2, StickyNote, Lightbulb, Paperclip, Video, Image as ImageIcon, Save, Star, Info } from 'lucide-react';
+import { ArrowLeft, GitCommit, UserCheck, Activity, AlertTriangle, CheckCircle, Clock, Calendar, Layers, Users, Plus, X, Pencil, Trash2, Upload, MessageSquare, ChevronsRight, ChevronsLeft, Tag, FileText, User, Database, Mars, Venus, Link as LinkIcon, Search, ClipboardList, ListPlus, Check, ChevronDown, RefreshCw, HelpCircle, BarChart3, AlertCircle, PlayCircle, Loader2, StickyNote, Lightbulb, Paperclip, Video, Image as ImageIcon, Save, Star, Info, Ship } from 'lucide-react';
 import { ProductModel, TestStatus, DesignChange, LocalizedString, TestResult, EcoStatus, ErgoFeedback, ErgoProject, Tester, ErgoProjectCategory, NgReason, ProjectOverallStatus, Gender, NgDecisionStatus, EvaluationTask } from '../types';
 import GeminiInsight from '../components/GeminiInsight';
 import { LanguageContext } from '../App';
@@ -530,6 +530,17 @@ const DesignSection = ({ product, onAddEco, onEditEco, onDeleteEco, onDeleteVers
     navigate(`/product/${product.id}`, { state: { highlightFeedback: source } });
   }
 
+  const handleJumpToAnalytics = () => {
+    navigate('/analytics', { 
+        state: { 
+            autoDrill: { 
+                sku: product.sku, 
+                version: selectedVersion 
+            } 
+        } 
+    });
+  };
+
   return (
     <div className="animate-fade-in">
       <div className="flex items-center justify-between mb-6">
@@ -549,12 +560,22 @@ const DesignSection = ({ product, onAddEco, onEditEco, onDeleteEco, onDeleteVers
         <div className="p-8 bg-white">
           <div className="flex items-center justify-between mb-8 border-b border-slate-50 pb-4">
              <div className="flex flex-col gap-1">
-                <h3 className="text-2xl font-bold text-slate-800 flex items-center gap-3">
-                    {selectedVersion}
-                    <span className={`text-xs font-normal text-white px-2 py-1 rounded-md uppercase tracking-wider ${selectedVersion === product.currentVersion ? 'bg-slate-900' : 'bg-slate-400'}`}>
-                    {selectedVersion === product.currentVersion ? 'Current Production' : 'Archived Version'}
-                    </span>
-                </h3>
+                <div className="flex items-center gap-3">
+                    <h3 className="text-2xl font-bold text-slate-800 flex items-center gap-3">
+                        {selectedVersion}
+                        <span className={`text-xs font-normal text-white px-2 py-1 rounded-md uppercase tracking-wider ${selectedVersion === product.currentVersion ? 'bg-slate-900' : 'bg-slate-400'}`}>
+                        {selectedVersion === product.currentVersion ? 'Current Production' : 'Archived Version'}
+                        </span>
+                    </h3>
+                    {/* New Market Insight Jump Icon */}
+                    <button 
+                        onClick={handleJumpToAnalytics}
+                        className="p-1.5 bg-slate-100 text-slate-500 hover:text-intenza-600 hover:bg-intenza-50 rounded-lg transition-all shadow-sm border border-slate-200"
+                        title={t({ en: 'View market distribution for this version', zh: '檢視此版本的出貨客戶分佈' })}
+                    >
+                        <Users size={18} />
+                    </button>
+                </div>
                 {selectedVersion !== product.currentVersion && (
                    <button 
                       onClick={() => onSetCurrentVersion(selectedVersion)}

@@ -1,5 +1,4 @@
-
-import React, { useState, useMemo, useRef, useContext } from 'react';
+import React, { useState, useMemo, useRef, useContext, useEffect } from 'react';
 import { 
   PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer, 
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Label
@@ -14,7 +13,7 @@ import { ShipmentData, ChartViewType, ProductModel, Tester, TestStatus } from '.
 import GeminiInsight from '../components/GeminiInsight';
 import * as XLSX from 'xlsx';
 import { LanguageContext } from '../App';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 
 const COLORS = ['#0f172a', '#e3261b', '#94a3b8', '#fbbf24', '#f63e32', '#475569', '#3b82f6', '#10b981', '#8b5cf6', '#d946ef', '#06b6d4'];
 
@@ -43,6 +42,7 @@ type ViewMode = 'SHIPMENTS' | 'ERGONOMICS' | 'DURABILITY';
 const Analytics: React.FC<AnalyticsProps> = ({ products, shipments, onImportData, onBatchAddProducts, showAiInsights, userRole }) => {
   const { language, t } = useContext(LanguageContext);
   const navigate = useNavigate();
+  const location = useLocation();
   
   const [chartType, setChartType] = useState<ChartViewType>('PIE');
   const [viewMode, setViewMode] = useState<ViewMode>('SHIPMENTS');
@@ -60,6 +60,29 @@ const Analytics: React.FC<AnalyticsProps> = ({ products, shipments, onImportData
     const clean = (v || '1.0').toUpperCase().replace('V', '');
     return `V${clean}`;
   };
+
+  /**
+   * Handle incoming autoDrill state from Product Detail
+   */
+  useEffect(() => {
+    if (location.state?.autoDrill) {
+      const { sku, version } = location.state.autoDrill;
+      const shipment = shipments.find(s => s.sku === sku);
+      if (shipment) {
+        setViewMode('SHIPMENTS');
+        setDimension('DATA_DRILL');
+        setDrillPath([
+            { level: 'CATEGORY', label: shipment.category, filterVal: shipment.category },
+            { level: 'SERIES', label: shipment.series, filterVal: shipment.series },
+            { level: 'SKU', label: sku, filterVal: sku }
+        ]);
+        // Note: The filteredShipments logic below will handle the version filtering 
+        // if an autoDrill is active to show only that version's customers.
+      }
+      // Clear location state after handling to prevent loops or persistent filters
+      navigate(location.pathname, { replace: true, state: {} });
+    }
+  }, [location.state, shipments, navigate, location.pathname]);
 
   /**
    * Enhanced Drill-Down Logic
