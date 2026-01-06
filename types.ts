@@ -115,6 +115,7 @@ export interface TestResult {
   id: string;
   category: string;
   testName: LocalizedString;
+  version?: string;
   score: number;
   status: TestStatus;
   details: LocalizedString;

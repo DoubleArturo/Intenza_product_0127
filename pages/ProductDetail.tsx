@@ -872,7 +872,10 @@ const LifeSection = ({ product, onAddTest, onEditTest, onDeleteTest }: any) => {
                         <div key={test.id} className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm group relative overflow-hidden">
                             <div className="flex justify-between items-start mb-4">
                                 <div>
-                                    <span className="text-[10px] font-bold text-indigo-600 uppercase tracking-widest bg-indigo-50 px-2 py-0.5 rounded border border-indigo-100">{test.category}</span>
+                                    <div className="flex items-center gap-2">
+                                        <span className="text-[10px] font-bold text-indigo-600 uppercase tracking-widest bg-indigo-50 px-2 py-0.5 rounded border border-indigo-100">{test.category}</span>
+                                        {test.version && <span className="text-[10px] font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded border border-slate-200">{test.version}</span>}
+                                    </div>
                                     <h4 className="font-bold text-slate-900 mt-2">{t(test.testName)}</h4>
                                 </div>
                                 <div className={`px-2 py-1 rounded text-[10px] font-bold uppercase border ${
@@ -1090,20 +1093,33 @@ const EcoModal = ({ isOpen, onClose, onSave, eco, productVersions, product }: an
     );
 };
 
+const TEST_NAME_OPTIONS = ['耐久測試', '鹽霧測試', '包裝測試'];
+
 const TestModal = ({ isOpen, onClose, onSave, test }: any) => {
     const { t } = useContext(LanguageContext);
     const [isUploading, setIsUploading] = useState(false);
     const durabilityFileInputRef = useRef<HTMLInputElement>(null);
 
     const [formData, setFormData] = useState({
-        category: test?.category || '',
+        category: test?.category || '機構',
         testName: test ? t(test.testName) : '',
+        version: test?.version || '',
         score: test?.score || 0,
         status: test?.status || TestStatus.PENDING,
         details: test ? t(test.details) : '',
         attachmentUrls: test?.attachmentUrls || [],
         updatedDate: test?.updatedDate || new Date().toISOString().split('T')[0]
     });
+
+    const [testNameType, setTestNameType] = useState<string>(
+        test ? (TEST_NAME_OPTIONS.includes(t(test.testName)) ? t(test.testName) : '其他') : '耐久測試'
+    );
+
+    useEffect(() => {
+        if (testNameType !== '其他') {
+            setFormData(prev => ({ ...prev, testName: testNameType }));
+        }
+    }, [testNameType]);
 
     const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
@@ -1139,11 +1155,41 @@ const TestModal = ({ isOpen, onClose, onSave, test }: any) => {
                     <button onClick={onClose} className="p-2 rounded-full hover:bg-slate-100"><X size={20} /></button>
                 </div>
                 <form onSubmit={(e) => { e.preventDefault(); onSave({...formData, testName: {en: formData.testName, zh: formData.testName}, details: {en: formData.details, zh: formData.details}}); }} className="p-6 space-y-4 max-h-[80vh] overflow-y-auto custom-scrollbar">
-                    <div><label className="block text-xs font-bold text-slate-400 uppercase mb-1">Category</label><input required className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg" value={formData.category} onChange={e => setFormData({...formData, category: e.target.value})} placeholder="e.g. Frame" /></div>
-                    <div><label className="block text-xs font-bold text-slate-400 uppercase mb-1">Test Name</label><input required className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg" value={formData.testName} onChange={e => setFormData({...formData, testName: e.target.value})} placeholder="e.g. 5M Cycle Stress Test" /></div>
+                    <div className="grid grid-cols-2 gap-4">
+                        <div>
+                            <label className="block text-xs font-bold text-slate-400 uppercase mb-1">Category</label>
+                            <select className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg" value={formData.category} onChange={e => setFormData({...formData, category: e.target.value})}>
+                                <option value="機構">機構</option>
+                                <option value="電器">電器</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label className="block text-xs font-bold text-slate-400 uppercase mb-1">Test Version</label>
+                            <input className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg" value={formData.version} onChange={e => setFormData({...formData, version: e.target.value})} placeholder="e.g. Prototype v2" />
+                        </div>
+                    </div>
+
+                    <div>
+                        <label className="block text-xs font-bold text-slate-400 uppercase mb-1">Test Name</label>
+                        <div className="space-y-2">
+                            <select className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg" value={testNameType} onChange={e => setTestNameType(e.target.value)}>
+                                {TEST_NAME_OPTIONS.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+                                <option value="其他">其他 (用戶自行輸入)</option>
+                            </select>
+                            {testNameType === '其他' && (
+                                <input required className="w-full px-4 py-2 bg-white border border-slate-200 rounded-lg ring-1 ring-intenza-100" value={formData.testName} onChange={e => setFormData({...formData, testName: e.target.value})} placeholder="請輸入自定義測試名稱" />
+                            )}
+                        </div>
+                    </div>
+
                     <div className="grid grid-cols-2 gap-4">
                         <div><label className="block text-xs font-bold text-slate-400 uppercase mb-1">Progress (%)</label><input type="number" min="0" max="100" className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg" value={formData.score} onChange={e => setFormData({...formData, score: Number(e.target.value)})} /></div>
-                        <div><label className="block text-xs font-bold text-slate-400 uppercase mb-1">Status</label><select className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg" value={formData.status} onChange={e => setFormData({...formData, status: e.target.value as TestStatus})}>{Object.values(TestStatus).map(s => <option key={s} value={s}>{s}</option>)}</select></div>
+                        <div>
+                            <label className="block text-xs font-bold text-slate-400 uppercase mb-1">Status</label>
+                            <select className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg" value={formData.status} onChange={e => setFormData({...formData, status: e.target.value as TestStatus})}>
+                                {Object.values(TestStatus).filter(s => s !== TestStatus.WARNING).map(s => <option key={s} value={s}>{s}</option>)}
+                            </select>
+                        </div>
                     </div>
                     <div><label className="block text-xs font-bold text-slate-400 uppercase mb-1">Details / Notes</label><textarea className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg resize-none" rows={3} value={formData.details} onChange={e => setFormData({...formData, details: e.target.value})} /></div>
                     
