@@ -124,6 +124,21 @@ const App = () => {
     setTimeout(() => handleSyncToCloud(true), 100);
   }, [handleSyncToCloud]);
 
+  // Keyboard shortcut Ctrl + S for Pushing to cloud
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
+        e.preventDefault();
+        if (isLoggedIn) {
+          handleSyncToCloud();
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isLoggedIn, handleSyncToCloud]);
+
   // 初始載入（無論登入與否，為了讀取 Logo）
   useEffect(() => {
     if (!initialLoadDone.current) {
