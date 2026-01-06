@@ -13,6 +13,14 @@ const isVideo = (url: string) => {
     return url.startsWith('data:video') || url.match(/\.(mp4|webm|ogg)$/i);
 };
 
+// Define the interface for ProductDetail props
+interface ProductDetailProps {
+  products: ProductModel[];
+  testers: Tester[];
+  onUpdateProduct: (p: ProductModel) => Promise<void>;
+  showAiInsights: boolean;
+}
+
 // Main Product Detail Page Component
 const ProductDetail: React.FC<ProductDetailProps> = ({ products, testers = [], onUpdateProduct, showAiInsights }) => {
   const { id } = useParams();
@@ -128,6 +136,7 @@ const ProductDetail: React.FC<ProductDetailProps> = ({ products, testers = [], o
     onUpdateProduct({ ...product, currentVersion: version });
   };
 
+  // Durability Test Handlers
   const handleOpenTestModal = (test: TestResult | null = null) => {
     setEditingTest(test);
     setIsTestModalOpen(true);
@@ -268,13 +277,6 @@ const ProductDetail: React.FC<ProductDetailProps> = ({ products, testers = [], o
 export default ProductDetail;
 
 // --- Sub-components & Modals ---
-
-interface ProductDetailProps {
-  products: ProductModel[];
-  testers?: Tester[];
-  onUpdateProduct: (product: ProductModel) => Promise<void>;
-  showAiInsights: boolean;
-}
 
 const TabButton = ({ active, onClick, icon, label }: any) => (
   <button onClick={onClick} className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-all ${active ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-200/50'}`}>
@@ -886,7 +888,24 @@ const LifeSection = ({ product, onAddTest, onEditTest, onDeleteTest }: any) => {
                             <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden shadow-inner mb-4">
                                 <div className={`h-full transition-all duration-1000 ${test.status === TestStatus.PASS ? 'bg-emerald-500' : test.status === TestStatus.FAIL ? 'bg-rose-500' : 'bg-blue-500'}`} style={{ width: `${test.score}%` }}></div>
                             </div>
-                            <div className="text-[10px] text-slate-400 flex items-center gap-1 font-medium">
+
+                            {/* Durability Test Photos Gallery */}
+                            {test.attachmentUrls && test.attachmentUrls.length > 0 && (
+                                <div className="mt-4 pt-4 border-t border-slate-50">
+                                    <div className="flex items-center gap-1 text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">
+                                        <ImageIcon size={12} /> Test Reference Photos
+                                    </div>
+                                    <div className="flex flex-wrap gap-2">
+                                        {test.attachmentUrls.map((url, idx) => (
+                                            <a key={idx} href={url} target="_blank" rel="noopener noreferrer" className="block w-12 h-12 rounded-lg border border-slate-100 overflow-hidden bg-slate-50 hover:border-indigo-300 transition-colors">
+                                                <img src={url} alt="Test doc" className="w-full h-full object-cover" />
+                                            </a>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+
+                            <div className="text-[10px] text-slate-400 flex items-center gap-1 font-medium mt-4">
                                 <Clock size={10}/> Last Updated: {test.updatedDate}
                             </div>
                             <div className="absolute top-4 right-4 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -1054,33 +1073,93 @@ const EcoModal = ({ isOpen, onClose, onSave, eco, productVersions, product }: an
 
 const TestModal = ({ isOpen, onClose, onSave, test }: any) => {
     const { t } = useContext(LanguageContext);
+    const [isUploading, setIsUploading] = useState(false);
+    const durabilityFileInputRef = useRef<HTMLInputElement>(null);
+
     const [formData, setFormData] = useState({
         category: test?.category || '',
         testName: test ? t(test.testName) : '',
         score: test?.score || 0,
         status: test?.status || TestStatus.PENDING,
         details: test ? t(test.details) : '',
+        attachmentUrls: test?.attachmentUrls || [],
         updatedDate: test?.updatedDate || new Date().toISOString().split('T')[0]
     });
 
+    const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (file) {
+            try {
+                setIsUploading(true);
+                const url = await api.uploadImage(file);
+                setFormData(prev => ({
+                    ...prev,
+                    attachmentUrls: [...prev.attachmentUrls, url]
+                }));
+            } catch (err) {
+                console.error("Upload failed", err);
+                alert("照片上傳失敗");
+            } finally {
+                setIsUploading(false);
+            }
+        }
+    };
+
+    const removePhoto = (urlToRemove: string) => {
+        setFormData(prev => ({
+            ...prev,
+            attachmentUrls: prev.attachmentUrls.filter((u: string) => u !== urlToRemove)
+        }));
+    };
+
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md animate-fade-in">
-            <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md animate-slide-up">
+            <div className="bg-white rounded-3xl shadow-2xl w-full max-w-lg animate-slide-up">
                 <div className="flex justify-between items-center p-6 border-b border-slate-100">
                     <h2 className="text-xl font-bold">{test ? 'Edit Test Result' : 'Add Test Result'}</h2>
                     <button onClick={onClose} className="p-2 rounded-full hover:bg-slate-100"><X size={20} /></button>
                 </div>
-                <form onSubmit={(e) => { e.preventDefault(); onSave({...formData, testName: {en: formData.testName, zh: formData.testName}, details: {en: formData.details, zh: formData.details}}); }} className="p-6 space-y-4">
-                    <div><label className="block text-xs font-bold text-slate-400 uppercase mb-1">Category</label><input required className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg" value={formData.category} onChange={e => setFormData({...formData, category: e.target.value})} /></div>
-                    <div><label className="block text-xs font-bold text-slate-400 uppercase mb-1">Test Name</label><input required className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg" value={formData.testName} onChange={e => setFormData({...formData, testName: e.target.value})} /></div>
+                <form onSubmit={(e) => { e.preventDefault(); onSave({...formData, testName: {en: formData.testName, zh: formData.testName}, details: {en: formData.details, zh: formData.details}}); }} className="p-6 space-y-4 max-h-[80vh] overflow-y-auto custom-scrollbar">
+                    <div><label className="block text-xs font-bold text-slate-400 uppercase mb-1">Category</label><input required className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg" value={formData.category} onChange={e => setFormData({...formData, category: e.target.value})} placeholder="e.g. Frame" /></div>
+                    <div><label className="block text-xs font-bold text-slate-400 uppercase mb-1">Test Name</label><input required className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg" value={formData.testName} onChange={e => setFormData({...formData, testName: e.target.value})} placeholder="e.g. 5M Cycle Stress Test" /></div>
                     <div className="grid grid-cols-2 gap-4">
                         <div><label className="block text-xs font-bold text-slate-400 uppercase mb-1">Progress (%)</label><input type="number" min="0" max="100" className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg" value={formData.score} onChange={e => setFormData({...formData, score: Number(e.target.value)})} /></div>
                         <div><label className="block text-xs font-bold text-slate-400 uppercase mb-1">Status</label><select className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg" value={formData.status} onChange={e => setFormData({...formData, status: e.target.value as TestStatus})}>{Object.values(TestStatus).map(s => <option key={s} value={s}>{s}</option>)}</select></div>
                     </div>
-                    <div><label className="block text-xs font-bold text-slate-400 uppercase mb-1">Details</label><textarea className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg resize-none" rows={3} value={formData.details} onChange={e => setFormData({...formData, details: e.target.value})} /></div>
+                    <div><label className="block text-xs font-bold text-slate-400 uppercase mb-1">Details / Notes</label><textarea className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg resize-none" rows={3} value={formData.details} onChange={e => setFormData({...formData, details: e.target.value})} /></div>
+                    
+                    {/* Durability Photo Upload Area */}
+                    <div>
+                        <label className="block text-xs font-bold text-slate-400 uppercase mb-2">Test Photos / Reference</label>
+                        <div className="flex flex-wrap gap-2 mb-3">
+                            {formData.attachmentUrls.map((url: string, idx: number) => (
+                                <div key={idx} className="relative w-16 h-16 rounded-lg border border-slate-200 overflow-hidden group">
+                                    <img src={url} alt="" className="w-full h-full object-cover" />
+                                    <button 
+                                        type="button" 
+                                        onClick={() => removePhoto(url)} 
+                                        className="absolute inset-0 bg-red-500/80 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                                    >
+                                        <X size={16} strokeWidth={3} />
+                                    </button>
+                                </div>
+                            ))}
+                            <button 
+                                type="button" 
+                                onClick={() => durabilityFileInputRef.current?.click()}
+                                disabled={isUploading}
+                                className="w-16 h-16 rounded-lg border-2 border-dashed border-slate-200 flex flex-col items-center justify-center text-slate-400 hover:border-indigo-400 hover:text-indigo-500 transition-all bg-slate-50/50"
+                            >
+                                {isUploading ? <Loader2 size={16} className="animate-spin" /> : <Upload size={16} />}
+                                <span className="text-[8px] font-bold mt-1 uppercase">Add</span>
+                            </button>
+                        </div>
+                        <input ref={durabilityFileInputRef} type="file" accept="image/*" className="hidden" onChange={handleFileUpload} />
+                    </div>
+
                     <div className="flex gap-4 pt-4 border-t border-slate-100">
                         <button type="button" onClick={onClose} className="flex-1 py-3 text-slate-500 font-bold hover:bg-slate-50 rounded-xl">Cancel</button>
-                        <button type="submit" className="flex-1 py-3 bg-slate-900 text-white font-bold rounded-xl">Save</button>
+                        <button type="submit" className="flex-1 py-3 bg-slate-900 text-white font-bold rounded-xl shadow-lg shadow-slate-900/10">Save Record</button>
                     </div>
                 </form>
             </div>
@@ -1190,7 +1269,7 @@ const SetPassNgModal = ({ isOpen, onClose, onSet, context, project, existingReas
 
     return (
         <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm animate-fade-in">
-            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md animate-slide-up p-6">
+            <div className="bg-white rounded-2xl shadow-2xl w-full max-md animate-slide-up p-6">
                 <h3 className="text-lg font-bold mb-4">Set NG/Idea Reason</h3>
                 <textarea autoFocus className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-lg mb-6 resize-none" rows={4} placeholder="What went wrong or what's the idea?" value={reason} onChange={e => setReason(e.target.value)} />
                 <div className="flex gap-3">
