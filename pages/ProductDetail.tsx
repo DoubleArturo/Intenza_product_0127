@@ -1093,7 +1093,7 @@ const EcoModal = ({ isOpen, onClose, onSave, eco, productVersions, product }: an
     );
 };
 
-const TEST_NAME_OPTIONS = ['耐久測試', '鹽霧測試', '包裝測試'];
+const TEST_NAME_OPTIONS = ['Durability Test', 'Salt Spray Test', 'Packaging Test'];
 
 const TestModal = ({ isOpen, onClose, onSave, test }: any) => {
     const { t } = useContext(LanguageContext);
@@ -1101,7 +1101,7 @@ const TestModal = ({ isOpen, onClose, onSave, test }: any) => {
     const durabilityFileInputRef = useRef<HTMLInputElement>(null);
 
     const [formData, setFormData] = useState({
-        category: test?.category || '機構',
+        category: test?.category || 'Mechanical',
         testName: test ? t(test.testName) : '',
         version: test?.version || '',
         score: test?.score || 0,
@@ -1112,11 +1112,11 @@ const TestModal = ({ isOpen, onClose, onSave, test }: any) => {
     });
 
     const [testNameType, setTestNameType] = useState<string>(
-        test ? (TEST_NAME_OPTIONS.includes(t(test.testName)) ? t(test.testName) : '其他') : '耐久測試'
+        test ? (TEST_NAME_OPTIONS.includes(t(test.testName)) ? t(test.testName) : 'Other') : 'Durability Test'
     );
 
     useEffect(() => {
-        if (testNameType !== '其他') {
+        if (testNameType !== 'Other') {
             setFormData(prev => ({ ...prev, testName: testNameType }));
         }
     }, [testNameType]);
@@ -1159,8 +1159,8 @@ const TestModal = ({ isOpen, onClose, onSave, test }: any) => {
                         <div>
                             <label className="block text-xs font-bold text-slate-400 uppercase mb-1">Category</label>
                             <select className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg" value={formData.category} onChange={e => setFormData({...formData, category: e.target.value})}>
-                                <option value="機構">機構</option>
-                                <option value="電器">電器</option>
+                                <option value="Mechanical">Mechanical</option>
+                                <option value="Electrical">Electrical</option>
                             </select>
                         </div>
                         <div>
@@ -1174,10 +1174,10 @@ const TestModal = ({ isOpen, onClose, onSave, test }: any) => {
                         <div className="space-y-2">
                             <select className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg" value={testNameType} onChange={e => setTestNameType(e.target.value)}>
                                 {TEST_NAME_OPTIONS.map(opt => <option key={opt} value={opt}>{opt}</option>)}
-                                <option value="其他">其他 (用戶自行輸入)</option>
+                                <option value="Other">Other (Custom input)</option>
                             </select>
-                            {testNameType === '其他' && (
-                                <input required className="w-full px-4 py-2 bg-white border border-slate-200 rounded-lg ring-1 ring-intenza-100" value={formData.testName} onChange={e => setFormData({...formData, testName: e.target.value})} placeholder="請輸入自定義測試名稱" />
+                            {testNameType === 'Other' && (
+                                <input required className="w-full px-4 py-2 bg-white border border-slate-200 rounded-lg ring-1 ring-intenza-100" value={formData.testName} onChange={e => setFormData({...formData, testName: e.target.value})} placeholder="Enter custom test name" />
                             )}
                         </div>
                     </div>
