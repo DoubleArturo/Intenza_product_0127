@@ -42,6 +42,9 @@ const ProductDetail: React.FC<ProductDetailProps> = ({ products, shipments = [],
   
   const [isTestModalOpen, setIsTestModalOpen] = useState(false);
   const [editingTest, setEditingTest] = useState<TestResult | null>(null);
+  
+  const [isNoShipmentModalOpen, setIsNoShipmentModalOpen] = useState(false);
+  const [selectedVersionForModal, setSelectedVersionForModal] = useState('');
 
   const ergoSectionRef = useRef<HTMLDivElement>(null);
   const [highlightedFeedback, setHighlightedFeedback] = useState<{projectId: string, taskId: string, testerId: string} | null>(null);
@@ -219,6 +222,10 @@ const ProductDetail: React.FC<ProductDetailProps> = ({ products, shipments = [],
                  onDeleteEco={handleDeleteEco} 
                  onDeleteVersion={handleDeleteVersion} 
                  onSetCurrentVersion={handleSetCurrentVersion}
+                 onNoShipment={(version) => {
+                    setSelectedVersionForModal(version);
+                    setIsNoShipmentModalOpen(true);
+                 }}
                />
              )}
              {activeTab === 'ERGO' && <div ref={ergoSectionRef}><ErgoSection product={product} testers={testers} onUpdateProduct={onUpdateProduct} highlightedFeedback={highlightedFeedback} /></div>}
@@ -278,6 +285,7 @@ const ProductDetail: React.FC<ProductDetailProps> = ({ products, shipments = [],
       
       {isEcoModalOpen && <EcoModal isOpen={isEcoModalOpen} onClose={handleCloseEcoModal} onSave={handleSaveEco} eco={editingEco} productVersions={Array.from(new Set([product.currentVersion, ...product.designHistory.map(h => h.version)]))} product={product}/>}
       {isTestModalOpen && <TestModal isOpen={isTestModalOpen} onClose={handleCloseTestModal} onSave={handleSaveTest} test={editingTest} />}
+      {isNoShipmentModalOpen && <NoShipmentModal isOpen={isNoShipmentModalOpen} onClose={() => setIsNoShipmentModalOpen(false)} version={selectedVersionForModal} />}
     </div>
   );
 };
@@ -522,7 +530,7 @@ const CustomerFeedbackCard = ({ feedback, onStatusClick, onEdit, onDelete }: any
 };
 
 // Design Section
-const DesignSection = ({ product, shipments, onAddEco, onEditEco, onDeleteEco, onDeleteVersion, onSetCurrentVersion }: { product: ProductModel, shipments: ShipmentData[], onAddEco: () => void, onEditEco: (eco: DesignChange) => void, onDeleteEco: (id: string) => void, onDeleteVersion: (version: string) => void, onSetCurrentVersion: (version: string) => void }) => {
+const DesignSection = ({ product, shipments, onAddEco, onEditEco, onDeleteEco, onDeleteVersion, onSetCurrentVersion, onNoShipment }: { product: ProductModel, shipments: ShipmentData[], onAddEco: () => void, onEditEco: (eco: DesignChange) => void, onDeleteEco: (id: string) => void, onDeleteVersion: (version: string) => void, onSetCurrentVersion: (version: string) => void, onNoShipment: (version: string) => void }) => {
   const { t, language } = useContext(LanguageContext);
   const navigate = useNavigate();
   const versions = useMemo(() => Array.from(new Set([product.currentVersion, ...product.designHistory.map(h => h.version)])).sort().reverse(), [product]);
@@ -546,10 +554,7 @@ const DesignSection = ({ product, shipments, onAddEco, onEditEco, onDeleteEco, o
     );
 
     if (!hasShipments) {
-        alert(language === 'zh' 
-            ? `此版本 (${selectedVersion}) 尚無任何出貨記錄。` 
-            : `No shipment records found for this version (${selectedVersion}).`
-        );
+        onNoShipment(selectedVersion);
         return;
     }
 
@@ -1685,6 +1690,48 @@ const FeedbackStatusDecisionModal = ({ isOpen, onClose, feedback, onUpdateStatus
                             {status}
                         </button>
                     ))}
+                </div>
+            </div>
+        </div>
+    );
+};
+
+const NoShipmentModal = ({ isOpen, onClose, version }: { isOpen: boolean; onClose: () => void; version: string }) => {
+    const { t, language } = useContext(LanguageContext);
+    return (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md animate-fade-in">
+            <div className="bg-white rounded-3xl shadow-2xl w-full max-w-sm animate-slide-up overflow-hidden">
+                <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50/30">
+                    <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+                        <AlertTriangle size={20} className="text-amber-500" />
+                        {t({ en: 'Market Distribution', zh: '出貨客戶分佈' })}
+                    </h2>
+                    <button onClick={onClose} className="p-1 hover:bg-slate-100 rounded-full text-slate-400 transition-colors"><X size={20}/></button>
+                </div>
+                <div className="p-8 flex flex-col items-center text-center">
+                    <div className="w-16 h-16 bg-amber-50 rounded-full flex items-center justify-center mb-4">
+                        <Ship size={32} className="text-amber-500 opacity-60" />
+                    </div>
+                    <p className="text-slate-600 font-medium leading-relaxed">
+                        {language === 'zh' 
+                            ? `此版本 (${version}) 尚無任何出貨記錄。` 
+                            : `No shipment records found for version ${version}.`
+                        }
+                    </p>
+                    <p className="text-xs text-slate-400 mt-2">
+                        {language === 'zh'
+                            ? '請確認該 SKU 是否已正式導入量產或是否有資料遺失。'
+                            : 'Please verify if this SKU is in production or check if data is missing.'
+                        }
+                    </p>
+                </div>
+                <div className="p-4 bg-slate-50 border-t border-slate-100">
+                    <button 
+                        onClick={onClose} 
+                        className="w-full py-3 bg-slate-900 text-white font-bold rounded-xl hover:bg-slate-800 transition-all shadow-lg shadow-slate-900/10"
+                    >
+                        {t({ en: 'Understood', zh: '了解' })}
+                    </button>
                 </div>
             </div>
         </div>
