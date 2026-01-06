@@ -102,6 +102,7 @@ const ProductDetail: React.FC<ProductDetailProps> = ({ products, testers = [], o
       let updatedDesignHistory;
       let newCurrentVersion = product.currentVersion;
 
+      // Ensure that if this ECO marks a version as production, the master currentVersion is updated
       if (ecoData.status === EcoStatus.IN_PRODUCTION) {
           newCurrentVersion = ecoData.version;
       }
@@ -321,6 +322,140 @@ const categoryStyles: Record<ErgoProjectCategory, { bg: string, border: string, 
   'Other Suggestion': { bg: 'bg-slate-50', border: 'border-slate-200', text: 'text-slate-700' }
 };
 
+// Fix for missing ProjectCard component
+const ProjectCard = ({ project, testers, product, onOpenAddTask, onEditTaskName, onDeleteTask, onOpenTaskResults, onDeleteProject, onEditProject, categoryTranslations, onStatusClick, onEditNgReason, highlightedFeedback }: any) => {
+    const { t, language } = useContext(LanguageContext);
+    const categories: ErgoProjectCategory[] = ['Resistance profile', 'Experience', 'Stroke', 'Other Suggestion'];
+
+    return (
+        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden animate-fade-in group mb-6">
+            <div className="p-6 border-b border-slate-100 bg-slate-50/50 flex justify-between items-center">
+                <div>
+                    <h3 className="text-lg font-bold text-slate-900">{t(project.name)}</h3>
+                    <div className="flex items-center gap-3 mt-1">
+                        <span className="text-xs text-slate-400 flex items-center gap-1"><Calendar size={12}/> {project.date}</span>
+                        <span className="text-xs text-slate-400 flex items-center gap-1"><Users size={12}/> {project.testerIds.length} Testers</span>
+                    </div>
+                </div>
+                <div className="flex items-center gap-2">
+                    <button onClick={onEditProject} className="p-2 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-white transition-colors"><Pencil size={16}/></button>
+                    <button onClick={() => { if(window.confirm('Delete this project?')) onDeleteProject(); }} className="p-2 text-slate-400 hover:text-red-500 rounded-lg hover:bg-white transition-colors"><Trash2 size={16}/></button>
+                </div>
+            </div>
+            
+            <div className="p-6 space-y-8">
+                {categories.map(cat => (
+                    <div key={cat} className="space-y-4">
+                        <div className="flex items-center justify-between border-l-4 border-indigo-500 pl-3">
+                            <h4 className="font-bold text-sm text-slate-800 uppercase tracking-tight">{language === 'en' ? cat : categoryTranslations[cat]}</h4>
+                            <button onClick={() => onOpenAddTask(project.id, cat)} className="text-[10px] font-bold text-indigo-600 flex items-center gap-1 hover:underline"><Plus size={10}/> Add Task</button>
+                        </div>
+                        
+                        <div className="space-y-3 pl-4">
+                            {project.tasks[cat]?.map((task: any) => (
+                                <div key={task.id} className="bg-slate-50 rounded-xl p-4 border border-slate-100 group/task">
+                                    <div className="flex justify-between items-start mb-4">
+                                        <div className="flex items-center gap-3">
+                                            <h5 className="font-bold text-slate-700 text-sm">{t(task.name)}</h5>
+                                            <button onClick={() => onEditTaskName(project.id, cat, task.id, t(task.name))} className="opacity-0 group-hover/task:opacity-100 p-1 text-slate-400 hover:text-slate-600 transition-opacity"><Pencil size={12}/></button>
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                            <button onClick={() => onOpenTaskResults(cat, task.id)} className="text-[10px] font-bold bg-white border border-slate-200 text-slate-600 px-3 py-1 rounded-lg hover:border-slate-400 transition-all">Set Pass/NG</button>
+                                            <button onClick={() => { if(window.confirm('Delete task?')) onDeleteTask(project.id, cat, task.id); }} className="opacity-0 group-hover/task:opacity-100 p-1 text-slate-400 hover:text-red-500 transition-opacity"><Trash2 size={12}/></button>
+                                        </div>
+                                    </div>
+                                    
+                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                                        {project.testerIds.map((tid: string) => {
+                                            const tester = testers.find((ts: any) => ts.id === tid);
+                                            const isPass = task.passTesterIds.includes(tid);
+                                            const ngReason = task.ngReasons.find((r: any) => r.testerId === tid);
+                                            const isHighlighted = highlightedFeedback?.projectId === project.id && highlightedFeedback?.taskId === task.id && highlightedFeedback?.testerId === tid;
+                                            
+                                            return (
+                                                <div 
+                                                    key={tid} 
+                                                    data-feedback-id={`${project.id}-${task.id}-${tid}`}
+                                                    className={`p-3 rounded-xl border transition-all ${
+                                                        isPass ? 'bg-white border-slate-100 opacity-60' : 
+                                                        isHighlighted ? 'bg-indigo-50 border-indigo-400 shadow-md ring-2 ring-indigo-500/10' :
+                                                        'bg-white border-slate-200'
+                                                    }`}
+                                                >
+                                                    <div className="flex items-center gap-3 mb-2">
+                                                        <div className="w-8 h-8 rounded-full overflow-hidden bg-slate-200"><img src={tester?.imageUrl} className="w-full h-full object-cover" /></div>
+                                                        <div className="flex-1 min-w-0">
+                                                            <div className="text-[10px] font-bold text-slate-900 truncate">{tester?.name}</div>
+                                                            <div className={`text-[8px] font-black uppercase ${isPass ? 'text-emerald-500' : 'text-rose-500'}`}>{isPass ? 'Pass' : 'NG'}</div>
+                                                        </div>
+                                                    </div>
+                                                    
+                                                    {!isPass && (
+                                                        <div className="space-y-2">
+                                                            <p className="text-[10px] text-slate-600 line-clamp-2 min-h-[1.5rem] italic">"{ngReason?.reason ? t(ngReason.reason) : 'No description provided'}"</p>
+                                                            <div className="flex items-center justify-between pt-2 border-t border-slate-50">
+                                                                <button 
+                                                                    onClick={() => onEditNgReason(cat, task.id, tid)}
+                                                                    className="text-[9px] font-bold text-indigo-600 hover:underline"
+                                                                >
+                                                                    Edit Reason
+                                                                </button>
+                                                                <button 
+                                                                    onClick={() => onStatusClick(project.id, cat, task.id, tid, ngReason?.decisionStatus || NgDecisionStatus.PENDING, ngReason?.linkedEcoId)}
+                                                                    className={`px-2 py-0.5 rounded text-[8px] font-bold uppercase border transition-colors ${ngDecisionStyles[ngReason?.decisionStatus || NgDecisionStatus.PENDING]}`}
+                                                                >
+                                                                    {ngDecisionTranslations[ngReason?.decisionStatus || NgDecisionStatus.PENDING]}
+                                                                </button>
+                                                            </div>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+                            ))}
+                            {project.tasks[cat].length === 0 && <div className="text-center py-4 text-[11px] text-slate-400 italic">No tasks added to this category.</div>}
+                        </div>
+                    </div>
+                ))}
+            </div>
+        </div>
+    );
+};
+
+// Fix for missing CustomerFeedbackCard component
+const CustomerFeedbackCard = ({ feedback, onStatusClick, onEdit, onDelete }: any) => {
+    const { t } = useContext(LanguageContext);
+    return (
+        <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-sm group hover:border-slate-300 transition-all">
+            <div className="flex justify-between items-start mb-2">
+                <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">{feedback.date}</span>
+                <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <button onClick={onEdit} className="p-1 text-slate-400 hover:text-slate-600"><Pencil size={12}/></button>
+                    <button onClick={onDelete} className="p-1 text-slate-400 hover:text-red-500"><Trash2 size={12}/></button>
+                </div>
+            </div>
+            <p className="text-sm text-slate-800 font-medium leading-relaxed mb-4">{t(feedback.content)}</p>
+            <div className="flex items-center justify-between border-t border-slate-50 pt-3">
+                <div className="flex items-center gap-1 text-[10px] text-slate-400 font-bold uppercase">
+                    <User size={10}/> {feedback.source}
+                </div>
+                <button 
+                    onClick={onStatusClick}
+                    className={`px-2 py-0.5 rounded text-[8px] font-black uppercase border transition-colors ${
+                        feedback.status === 'PENDING' ? 'bg-slate-100 text-slate-500 border-slate-200' :
+                        feedback.status === 'DISCUSSION' ? 'bg-purple-50 text-purple-600 border-purple-200' :
+                        'bg-zinc-50 text-zinc-500 border-zinc-200'
+                    }`}
+                >
+                    {feedback.status || 'PENDING'}
+                </button>
+            </div>
+        </div>
+    );
+};
+
 // Design Section
 const DesignSection = ({ product, onAddEco, onEditEco, onDeleteEco, onDeleteVersion, onSetCurrentVersion }: { product: ProductModel, onAddEco: () => void, onEditEco: (eco: DesignChange) => void, onDeleteEco: (id: string) => void, onDeleteVersion: (version: string) => void, onSetCurrentVersion: (version: string) => void }) => {
   const { t, language } = useContext(LanguageContext);
@@ -430,16 +565,23 @@ const DesignSection = ({ product, onAddEco, onEditEco, onDeleteEco, onDeleteVers
                                  ))}
                               </div>
                            )}
-                           <div className="bg-slate-50 rounded-xl p-4 border border-slate-100 grid grid-cols-1 sm:grid-cols-2 gap-4 transition-colors group-hover:border-slate-200">
-                              <div>
-                                 <div className="flex items-center gap-2 text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2"><Layers size={14} /> Affected Batches</div>
-                                 <div className="flex flex-wrap gap-2">{change.affectedBatches.map((b) => (<span key={b} className="text-xs bg-white border border-slate-200 px-1.5 py-0.5 rounded-md text-slate-700 font-mono shadow-sm">{b}</span>))}</div>
+                           {/* Updated Info Block: Only showing affected customers/batches if they exist, but fields are removed from modal */}
+                           {(change.affectedBatches.length > 0 || change.affectedCustomers.length > 0) && (
+                              <div className="bg-slate-50 rounded-xl p-4 border border-slate-100 grid grid-cols-1 sm:grid-cols-2 gap-4 transition-colors group-hover:border-slate-200">
+                                 {change.affectedBatches.length > 0 && (
+                                   <div>
+                                      <div className="flex items-center gap-2 text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2"><Layers size={14} /> Affected Batches</div>
+                                      <div className="flex flex-wrap gap-2">{change.affectedBatches.map((b) => (<span key={b} className="text-xs bg-white border border-slate-200 px-1.5 py-0.5 rounded-md text-slate-700 font-mono shadow-sm">{b}</span>))}</div>
+                                   </div>
+                                 )}
+                                 {change.affectedCustomers.length > 0 && (
+                                   <div>
+                                      <div className="flex items-center gap-2 text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2"><Users size={14} /> Impacted Customers</div>
+                                      <p className="text-sm text-slate-600 leading-relaxed">{change.affectedCustomers.join(', ')}</p>
+                                   </div>
+                                 )}
                               </div>
-                              <div>
-                                 <div className="flex items-center gap-2 text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2"><Users size={14} /> Impacted Customers</div>
-                                 <p className="text-sm text-slate-600 leading-relaxed">{change.affectedCustomers.join(', ')}</p>
-                              </div>
-                           </div>
+                           )}
                            {change.sourceFeedbacks && change.sourceFeedbacks.length > 0 && (
                               <div className="mt-2 flex flex-col gap-1">
                                  {change.sourceFeedbacks.map((fb, idx) => (
@@ -840,8 +982,9 @@ const ErgoSection = ({ product, testers, onUpdateProduct, highlightedFeedback }:
              isOpen={statusModalState.isOpen}
              onClose={() => setStatusModalState({ isOpen: false, context: null })}
              context={statusModalState.context}
-             onSetStatus={(status) => handleSetNgDecision(statusModalState.context!.projectId, statusModalState.context!.category, statusModalState.context!.taskId, statusModalState.context!.testerId, status)}
+             onSetStatus={(status) => handleSetNgDecision(statusModalState.context!.projectId, statusModalState.context!.category, statusModalState.context!.testerId, status)}
              onLinkEco={(ecoId) => handleLinkExistingEco(statusModalState.context!.projectId, statusModalState.context!.category, statusModalState.context!.taskId, statusModalState.context!.testerId, ecoId)}
+             // Fix for taskId and testerId scoping errors
              onCreateEco={() => handleCreateEcoFromFeedback(statusModalState.context!.projectId, statusModalState.context!.category, statusModalState.context!.taskId, statusModalState.context!.testerId)}
              activeEcos={activeEcosList}
           />
@@ -862,192 +1005,58 @@ const ErgoSection = ({ product, testers, onUpdateProduct, highlightedFeedback }:
   );
 };
 
-// Durability Section
-const LifeSection = ({ product, onAddTest, onEditTest, onDeleteTest }: any) => {
-    const { t } = useContext(LanguageContext);
-    return (
-        <div className="animate-fade-in space-y-6">
-            <div className="flex items-center justify-between">
-                <h2 className="text-xl font-bold text-slate-900">Mechanical Durability Tests</h2>
-                <button onClick={onAddTest} className="flex items-center gap-2 text-sm bg-slate-900 text-white px-4 py-2 rounded-lg font-medium hover:bg-slate-800 transition-colors">
-                    <Plus size={16} /> Add Test Result
-                </button>
-            </div>
-            {product.durabilityTests.length === 0 ? (
-                <div className="text-center py-12 text-slate-400 border-2 border-dashed border-slate-200 rounded-2xl bg-white">
-                    No durability tests recorded.
-                </div>
-            ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    {product.durabilityTests.map((test: TestResult) => (
-                        <div key={test.id} className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm group relative overflow-hidden">
-                            <div className="flex justify-between items-start mb-4">
-                                <div>
-                                    <div className="flex items-center gap-2">
-                                        <span className="text-[10px] font-bold text-indigo-600 uppercase tracking-widest bg-indigo-50 px-2 py-0.5 rounded border border-indigo-100">{test.category}</span>
-                                        {test.version && <span className="text-[10px] font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded border border-slate-200">{test.version}</span>}
-                                    </div>
-                                    <h4 className="font-bold text-slate-900 mt-2">{t(test.testName)}</h4>
-                                </div>
-                                <div className={`px-2 py-1 rounded text-[10px] font-bold uppercase border ${
-                                    test.status === TestStatus.PASS ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
-                                    test.status === TestStatus.FAIL ? 'bg-rose-50 text-rose-700 border-rose-200' :
-                                    'bg-slate-50 text-slate-600 border-slate-200'
-                                }`}>{test.status}</div>
-                            </div>
-                            <div className="flex items-center justify-between mb-2">
-                                <span className="text-xs text-slate-500 font-medium">Life Cycle Progress</span>
-                                <span className="text-sm font-bold text-slate-900">{test.score}%</span>
-                            </div>
-                            <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden shadow-inner mb-4">
-                                <div className={`h-full transition-all duration-1000 ${test.status === TestStatus.PASS ? 'bg-emerald-500' : test.status === TestStatus.FAIL ? 'bg-rose-500' : 'bg-blue-500'}`} style={{ width: `${test.score}%` }}></div>
-                            </div>
+// --- Sub-components & Modals ---
 
-                            {/* Durability Test Photos Gallery */}
-                            {test.attachmentUrls && test.attachmentUrls.length > 0 && (
-                                <div className="mt-4 pt-4 border-t border-slate-50">
-                                    <div className="flex items-center gap-1 text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">
-                                        <ImageIcon size={12} /> Test Reference Photos
-                                    </div>
-                                    <div className="flex flex-wrap gap-2">
-                                        {test.attachmentUrls.map((url, idx) => (
-                                            <a key={idx} href={url} target="_blank" rel="noopener noreferrer" className="block w-12 h-12 rounded-lg border border-slate-100 overflow-hidden bg-slate-50 hover:border-indigo-300 transition-colors">
-                                                <img src={url} alt="Test doc" className="w-full h-full object-cover" />
-                                            </a>
-                                        ))}
-                                    </div>
-                                </div>
-                            )}
-
-                            <div className="text-[10px] text-slate-400 flex items-center gap-1 font-medium mt-4">
-                                <Clock size={10}/> Last Updated: {test.updatedDate}
-                            </div>
-                            <div className="absolute top-4 right-4 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity z-10">
-                                <button onClick={(e) => { e.stopPropagation(); onEditTest(test); }} className="p-1.5 bg-slate-100 rounded-full text-slate-500 hover:text-slate-900"><Pencil size={14}/></button>
-                                <button onClick={(e) => { e.stopPropagation(); onDeleteTest(test.id); }} className="p-1.5 bg-red-50 rounded-full text-red-500 hover:text-red-700"><Trash2 size={14}/></button>
-                            </div>
-
-                            {/* Details Hover Overlay - Requested Addition */}
-                            <div className="absolute inset-0 bg-white/95 backdrop-blur-sm p-6 opacity-0 group-hover:opacity-100 transition-all duration-300 flex flex-col z-20 pointer-events-none rounded-2xl border-2 border-intenza-100">
-                                <div className="flex items-center justify-between mb-4 border-b border-slate-100 pb-2">
-                                    <span className="text-[10px] font-black text-intenza-600 uppercase tracking-widest flex items-center gap-1.5">
-                                        <Info size={14} /> {t({en: 'Test Status Details', zh: '測試狀態說明'})}
-                                    </span>
-                                    <div className="flex gap-2">
-                                       <button onClick={(e) => { e.stopPropagation(); onEditTest(test); }} className="p-1.5 bg-slate-100 rounded-full text-slate-500 hover:text-slate-900 pointer-events-auto shadow-sm"><Pencil size={12}/></button>
-                                       <button onClick={(e) => { e.stopPropagation(); onDeleteTest(test.id); }} className="p-1.5 bg-red-50 rounded-full text-red-500 hover:text-red-700 pointer-events-auto shadow-sm"><Trash2 size={12}/></button>
-                                    </div>
-                                </div>
-                                <div className="overflow-y-auto custom-scrollbar flex-1 pointer-events-auto">
-                                    <p className="text-sm text-slate-600 leading-relaxed whitespace-pre-wrap font-medium">
-                                        {t(test.details) || t({en: 'No detailed status description provided.', zh: '未提供詳細說明內容。'})}
-                                    </p>
-                                </div>
-                                <div className="mt-4 text-[9px] text-slate-300 font-bold uppercase tracking-tighter text-right">Move mouse away to close</div>
-                            </div>
-                        </div>
-                    ))}
-                </div>
-            )}
-        </div>
-    );
-};
-
-// Project Card Component
-const ProjectCard = ({ project, testers, product, onOpenAddTask, onEditTaskName, onDeleteTask, onOpenTaskResults, onDeleteProject, onEditProject, categoryTranslations, onStatusClick, onEditNgReason, highlightedFeedback }: any) => {
-  const { t, language } = useContext(LanguageContext);
+// Fix for missing LifeSection component
+const LifeSection = ({ product, onAddTest, onEditTest, onDeleteTest }: { product: ProductModel, onAddTest: () => void, onEditTest: (test: TestResult) => void, onDeleteTest: (id: string) => void }) => {
+  const { t } = useContext(LanguageContext);
   return (
-    <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden group">
-      <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
-        <div>
-          <h3 className="font-bold text-slate-900 flex items-center gap-3">{t(project.name)}<span className="text-xs font-normal text-slate-400 font-mono bg-white px-2 py-0.5 rounded border border-slate-100">{project.date}</span></h3>
-          <div className="flex -space-x-2 mt-2">
-            {project.testerIds.map((tid: any) => {
-              const tester = testers.find((t: any) => t.id === tid);
-              return tester ? (<div key={tid} className="w-8 h-8 rounded-full border-2 border-white overflow-hidden bg-slate-200" title={tester.name}><img src={tester.imageUrl} className="w-full h-full object-cover" /></div>) : null;
-            })}
-          </div>
-        </div>
-        <div className="flex items-center gap-2">
-           <button onClick={onEditProject} className="p-2 text-slate-400 hover:text-slate-800 transition-colors"><Pencil size={18} /></button>
-           <button onClick={() => window.confirm('Delete this project?') && onDeleteProject()} className="p-2 text-slate-400 hover:text-red-600 transition-colors"><Trash2 size={18} /></button>
-        </div>
+    <div className="animate-fade-in">
+      <div className="flex items-center justify-between mb-6">
+        <h2 className="text-xl font-bold text-slate-900">Durability & Reliability Tests</h2>
+        <button onClick={onAddTest} className="flex items-center gap-2 text-sm bg-slate-900 text-white px-4 py-2 rounded-lg font-medium hover:bg-slate-800 transition-colors"><Plus size={16} /> Add Test</button>
       </div>
-      <div className="p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-         {(['Resistance profile', 'Experience', 'Stroke', 'Other Suggestion'] as ErgoProjectCategory[]).map(cat => (
-             <div key={cat} className="flex flex-col h-full">
-                <div className="flex items-center justify-between mb-4"><h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider">{language === 'en' ? cat : categoryTranslations[cat]}</h4><button onClick={() => onOpenAddTask(project.id, cat)} className="text-slate-400 hover:text-slate-900"><Plus size={16}/></button></div>
-                <div className="space-y-3 flex-1">
-                   {project.tasks[cat]?.map((task: any) => (
-                      <div key={task.id} className="bg-slate-50 rounded-xl p-4 border border-slate-100">
-                         <div className="flex justify-between items-start mb-3">
-                            <span className="text-sm font-bold text-slate-700">{t(task.name)}</span>
-                            <div className="flex items-center gap-1">
-                               <button onClick={() => onEditTaskName(project.id, cat, task.id, t(task.name))} className="p-1 text-slate-400 hover:text-slate-700"><Pencil size={12}/></button>
-                               <button onClick={() => onDeleteTask(project.id, cat, task.id)} className="p-1 text-slate-400 hover:text-red-500"><X size={12}/></button>
-                            </div>
-                         </div>
-                         {task.ngReasons.length > 0 ? (
-                            <div className="space-y-2">
-                               {task.ngReasons.map((ng: any) => {
-                                  const tester = testers.find((ts: any) => ts.id === ng.testerId);
-                                  const isHighlighted = highlightedFeedback?.projectId === project.id && highlightedFeedback?.taskId === task.id && highlightedFeedback?.testerId === ng.testerId;
-                                  return (
-                                     <div key={ng.testerId} data-feedback-id={`${project.id}-${task.id}-${ng.testerId}`} className={`flex flex-col gap-2 p-2 rounded-lg border transition-all ${isHighlighted ? 'bg-amber-50 border-amber-300 ring-2 ring-amber-200 scale-105 shadow-md' : 'bg-white border-slate-100 shadow-sm'}`}>
-                                        <div className="flex items-center gap-2">
-                                           <div className="w-6 h-6 rounded-full overflow-hidden bg-slate-200"><img src={tester?.imageUrl} className="w-full h-full object-cover" /></div>
-                                           <span className="text-[10px] font-bold text-slate-800">{tester?.name}</span>
-                                           <button onClick={() => onStatusClick(project.id, cat, task.id, ng.testerId, ng.decisionStatus || NgDecisionStatus.PENDING, ng.linkedEcoId)} className={`ml-auto text-[9px] font-bold px-1.5 py-0.5 rounded-md border uppercase tracking-wider transition-colors ${ngDecisionStyles[ng.decisionStatus as NgDecisionStatus || NgDecisionStatus.PENDING]}`}>{language === 'en' ? (ng.decisionStatus || 'PENDING') : ngDecisionTranslations[ng.decisionStatus as NgDecisionStatus || NgDecisionStatus.PENDING]}</button>
-                                        </div>
-                                        <div className="flex items-start justify-between gap-2">
-                                           <p className={`text-[10px] leading-tight flex-1 ${ng.decisionStatus === NgDecisionStatus.IDEA ? 'text-sky-700 italic' : 'text-slate-500'}`}>{t(ng.reason) || 'No reason specified'}</p>
-                                           <button onClick={() => onEditNgReason(cat, task.id, ng.testerId)} className="text-slate-300 hover:text-slate-600"><Pencil size={10}/></button>
-                                        </div>
-                                        {ng.linkedEcoId && (<div className="flex items-center gap-1 text-[9px] text-emerald-600 font-bold bg-emerald-50 px-1.5 py-0.5 rounded-md w-fit"><Check size={10}/> Linked to {product.designHistory.find((e: any) => e.id === ng.linkedEcoId)?.ecoNumber}</div>)}
-                                     </div>
-                                  );
-                               })}
-                            </div>
-                         ) : (
-                            <button onClick={() => onOpenTaskResults(cat, task.id)} className="w-full py-2 border-2 border-dashed border-slate-200 rounded-lg text-slate-300 text-xs font-bold hover:bg-slate-100 hover:border-slate-300 transition-all">Set Pass/NG</button>
-                         )}
-                      </div>
-                   ))}
-                   {(!project.tasks[cat] || project.tasks[cat].length === 0) && <div className="text-[10px] text-slate-300 italic text-center py-4">No tasks defined</div>}
-                </div>
-             </div>
-         ))}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {product.durabilityTests.map((test) => (
+          <div key={test.id} className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm group relative">
+            <div className="flex justify-between items-start mb-3">
+              <div>
+                <span className="text-[10px] font-black text-indigo-600 uppercase tracking-widest bg-indigo-50 px-2 py-0.5 rounded border border-indigo-100 mb-1 inline-block">{test.category}</span>
+                <h4 className="font-bold text-slate-900">{t(test.testName)}</h4>
+              </div>
+              <span className={`px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wider border ${
+                test.status === TestStatus.PASS ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
+                test.status === TestStatus.FAIL ? 'bg-rose-50 text-rose-700 border-rose-200' :
+                'bg-slate-50 text-slate-600 border-slate-200'
+              }`}>{test.status}</span>
+            </div>
+            <div className="flex items-center justify-between mb-2">
+                <span className="text-xs text-slate-500 font-medium">Progress</span>
+                <span className="text-xs font-bold text-slate-900">{test.score}%</span>
+            </div>
+            <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden mb-4">
+                <div className={`h-full transition-all duration-1000 ${test.status === TestStatus.PASS ? 'bg-emerald-500' : test.status === TestStatus.FAIL ? 'bg-rose-500' : 'bg-indigo-500'}`} style={{ width: `${test.score}%` }}></div>
+            </div>
+            <p className="text-xs text-slate-500 line-clamp-2">{t(test.details)}</p>
+            <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                <button onClick={() => onEditTest(test)} className="p-1.5 bg-slate-100 rounded-md text-slate-500 hover:text-slate-900 transition-colors"><Pencil size={12} /></button>
+                <button onClick={() => onDeleteTest(test.id)} className="p-1.5 bg-red-50 rounded-md text-red-500 hover:text-red-700 transition-colors"><Trash2 size={12} /></button>
+            </div>
+          </div>
+        ))}
+        {product.durabilityTests.length === 0 && (
+          <div className="col-span-full py-12 text-center text-slate-400 bg-white rounded-2xl border-2 border-dashed border-slate-200">No durability tests recorded.</div>
+        )}
       </div>
     </div>
   );
 };
 
-// Customer Feedback Card Component
-const CustomerFeedbackCard = ({ feedback, category, onStatusClick, onEdit, onDelete }: any) => {
-    const { t } = useContext(LanguageContext);
-    const statusColor = feedback.status === 'PENDING' ? 'bg-amber-500' : feedback.status === 'DISCUSSION' ? 'bg-purple-500' : 'bg-slate-400';
-    return (
-        <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm relative group hover:shadow-md transition-all">
-            <div className="flex justify-between items-start mb-2">
-                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{feedback.source}</span>
-                <button onClick={onStatusClick} className={`px-2 py-0.5 rounded-full text-[9px] font-bold text-white uppercase tracking-wider ${statusColor}`}>{feedback.status}</button>
-            </div>
-            <p className="text-xs text-slate-700 font-medium leading-relaxed mb-3">{t(feedback.content)}</p>
-            <div className="flex items-center justify-between text-[10px] text-slate-400 border-t border-slate-50 pt-2">
-                <span>{feedback.date}</span>
-                <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <button onClick={onEdit} className="p-1 hover:text-slate-900"><Pencil size={12}/></button>
-                    <button onClick={onDelete} className="p-1 hover:text-red-500"><Trash2 size={12}/></button>
-                </div>
-            </div>
-        </div>
-    );
-};
-
-// --- Modals Implementation ---
-
 const EcoModal = ({ isOpen, onClose, onSave, eco, productVersions, product }: any) => {
     const { t } = useContext(LanguageContext);
+    const [isUploading, setIsUploading] = useState(false);
+    const ecoFileInputRef = useRef<HTMLInputElement>(null);
+
     const [formData, setFormData] = useState({
         ecrNumber: eco?.ecrNumber || '',
         ecrDate: eco?.ecrDate || '',
@@ -1055,20 +1064,38 @@ const EcoModal = ({ isOpen, onClose, onSave, eco, productVersions, product }: an
         date: eco?.date || new Date().toISOString().split('T')[0],
         version: eco?.version || product.currentVersion,
         description: eco ? t(eco.description) : '',
-        affectedBatches: eco?.affectedBatches?.join(', ') || '',
-        affectedCustomers: eco?.affectedCustomers?.join(', ') || '',
         status: eco?.status || EcoStatus.EVALUATING,
         imageUrls: eco?.imageUrls || [],
         implementationDate: eco?.implementationDate || ''
     });
+
+    const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (file) {
+            try {
+                setIsUploading(true);
+                const url = await api.uploadImage(file);
+                setFormData(prev => ({ ...prev, imageUrls: [...prev.imageUrls, url] }));
+            } catch (err) {
+                console.error("Upload failed", err);
+                alert("照片上傳失敗");
+            } finally {
+                setIsUploading(false);
+            }
+        }
+    };
+
+    const removePhoto = (urlToRemove: string) => {
+        setFormData(prev => ({ ...prev, imageUrls: prev.imageUrls.filter((u: string) => u !== urlToRemove) }));
+    };
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
         onSave({
             ...formData,
             description: { en: formData.description, zh: formData.description },
-            affectedBatches: formData.affectedBatches.split(',').map((s: string) => s.trim()).filter(Boolean),
-            affectedCustomers: formData.affectedCustomers.split(',').map((s: string) => s.trim()).filter(Boolean)
+            affectedBatches: eco?.affectedBatches || [], // Preserving existing if editing, but removing from form as requested
+            affectedCustomers: eco?.affectedCustomers || []
         });
     };
 
@@ -1079,11 +1106,10 @@ const EcoModal = ({ isOpen, onClose, onSave, eco, productVersions, product }: an
                     <h2 className="text-xl font-bold">{eco ? 'Edit ECO Record' : 'Add New ECO'}</h2>
                     <button onClick={onClose} className="p-2 rounded-full hover:bg-slate-100"><X size={20} /></button>
                 </div>
-                <form onSubmit={handleSubmit} className="p-6 space-y-4 max-h-[80vh] overflow-y-auto">
+                <form onSubmit={handleSubmit} className="p-6 space-y-4 max-h-[80vh] overflow-y-auto custom-scrollbar">
                     <div className="grid grid-cols-2 gap-4">
                         <div>
                             <label className="block text-xs font-bold text-slate-400 uppercase mb-1">Target Version</label>
-                            {/* CUSTOM VERSION INPUT WITH DATALIST */}
                             <input 
                                 list="version-suggestions"
                                 required 
@@ -1099,7 +1125,6 @@ const EcoModal = ({ isOpen, onClose, onSave, eco, productVersions, product }: an
                         <div><label className="block text-xs font-bold text-slate-400 uppercase mb-1">Status</label><select className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-intenza-500/20" value={formData.status} onChange={e => setFormData({...formData, status: e.target.value as EcoStatus})}>{Object.values(EcoStatus).map(s => <option key={s} value={s}>{s}</option>)}</select></div>
                     </div>
 
-                    {/* NEW ECR INFORMATION BLOCK */}
                     <div className="grid grid-cols-2 gap-4 p-4 bg-slate-50 rounded-xl border border-slate-100">
                         <div className="col-span-2 text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">ECR Information (Engineering Change Request)</div>
                         <div>
@@ -1107,7 +1132,7 @@ const EcoModal = ({ isOpen, onClose, onSave, eco, productVersions, product }: an
                             <input className="w-full px-4 py-2 bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-500/20" value={formData.ecrNumber} onChange={e => setFormData({...formData, ecrNumber: e.target.value})} placeholder="ECR-202X-XXX" />
                         </div>
                         <div>
-                            <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Initiation Date (啟動時間)</label>
+                            <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Initiation Date</label>
                             <input type="date" className="w-full px-4 py-2 bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-500/20" value={formData.ecrDate} onChange={e => setFormData({...formData, ecrDate: e.target.value})} />
                         </div>
                     </div>
@@ -1125,13 +1150,44 @@ const EcoModal = ({ isOpen, onClose, onSave, eco, productVersions, product }: an
                     </div>
 
                     <div><label className="block text-xs font-bold text-slate-400 uppercase mb-1">Description</label><textarea required className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-intenza-500/20" rows={3} value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})} /></div>
-                    <div className="grid grid-cols-2 gap-4">
-                        <div><label className="block text-xs font-bold text-slate-400 uppercase mb-1">Affected Batches (Comma sep)</label><input className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-intenza-500/20" value={formData.affectedBatches} onChange={e => setFormData({...formData, affectedBatches: e.target.value})} /></div>
-                        <div><label className="block text-xs font-bold text-slate-400 uppercase mb-1">Customers (Comma sep)</label><input className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-intenza-500/20" value={formData.affectedCustomers} onChange={e => setFormData({...formData, affectedCustomers: e.target.value})} /></div>
-                    </div>
+                    
                     {formData.status === EcoStatus.IN_PRODUCTION && (
                         <div><label className="block text-xs font-bold text-slate-400 uppercase mb-1">Implementation Date</label><input type="date" className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-intenza-500/20" value={formData.implementationDate} onChange={e => setFormData({...formData, implementationDate: e.target.value})} /></div>
                     )}
+
+                    {/* Image Upload Integration into EcoModal */}
+                    <div className="pt-4 border-t border-slate-50">
+                        <label className="block text-xs font-bold text-slate-400 uppercase mb-2">Attached References (Images/Videos)</label>
+                        <div className="flex flex-wrap gap-2 mb-3">
+                            {formData.imageUrls.map((url: string, idx: number) => (
+                                <div key={idx} className="relative w-20 h-20 rounded-lg border border-slate-200 overflow-hidden group">
+                                    {isVideo(url) ? (
+                                        <div className="w-full h-full bg-slate-900 flex items-center justify-center text-white"><Video size={20}/></div>
+                                    ) : (
+                                        <img src={url} alt="" className="w-full h-full object-cover" />
+                                    )}
+                                    <button 
+                                        type="button" 
+                                        onClick={() => removePhoto(url)} 
+                                        className="absolute inset-0 bg-red-500/80 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                                    >
+                                        <X size={20} strokeWidth={3} />
+                                    </button>
+                                </div>
+                            ))}
+                            <button 
+                                type="button" 
+                                onClick={() => ecoFileInputRef.current?.click()}
+                                disabled={isUploading}
+                                className="w-20 h-20 rounded-lg border-2 border-dashed border-slate-200 flex flex-col items-center justify-center text-slate-400 hover:border-indigo-400 hover:text-indigo-500 transition-all bg-slate-50/50"
+                            >
+                                {isUploading ? <Loader2 size={24} className="animate-spin" /> : <Upload size={24} />}
+                                <span className="text-[10px] font-bold mt-1 uppercase">Upload</span>
+                            </button>
+                        </div>
+                        <input ref={ecoFileInputRef} type="file" accept="image/*,video/*" className="hidden" onChange={handleFileUpload} />
+                    </div>
+
                     <div className="flex gap-4 pt-4 border-t border-slate-100">
                         <button type="button" onClick={onClose} className="flex-1 py-3 text-slate-500 font-bold hover:bg-slate-50 rounded-xl">Cancel</button>
                         <button type="submit" className="flex-1 py-3 bg-slate-900 text-white font-bold rounded-xl hover:bg-slate-800 transition-all shadow-lg shadow-slate-900/20">Save Record</button>
@@ -1302,7 +1358,7 @@ const StartEvaluationModal = ({ isOpen, onClose, onStartProject, allTesters, pro
             <div className="bg-white rounded-3xl shadow-2xl w-full max-w-lg animate-slide-up overflow-hidden">
                 <div className="flex justify-between items-center p-6 border-b border-slate-100">
                     <h2 className="text-xl font-bold">{project ? 'Edit Evaluation' : 'Start New Evaluation'}</h2>
-                    <button onClick={onClose} className="p-2 rounded-full hover:bg-slate-100"><X size={20} /></button>
+                    <button onClick={onClose} className="p-2 rounded-full hover:bg-slate-100 text-slate-500"><X size={20} /></button>
                 </div>
                 <form onSubmit={handleSubmit} className="p-6 space-y-6">
                     <div>
@@ -1552,7 +1608,7 @@ const FeedbackModal = ({ isOpen, onClose, onSave, feedback, product }: any) => {
                         <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Content</label>
                         <textarea required rows={4} className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg resize-none" value={formData.content} onChange={e => setFormData({...formData, content: e.target.value})} placeholder="What was the complaint?" />
                     </div>
-                    <button type="submit" className="w-full py-3 bg-slate-900 text-white font-bold rounded-xl hover:bg-slate-800 transition-all shadow-lg shadow-slate-900/10">Save Feedback</button>
+                    <button type="submit" className="w-full py-3 bg-slate-900 text-white font-bold rounded-xl hover:bg-slate-800 transition-all shadow-lg shadow-intenza-900/10">Save Feedback</button>
                 </form>
             </div>
         </div>
