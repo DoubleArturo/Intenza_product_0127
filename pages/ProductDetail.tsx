@@ -1,4 +1,3 @@
-
 import React, { useState, useMemo, useEffect, useContext, useRef } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { ArrowLeft, GitCommit, UserCheck, Activity, AlertTriangle, CheckCircle, Clock, Calendar, Layers, Users, Plus, X, Pencil, Trash2, Upload, MessageSquare, ChevronsRight, ChevronsLeft, Tag, FileText, User, Database, Mars, Venus, Link as LinkIcon, Search, ClipboardList, ListPlus, Check, ChevronDown, RefreshCw, HelpCircle, BarChart3, AlertCircle, PlayCircle, Loader2, StickyNote, Lightbulb, Paperclip, Video, Image as ImageIcon, Save, Star, Info } from 'lucide-react';
@@ -322,7 +321,54 @@ const categoryStyles: Record<ErgoProjectCategory, { bg: string, border: string, 
   'Other Suggestion': { bg: 'bg-slate-50', border: 'border-slate-200', text: 'text-slate-700' }
 };
 
-// Fix for missing ProjectCard component
+// Component for Durability Tests
+const LifeSection = ({ product, onAddTest, onEditTest, onDeleteTest }: any) => {
+  const { t } = useContext(LanguageContext);
+  return (
+    <div className="animate-fade-in">
+      <div className="flex items-center justify-between mb-6">
+        <h2 className="text-xl font-bold text-slate-900">Durability & Reliability Tests</h2>
+        <button onClick={onAddTest} className="flex items-center gap-2 text-sm bg-slate-900 text-white px-4 py-2 rounded-lg font-medium hover:bg-slate-800 transition-colors">
+          <Plus size={16} /> Add Test
+        </button>
+      </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {product.durabilityTests.map((test: TestResult) => (
+          <div key={test.id} className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm group relative">
+            <div className="flex justify-between items-start mb-3">
+              <div>
+                <span className="text-[10px] font-black text-indigo-600 uppercase tracking-widest bg-indigo-50 px-2 py-0.5 rounded border border-indigo-100 mb-1 inline-block">{test.category}</span>
+                <h4 className="font-bold text-slate-900">{t(test.testName)}</h4>
+              </div>
+              <span className={`px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wider border ${
+                test.status === TestStatus.PASS ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
+                test.status === TestStatus.FAIL ? 'bg-rose-50 text-rose-700 border-rose-200' :
+                'bg-slate-50 text-slate-600 border-slate-200'
+              }`}>{test.status}</span>
+            </div>
+            <div className="flex items-center justify-between mb-2">
+                <span className="text-xs text-slate-500 font-medium">Progress</span>
+                <span className="text-xs font-bold text-slate-900">{test.score}%</span>
+            </div>
+            <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden mb-4">
+                <div className={`h-full transition-all duration-1000 ${test.status === TestStatus.PASS ? 'bg-emerald-500' : test.status === TestStatus.FAIL ? 'bg-rose-500' : 'bg-indigo-500'}`} style={{ width: `${test.score}%` }}></div>
+            </div>
+            <p className="text-xs text-slate-500 line-clamp-2">{t(test.details)}</p>
+            <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                <button onClick={() => onEditTest(test)} className="p-1.5 bg-slate-100 rounded-md text-slate-500 hover:text-slate-900"><Pencil size={12} /></button>
+                <button onClick={() => onDeleteTest(test.id)} className="p-1.5 bg-red-50 rounded-md text-red-500 hover:text-red-700"><Trash2 size={12} /></button>
+            </div>
+          </div>
+        ))}
+        {product.durabilityTests.length === 0 && (
+          <div className="col-span-full py-12 text-center text-slate-400 bg-white rounded-2xl border-2 border-dashed border-slate-200">No durability tests recorded.</div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+// Project Card for Ergo Tab
 const ProjectCard = ({ project, testers, product, onOpenAddTask, onEditTaskName, onDeleteTask, onOpenTaskResults, onDeleteProject, onEditProject, categoryTranslations, onStatusClick, onEditNgReason, highlightedFeedback }: any) => {
     const { t, language } = useContext(LanguageContext);
     const categories: ErgoProjectCategory[] = ['Resistance profile', 'Experience', 'Stroke', 'Other Suggestion'];
@@ -346,9 +392,9 @@ const ProjectCard = ({ project, testers, product, onOpenAddTask, onEditTaskName,
             <div className="p-6 space-y-8">
                 {categories.map(cat => (
                     <div key={cat} className="space-y-4">
-                        <div className="flex items-center justify-between border-l-4 border-indigo-500 pl-3">
+                        <div className="flex items-center justify-between border-l-4 border-intenza-500 pl-3">
                             <h4 className="font-bold text-sm text-slate-800 uppercase tracking-tight">{language === 'en' ? cat : categoryTranslations[cat]}</h4>
-                            <button onClick={() => onOpenAddTask(project.id, cat)} className="text-[10px] font-bold text-indigo-600 flex items-center gap-1 hover:underline"><Plus size={10}/> Add Task</button>
+                            <button onClick={() => onOpenAddTask(project.id, cat)} className="text-[10px] font-bold text-intenza-600 flex items-center gap-1 hover:underline"><Plus size={10}/> Add Task</button>
                         </div>
                         
                         <div className="space-y-3 pl-4">
@@ -357,11 +403,11 @@ const ProjectCard = ({ project, testers, product, onOpenAddTask, onEditTaskName,
                                     <div className="flex justify-between items-start mb-4">
                                         <div className="flex items-center gap-3">
                                             <h5 className="font-bold text-slate-700 text-sm">{t(task.name)}</h5>
-                                            <button onClick={() => onEditTaskName(project.id, cat, task.id, t(task.name))} className="opacity-0 group-hover/task:opacity-100 p-1 text-slate-400 hover:text-slate-600 transition-opacity"><Pencil size={12}/></button>
+                                            <button onClick={() => onEditTaskName(project.id, cat, task.id, t(task.name))} className="opacity-0 group-hover/task:opacity-100 p-1 text-slate-400 hover:text-slate-600"><Pencil size={12}/></button>
                                         </div>
                                         <div className="flex items-center gap-2">
                                             <button onClick={() => onOpenTaskResults(cat, task.id)} className="text-[10px] font-bold bg-white border border-slate-200 text-slate-600 px-3 py-1 rounded-lg hover:border-slate-400 transition-all">Set Pass/NG</button>
-                                            <button onClick={() => { if(window.confirm('Delete task?')) onDeleteTask(project.id, cat, task.id); }} className="opacity-0 group-hover/task:opacity-100 p-1 text-slate-400 hover:text-red-500 transition-opacity"><Trash2 size={12}/></button>
+                                            <button onClick={() => { if(window.confirm('Delete task?')) onDeleteTask(project.id, cat, task.id); }} className="opacity-0 group-hover/task:opacity-100 p-1 text-slate-400 hover:text-red-500"><Trash2 size={12}/></button>
                                         </div>
                                     </div>
                                     
@@ -378,7 +424,7 @@ const ProjectCard = ({ project, testers, product, onOpenAddTask, onEditTaskName,
                                                     data-feedback-id={`${project.id}-${task.id}-${tid}`}
                                                     className={`p-3 rounded-xl border transition-all ${
                                                         isPass ? 'bg-white border-slate-100 opacity-60' : 
-                                                        isHighlighted ? 'bg-indigo-50 border-indigo-400 shadow-md ring-2 ring-indigo-500/10' :
+                                                        isHighlighted ? 'bg-intenza-50 border-intenza-400 shadow-md ring-2 ring-intenza-500/10' :
                                                         'bg-white border-slate-200'
                                                     }`}
                                                 >
@@ -392,11 +438,11 @@ const ProjectCard = ({ project, testers, product, onOpenAddTask, onEditTaskName,
                                                     
                                                     {!isPass && (
                                                         <div className="space-y-2">
-                                                            <p className="text-[10px] text-slate-600 line-clamp-2 min-h-[1.5rem] italic">"{ngReason?.reason ? t(ngReason.reason) : 'No description provided'}"</p>
+                                                            <p className="text-[10px] text-slate-600 line-clamp-2 min-h-[1.5rem] italic">"{ngReason?.reason ? t(ngReason.reason) : 'No description'}"</p>
                                                             <div className="flex items-center justify-between pt-2 border-t border-slate-50">
                                                                 <button 
                                                                     onClick={() => onEditNgReason(cat, task.id, tid)}
-                                                                    className="text-[9px] font-bold text-indigo-600 hover:underline"
+                                                                    className="text-[9px] font-bold text-intenza-600 hover:underline"
                                                                 >
                                                                     Edit Reason
                                                                 </button>
@@ -415,7 +461,6 @@ const ProjectCard = ({ project, testers, product, onOpenAddTask, onEditTaskName,
                                     </div>
                                 </div>
                             ))}
-                            {project.tasks[cat].length === 0 && <div className="text-center py-4 text-[11px] text-slate-400 italic">No tasks added to this category.</div>}
                         </div>
                     </div>
                 ))}
@@ -424,7 +469,7 @@ const ProjectCard = ({ project, testers, product, onOpenAddTask, onEditTaskName,
     );
 };
 
-// Fix for missing CustomerFeedbackCard component
+// Customer Feedback Card for sidebar
 const CustomerFeedbackCard = ({ feedback, onStatusClick, onEdit, onDelete }: any) => {
     const { t } = useContext(LanguageContext);
     return (
@@ -982,7 +1027,6 @@ const ErgoSection = ({ product, testers, onUpdateProduct, highlightedFeedback }:
              isOpen={statusModalState.isOpen}
              onClose={() => setStatusModalState({ isOpen: false, context: null })}
              context={statusModalState.context}
-             // Fix: added missing statusModalState.context!.taskId argument
              onSetStatus={(status) => handleSetNgDecision(statusModalState.context!.projectId, statusModalState.context!.category, statusModalState.context!.taskId, statusModalState.context!.testerId, status)}
              onLinkEco={(ecoId) => handleLinkExistingEco(statusModalState.context!.projectId, statusModalState.context!.category, statusModalState.context!.taskId, statusModalState.context!.testerId, ecoId)}
              onCreateEco={() => handleCreateEcoFromFeedback(statusModalState.context!.projectId, statusModalState.context!.category, statusModalState.context!.taskId, statusModalState.context!.testerId)}
@@ -1001,53 +1045,6 @@ const ErgoSection = ({ product, testers, onUpdateProduct, highlightedFeedback }:
           />
       )}
 
-    </div>
-  );
-};
-
-// --- Sub-components & Modals ---
-
-// Fix for missing LifeSection component
-const LifeSection = ({ product, onAddTest, onEditTest, onDeleteTest }: { product: ProductModel, onAddTest: () => void, onEditTest: (test: TestResult) => void, onDeleteTest: (id: string) => void }) => {
-  const { t } = useContext(LanguageContext);
-  return (
-    <div className="animate-fade-in">
-      <div className="flex items-center justify-between mb-6">
-        <h2 className="text-xl font-bold text-slate-900">Durability & Reliability Tests</h2>
-        <button onClick={onAddTest} className="flex items-center gap-2 text-sm bg-slate-900 text-white px-4 py-2 rounded-lg font-medium hover:bg-slate-800 transition-colors"><Plus size={16} /> Add Test</button>
-      </div>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {product.durabilityTests.map((test) => (
-          <div key={test.id} className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm group relative">
-            <div className="flex justify-between items-start mb-3">
-              <div>
-                <span className="text-[10px] font-black text-indigo-600 uppercase tracking-widest bg-indigo-50 px-2 py-0.5 rounded border border-indigo-100 mb-1 inline-block">{test.category}</span>
-                <h4 className="font-bold text-slate-900">{t(test.testName)}</h4>
-              </div>
-              <span className={`px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wider border ${
-                test.status === TestStatus.PASS ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
-                test.status === TestStatus.FAIL ? 'bg-rose-50 text-rose-700 border-rose-200' :
-                'bg-slate-50 text-slate-600 border-slate-200'
-              }`}>{test.status}</span>
-            </div>
-            <div className="flex items-center justify-between mb-2">
-                <span className="text-xs text-slate-500 font-medium">Progress</span>
-                <span className="text-xs font-bold text-slate-900">{test.score}%</span>
-            </div>
-            <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden mb-4">
-                <div className={`h-full transition-all duration-1000 ${test.status === TestStatus.PASS ? 'bg-emerald-500' : test.status === TestStatus.FAIL ? 'bg-rose-500' : 'bg-indigo-500'}`} style={{ width: `${test.score}%` }}></div>
-            </div>
-            <p className="text-xs text-slate-500 line-clamp-2">{t(test.details)}</p>
-            <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                <button onClick={() => onEditTest(test)} className="p-1.5 bg-slate-100 rounded-md text-slate-500 hover:text-slate-900 transition-colors"><Pencil size={12} /></button>
-                <button onClick={() => onDeleteTest(test.id)} className="p-1.5 bg-red-50 rounded-md text-red-500 hover:text-red-700 transition-colors"><Trash2 size={12} /></button>
-            </div>
-          </div>
-        ))}
-        {product.durabilityTests.length === 0 && (
-          <div className="col-span-full py-12 text-center text-slate-400 bg-white rounded-2xl border-2 border-dashed border-slate-200">No durability tests recorded.</div>
-        )}
-      </div>
     </div>
   );
 };
