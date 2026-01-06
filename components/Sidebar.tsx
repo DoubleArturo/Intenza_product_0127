@@ -1,4 +1,3 @@
-
 import React, { useContext, useState } from 'react';
 import { NavLink } from 'react-router-dom';
 import { LayoutDashboard, BarChart2, Settings, LogOut, CloudUpload, CloudDownload, Cloud, Loader2 } from 'lucide-react';
@@ -87,17 +86,19 @@ const Sidebar: React.FC<SidebarProps> = ({ onLogout, isAdmin, onPush, onPull, sy
               <CloudUpload size={18} />
               {isExpanded && <span className="text-[11px] font-bold">Push</span>}
             </button>
-            <button 
-              onClick={(e) => { e.preventDefault(); onPull(); }}
-              disabled={syncStatus === 'saving'}
-              title={t({ en: 'Pull', zh: '抓取' })}
-              className={`flex-1 flex items-center justify-center gap-2 p-2 rounded-lg transition-all ${
-                syncStatus === 'saving' ? 'bg-slate-200 text-slate-400' : 'bg-white border border-slate-200 text-slate-600 hover:text-emerald-600 hover:border-emerald-200 hover:shadow-sm'
-              }`}
-            >
-              <CloudDownload size={18} />
-              {isExpanded && <span className="text-[11px] font-bold">Pull</span>}
-            </button>
+            {isAdmin && (
+              <button 
+                onClick={(e) => { e.preventDefault(); onPull(); }}
+                disabled={syncStatus === 'saving'}
+                title={t({ en: 'Pull', zh: '抓取' })}
+                className={`flex-1 flex items-center justify-center gap-2 p-2 rounded-lg transition-all ${
+                  syncStatus === 'saving' ? 'bg-slate-200 text-slate-400' : 'bg-white border border-slate-200 text-slate-600 hover:text-emerald-600 hover:border-emerald-200 hover:shadow-sm'
+                }`}
+              >
+                <CloudDownload size={18} />
+                {isExpanded && <span className="text-[11px] font-bold">Pull</span>}
+              </button>
+            )}
           </div>
         </div>
       </div>
