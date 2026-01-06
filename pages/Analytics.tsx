@@ -603,31 +603,38 @@ const Analytics: React.FC<AnalyticsProps> = ({ products, shipments, onImportData
                               <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">{p.sku}</span>
                            </div>
                         </div>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                           {(p.durabilityTests || []).map((test, idx) => (
-                              <div key={idx} onClick={() => navigate(`/product/${p.id}`, { state: { activeTab: 'LIFE' }})} className="group bg-slate-50 hover:bg-white p-6 rounded-[2rem] border-2 border-transparent hover:border-emerald-100 transition-all cursor-pointer shadow-sm">
-                                 <div className="flex justify-between items-start mb-4">
-                                    <div>
-                                       <span className="text-[10px] font-black text-emerald-500 uppercase tracking-widest bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-100">{test.category}</span>
-                                       <h4 className="font-black text-slate-800 mt-2 uppercase text-sm tracking-tight">{t(test.testName)}</h4>
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                           {/* SORTED BY UPDATED DATE (NEWEST FIRST) */}
+                           {[...(p.durabilityTests || [])]
+                             .sort((a, b) => new Date(b.updatedDate || 0).getTime() - new Date(a.updatedDate || 0).getTime())
+                             .map((test, idx) => (
+                              <div key={idx} onClick={() => navigate(`/product/${p.id}`, { state: { activeTab: 'LIFE' }})} className="group bg-slate-50 hover:bg-white p-4 rounded-2xl border-2 border-transparent hover:border-emerald-100 transition-all cursor-pointer shadow-sm">
+                                 <div className="flex justify-between items-start mb-3">
+                                    <div className="flex-1 min-w-0">
+                                       <div className="flex items-center gap-1.5 mb-1">
+                                          <span className="text-[8px] font-black text-emerald-600 uppercase tracking-widest bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-100 whitespace-nowrap">{test.category}</span>
+                                          {test.version && <span className="text-[8px] font-bold text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200 whitespace-nowrap">{test.version}</span>}
+                                       </div>
+                                       <h4 className="font-black text-slate-800 uppercase text-[11px] tracking-tight truncate" title={t(test.testName)}>{t(test.testName)}</h4>
                                     </div>
-                                    <div className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest border shadow-sm ${
+                                    {/* MINIMIZED NG/FAIL STATUS */}
+                                    <div className={`px-2 py-0.5 rounded-md text-[8px] font-black uppercase tracking-widest border transition-colors ${
                                       test.status === TestStatus.PASS ? 'bg-emerald-500 text-white border-emerald-400' :
-                                      test.status === TestStatus.FAIL ? 'bg-rose-500 text-white border-rose-400' :
+                                      test.status === TestStatus.FAIL ? 'bg-white text-rose-500 border-rose-200 shadow-sm' : // MINIMIZED NG: White bg, rose text
                                       'bg-slate-100 text-slate-500 border-slate-200'
                                     }`}>{test.status}</div>
                                  </div>
                                  
-                                 <div className="flex items-center justify-between mb-2">
-                                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Life Cycle Progress</span>
-                                    <span className="text-sm font-black text-slate-900">{test.score}%</span>
+                                 <div className="flex items-center justify-between mb-1.5">
+                                    <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Progress</span>
+                                    <span className="text-[11px] font-black text-slate-900">{test.score}%</span>
                                  </div>
-                                 <div className="w-full h-3 bg-slate-200 rounded-full overflow-hidden shadow-inner mb-4">
-                                    <div className={`h-full transition-all duration-1000 ${test.status === TestStatus.PASS ? 'bg-emerald-500' : test.status === TestStatus.FAIL ? 'bg-rose-500' : 'bg-blue-500'}`} style={{ width: `${test.score}%` }}></div>
+                                 <div className="w-full h-2 bg-slate-200 rounded-full overflow-hidden shadow-inner mb-3">
+                                    <div className={`h-full transition-all duration-1000 ${test.status === TestStatus.PASS ? 'bg-emerald-500' : test.status === TestStatus.FAIL ? 'bg-rose-400' : 'bg-blue-400'}`} style={{ width: `${test.score}%` }}></div>
                                  </div>
-                                 <div className="flex items-center justify-between text-[9px] font-bold text-slate-300 uppercase tracking-widest border-t border-slate-100 pt-3">
-                                    <div className="flex items-center gap-1"><Clock size={10}/> Updated: {test.updatedDate}</div>
-                                    <ArrowRight size={12}/>
+                                 <div className="flex items-center justify-between text-[8px] font-bold text-slate-300 uppercase tracking-widest border-t border-slate-100 pt-2">
+                                    <div className="flex items-center gap-1"><Clock size={9}/> {test.updatedDate}</div>
+                                    <ArrowRight size={10} className="group-hover:translate-x-0.5 transition-transform" />
                                  </div>
                               </div>
                            ))}
