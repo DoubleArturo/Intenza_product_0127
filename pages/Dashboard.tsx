@@ -119,7 +119,6 @@ export const Dashboard: React.FC<DashboardProps> = ({ products, seriesList, onAd
     setIsSubmitting(true);
     
     if (editingProduct) {
-      // Synchronize both languages to the current input to ensure consistency
       const updatedModelName = { en: formData.modelName, zh: formData.modelName };
       const updatedDescription = { en: formData.description, zh: formData.description };
 
@@ -147,12 +146,13 @@ export const Dashboard: React.FC<DashboardProps> = ({ products, seriesList, onAd
     handleCloseModal();
   };
 
-  // Helper to get latest production info based on implementation date
-  const getLatestProductionInfo = (p: ProductModel) => {
-    const prodChanges = (p.designHistory || [])
-      .filter(h => h.status === EcoStatus.IN_PRODUCTION && h.implementationDate)
-      .sort((a, b) => new Date(b.implementationDate!).getTime() - new Date(a.implementationDate!).getTime());
-    return prodChanges[0];
+  // 取得目前設定版本的量產日期資訊
+  const getCurrentProductionInfo = (p: ProductModel) => {
+    return (p.designHistory || []).find(
+      h => h.version === p.currentVersion && 
+      h.status === EcoStatus.IN_PRODUCTION && 
+      h.implementationDate
+    );
   };
 
   return (
@@ -219,9 +219,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ products, seriesList, onAd
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
         {filteredProducts.map((p) => {
-          const productionInfo = getLatestProductionInfo(p);
-          // Determine version to display on card
-          const displayVersion = productionInfo ? productionInfo.version : p.currentVersion;
+          const productionInfo = getCurrentProductionInfo(p);
+          const displayVersion = p.currentVersion;
           
           return (
             <div 

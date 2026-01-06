@@ -256,7 +256,7 @@ const ProductDetail: React.FC<ProductDetailProps> = ({ products, testers = [], o
              {activeTab === 'ERGO' && (
                 <div onClick={() => navigate('/testers')} className="group bg-white rounded-2xl border border-slate-200 p-4 shadow-sm cursor-pointer hover:border-intenza-200 hover:shadow-md transition-all">
                    <div className="flex items-center gap-4">
-                      <div className="w-12 h-12 rounded-xl bg-slate-900 text-white flex items-center justify-center shadow-lg shadow-slate-900/20 group-hover:scale-105 transition-transform"><Database size={24} /></div>
+                      <div className="w-12 h-12 rounded-xl bg-slate-900 text-white flex items-center justify-center shadow-lg shadow-slate-900/20 group-hover:scale-110 transition-transform"><Database size={24} /></div>
                       <div>
                          <h4 className="font-bold text-slate-900 group-hover:text-intenza-600 transition-colors">Tester Database</h4>
                          <p className="text-xs text-slate-500">Manage test subjects</p>
@@ -982,9 +982,9 @@ const ErgoSection = ({ product, testers, onUpdateProduct, highlightedFeedback }:
              isOpen={statusModalState.isOpen}
              onClose={() => setStatusModalState({ isOpen: false, context: null })}
              context={statusModalState.context}
-             onSetStatus={(status) => handleSetNgDecision(statusModalState.context!.projectId, statusModalState.context!.category, statusModalState.context!.testerId, status)}
+             // Fix: added missing statusModalState.context!.taskId argument
+             onSetStatus={(status) => handleSetNgDecision(statusModalState.context!.projectId, statusModalState.context!.category, statusModalState.context!.taskId, statusModalState.context!.testerId, status)}
              onLinkEco={(ecoId) => handleLinkExistingEco(statusModalState.context!.projectId, statusModalState.context!.category, statusModalState.context!.taskId, statusModalState.context!.testerId, ecoId)}
-             // Fix for taskId and testerId scoping errors
              onCreateEco={() => handleCreateEcoFromFeedback(statusModalState.context!.projectId, statusModalState.context!.category, statusModalState.context!.taskId, statusModalState.context!.testerId)}
              activeEcos={activeEcosList}
           />
