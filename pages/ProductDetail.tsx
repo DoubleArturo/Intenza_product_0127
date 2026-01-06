@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect, useContext, useRef } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { ArrowLeft, GitCommit, UserCheck, Activity, AlertTriangle, CheckCircle, Clock, Calendar, Layers, Users, Plus, X, Pencil, Trash2, Upload, MessageSquare, ChevronsRight, ChevronsLeft, Tag, FileText, User, Database, Mars, Venus, Link as LinkIcon, Search, ClipboardList, ListPlus, Check, ChevronDown, RefreshCw, HelpCircle, BarChart3, AlertCircle, PlayCircle, Loader2, StickyNote, Lightbulb, Paperclip, Video, Image as ImageIcon, Save, Star, Info, Ship } from 'lucide-react';
-import { ProductModel, TestStatus, DesignChange, LocalizedString, TestResult, EcoStatus, ErgoFeedback, ErgoProject, Tester, ErgoProjectCategory, NgReason, ProjectOverallStatus, Gender, NgDecisionStatus, EvaluationTask } from '../types';
+import { ProductModel, TestStatus, DesignChange, LocalizedString, TestResult, EcoStatus, ErgoFeedback, ErgoProject, Tester, ErgoProjectCategory, NgReason, ProjectOverallStatus, Gender, NgDecisionStatus, EvaluationTask, ShipmentData } from '../types';
 import GeminiInsight from '../components/GeminiInsight';
 import { LanguageContext } from '../App';
 import { api } from '../services/api';
@@ -12,16 +12,23 @@ const isVideo = (url: string) => {
     return url.startsWith('data:video') || url.match(/\.(mp4|webm|ogg)$/i);
 };
 
+// Helper to format version string consistently with Analytics
+const formatVersion = (v: string) => {
+    const clean = (v || '1.0').toUpperCase().replace('V', '');
+    return `V${clean}`;
+};
+
 // Define the interface for ProductDetail props
 interface ProductDetailProps {
   products: ProductModel[];
+  shipments: ShipmentData[];
   testers: Tester[];
   onUpdateProduct: (p: ProductModel) => Promise<void>;
   showAiInsights: boolean;
 }
 
 // Main Product Detail Page Component
-const ProductDetail: React.FC<ProductDetailProps> = ({ products, testers = [], onUpdateProduct, showAiInsights }) => {
+const ProductDetail: React.FC<ProductDetailProps> = ({ products, shipments = [], testers = [], onUpdateProduct, showAiInsights }) => {
   const { id } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
@@ -206,6 +213,7 @@ const ProductDetail: React.FC<ProductDetailProps> = ({ products, testers = [], o
              {activeTab === 'DESIGN' && (
                <DesignSection 
                  product={product} 
+                 shipments={shipments}
                  onAddEco={() => handleOpenEcoModal()} 
                  onEditEco={handleOpenEcoModal} 
                  onDeleteEco={handleDeleteEco} 
@@ -514,7 +522,7 @@ const CustomerFeedbackCard = ({ feedback, onStatusClick, onEdit, onDelete }: any
 };
 
 // Design Section
-const DesignSection = ({ product, onAddEco, onEditEco, onDeleteEco, onDeleteVersion, onSetCurrentVersion }: { product: ProductModel, onAddEco: () => void, onEditEco: (eco: DesignChange) => void, onDeleteEco: (id: string) => void, onDeleteVersion: (version: string) => void, onSetCurrentVersion: (version: string) => void }) => {
+const DesignSection = ({ product, shipments, onAddEco, onEditEco, onDeleteEco, onDeleteVersion, onSetCurrentVersion }: { product: ProductModel, shipments: ShipmentData[], onAddEco: () => void, onEditEco: (eco: DesignChange) => void, onDeleteEco: (id: string) => void, onDeleteVersion: (version: string) => void, onSetCurrentVersion: (version: string) => void }) => {
   const { t, language } = useContext(LanguageContext);
   const navigate = useNavigate();
   const versions = useMemo(() => Array.from(new Set([product.currentVersion, ...product.designHistory.map(h => h.version)])).sort().reverse(), [product]);
@@ -531,6 +539,20 @@ const DesignSection = ({ product, onAddEco, onEditEco, onDeleteEco, onDeleteVers
   }
 
   const handleJumpToAnalytics = () => {
+    // Check if any shipments exist for this SKU AND this Version
+    const formattedSelectedVersion = formatVersion(selectedVersion);
+    const hasShipments = shipments.some(s => 
+        s.sku === product.sku && formatVersion(s.version) === formattedSelectedVersion
+    );
+
+    if (!hasShipments) {
+        alert(language === 'zh' 
+            ? `此版本 (${selectedVersion}) 尚無任何出貨記錄。` 
+            : `No shipment records found for this version (${selectedVersion}).`
+        );
+        return;
+    }
+
     navigate('/analytics', { 
         state: { 
             autoDrill: { 

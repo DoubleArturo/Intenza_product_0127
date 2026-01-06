@@ -71,13 +71,14 @@ const Analytics: React.FC<AnalyticsProps> = ({ products, shipments, onImportData
       if (shipment) {
         setViewMode('SHIPMENTS');
         setDimension('DATA_DRILL');
+        // Drill down through CATEGORY -> SERIES -> SKU -> VERSION
+        // Landing at depth 4, which isLevel: BUYER
         setDrillPath([
             { level: 'CATEGORY', label: shipment.category, filterVal: shipment.category },
             { level: 'SERIES', label: shipment.series, filterVal: shipment.series },
-            { level: 'SKU', label: sku, filterVal: sku }
+            { level: 'SKU', label: sku, filterVal: sku },
+            { level: 'VERSION', label: version, filterVal: formatVersion(version) }
         ]);
-        // Note: The filteredShipments logic below will handle the version filtering 
-        // if an autoDrill is active to show only that version's customers.
       }
       // Clear location state after handling to prevent loops or persistent filters
       navigate(location.pathname, { replace: true, state: {} });
@@ -110,13 +111,14 @@ const Analytics: React.FC<AnalyticsProps> = ({ products, shipments, onImportData
       }
     }
     
+    // Normal drill sequence: CAT -> SERIES -> SKU -> VERSION -> BUYER
     switch (depth) {
       case 0: return 'CATEGORY';
       case 1: return 'SERIES';
       case 2: return 'SKU';
-      case 3: return 'BUYER'; 
-      case 4: return 'VERSION'; 
-      default: return 'VERSION';
+      case 3: return 'VERSION'; 
+      case 4: return 'BUYER'; 
+      default: return 'BUYER';
     }
   }, [drillPath, dimension]);
 
@@ -188,7 +190,7 @@ const Analytics: React.FC<AnalyticsProps> = ({ products, shipments, onImportData
   const totalQuantity = useMemo(() => chartData.reduce((acc, curr) => acc + curr.value, 0), [chartData]);
 
   const handleDrill = (entry: any) => {
-    if (currentLevel === 'VERSION') return;
+    if (currentLevel === 'BUYER' || (drillPath.length >= 4 && dimension === 'DATA_DRILL')) return;
     setDrillPath([...drillPath, { level: currentLevel, label: entry.name, filterVal: entry.name }]);
   };
 
