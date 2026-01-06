@@ -1,7 +1,7 @@
 
 import React, { useState, useMemo, useEffect, useContext, useRef } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
-import { ArrowLeft, GitCommit, UserCheck, Activity, AlertTriangle, CheckCircle, Clock, Calendar, Layers, Users, Plus, X, Pencil, Trash2, Upload, MessageSquare, ChevronsRight, ChevronsLeft, Tag, FileText, User, Database, Mars, Venus, Link as LinkIcon, Search, ClipboardList, ListPlus, Check, ChevronDown, RefreshCw, HelpCircle, BarChart3, AlertCircle, PlayCircle, Loader2, StickyNote, Lightbulb, Paperclip, Video, Image as ImageIcon, Save, Star } from 'lucide-react';
+import { ArrowLeft, GitCommit, UserCheck, Activity, AlertTriangle, CheckCircle, Clock, Calendar, Layers, Users, Plus, X, Pencil, Trash2, Upload, MessageSquare, ChevronsRight, ChevronsLeft, Tag, FileText, User, Database, Mars, Venus, Link as LinkIcon, Search, ClipboardList, ListPlus, Check, ChevronDown, RefreshCw, HelpCircle, BarChart3, AlertCircle, PlayCircle, Loader2, StickyNote, Lightbulb, Paperclip, Video, Image as ImageIcon, Save, Star, Info } from 'lucide-react';
 import { ProductModel, TestStatus, DesignChange, LocalizedString, TestResult, EcoStatus, ErgoFeedback, ErgoProject, Tester, ErgoProjectCategory, NgReason, ProjectOverallStatus, Gender, NgDecisionStatus, EvaluationTask } from '../types';
 import GeminiInsight from '../components/GeminiInsight';
 import { LanguageContext } from '../App';
@@ -869,7 +869,7 @@ const LifeSection = ({ product, onAddTest, onEditTest, onDeleteTest }: any) => {
             ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     {product.durabilityTests.map((test: TestResult) => (
-                        <div key={test.id} className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm group relative">
+                        <div key={test.id} className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm group relative overflow-hidden">
                             <div className="flex justify-between items-start mb-4">
                                 <div>
                                     <span className="text-[10px] font-bold text-indigo-600 uppercase tracking-widest bg-indigo-50 px-2 py-0.5 rounded border border-indigo-100">{test.category}</span>
@@ -908,9 +908,28 @@ const LifeSection = ({ product, onAddTest, onEditTest, onDeleteTest }: any) => {
                             <div className="text-[10px] text-slate-400 flex items-center gap-1 font-medium mt-4">
                                 <Clock size={10}/> Last Updated: {test.updatedDate}
                             </div>
-                            <div className="absolute top-4 right-4 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                <button onClick={() => onEditTest(test)} className="p-1.5 bg-slate-100 rounded-full text-slate-500 hover:text-slate-900"><Pencil size={14}/></button>
-                                <button onClick={() => onDeleteTest(test.id)} className="p-1.5 bg-red-50 rounded-full text-red-500 hover:text-red-700"><Trash2 size={14}/></button>
+                            <div className="absolute top-4 right-4 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity z-10">
+                                <button onClick={(e) => { e.stopPropagation(); onEditTest(test); }} className="p-1.5 bg-slate-100 rounded-full text-slate-500 hover:text-slate-900"><Pencil size={14}/></button>
+                                <button onClick={(e) => { e.stopPropagation(); onDeleteTest(test.id); }} className="p-1.5 bg-red-50 rounded-full text-red-500 hover:text-red-700"><Trash2 size={14}/></button>
+                            </div>
+
+                            {/* Details Hover Overlay - Requested Addition */}
+                            <div className="absolute inset-0 bg-white/95 backdrop-blur-sm p-6 opacity-0 group-hover:opacity-100 transition-all duration-300 flex flex-col z-20 pointer-events-none rounded-2xl border-2 border-intenza-100">
+                                <div className="flex items-center justify-between mb-4 border-b border-slate-100 pb-2">
+                                    <span className="text-[10px] font-black text-intenza-600 uppercase tracking-widest flex items-center gap-1.5">
+                                        <Info size={14} /> {t({en: 'Test Status Details', zh: '測試狀態說明'})}
+                                    </span>
+                                    <div className="flex gap-2">
+                                       <button onClick={(e) => { e.stopPropagation(); onEditTest(test); }} className="p-1.5 bg-slate-100 rounded-full text-slate-500 hover:text-slate-900 pointer-events-auto shadow-sm"><Pencil size={12}/></button>
+                                       <button onClick={(e) => { e.stopPropagation(); onDeleteTest(test.id); }} className="p-1.5 bg-red-50 rounded-full text-red-500 hover:text-red-700 pointer-events-auto shadow-sm"><Trash2 size={12}/></button>
+                                    </div>
+                                </div>
+                                <div className="overflow-y-auto custom-scrollbar flex-1 pointer-events-auto">
+                                    <p className="text-sm text-slate-600 leading-relaxed whitespace-pre-wrap font-medium">
+                                        {t(test.details) || t({en: 'No detailed status description provided.', zh: '未提供詳細說明內容。'})}
+                                    </p>
+                                </div>
+                                <div className="mt-4 text-[9px] text-slate-300 font-bold uppercase tracking-tighter text-right">Move mouse away to close</div>
                             </div>
                         </div>
                     ))}
@@ -1254,7 +1273,7 @@ const SetTaskResultsModal = ({ isOpen, onClose, onSave, context, project, tester
                     ))}
                 </div>
                 <div className="p-6 pt-0 flex gap-3">
-                    <button onClick={onClose} className="flex-1 py-2 text-slate-500 font-bold hover:bg-slate-50 rounded-lg">Cancel</button>
+                    <button onClick={onClose} className="flex-1 py-2 text-slate-600 font-bold hover:bg-slate-50 rounded-lg">Cancel</button>
                     <button onClick={() => onSave(selectedIds)} className="flex-1 py-2 bg-emerald-600 text-white font-bold rounded-lg hover:bg-emerald-700">Set Results</button>
                 </div>
             </div>
