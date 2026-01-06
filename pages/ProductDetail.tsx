@@ -340,7 +340,12 @@ const DesignSection = ({ product, onAddEco, onEditEco, onDeleteEco, onDeleteVers
 
   return (
     <div className="animate-fade-in">
-      <div className="flex items-center justify-between mb-6"><h2 className="text-xl font-bold text-slate-900">Design Version History</h2><button onClick={onAddEco} className="flex items-center gap-2 text-sm bg-slate-900 text-white px-4 py-2 rounded-lg font-medium hover:bg-slate-800 transition-colors"><Plus size={16} /> Add ECO</button></div>
+      <div className="flex items-center justify-between mb-6">
+        <h2 className="text-xl font-bold text-slate-900">Design Version History</h2>
+        <div className="flex gap-2">
+            <button onClick={onAddEco} className="flex items-center gap-2 text-sm bg-slate-900 text-white px-4 py-2 rounded-lg font-medium hover:bg-slate-800 transition-colors"><Plus size={16} /> Add ECO</button>
+        </div>
+      </div>
       <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden min-h-[400px]">
         <div className="flex items-center gap-8 px-6 border-b border-slate-100 overflow-x-auto bg-slate-50/50">
           {versions.map((version) => (
@@ -388,9 +393,15 @@ const DesignSection = ({ product, onAddEco, onEditEco, onDeleteEco, onDeleteVers
                      <div className="flex flex-col md:flex-row gap-6">
                         <div className="md:w-48 flex-shrink-0">
                            <div className="flex items-center gap-3 mb-2">
-                              <span className="font-mono text-sm font-bold text-intenza-600 bg-intenza-50 px-2 py-1 rounded border border-intenza-100">{change.ecoNumber}</span>
+                              {/* SMART DISPLAY: ECO PRIORITY OVER ECR */}
+                              <span className="font-mono text-sm font-bold text-intenza-600 bg-intenza-50 px-2 py-1 rounded border border-intenza-100">
+                                {change.ecoNumber || change.ecrNumber || 'N/A'}
+                              </span>
                            </div>
                            <div className="flex flex-col gap-1.5 text-slate-500 text-[10px] font-bold uppercase tracking-wider mt-2">
+                              {change.ecrNumber && (
+                                <div className="flex items-center gap-2"><Calendar size={12} className="text-slate-400" />ECR Initiation: {change.ecrDate || 'N/A'}</div>
+                              )}
                               <div className="flex items-center gap-2"><Calendar size={12} className="text-slate-400" />ECO Date: {change.date}</div>
                               {change.implementationDate && (
                                 <div className="flex items-center gap-2 text-emerald-600"><Check size={12}/>Production: {change.implementationDate}</div>
@@ -1038,6 +1049,8 @@ const CustomerFeedbackCard = ({ feedback, category, onStatusClick, onEdit, onDel
 const EcoModal = ({ isOpen, onClose, onSave, eco, productVersions, product }: any) => {
     const { t } = useContext(LanguageContext);
     const [formData, setFormData] = useState({
+        ecrNumber: eco?.ecrNumber || '',
+        ecrDate: eco?.ecrDate || '',
         ecoNumber: eco?.ecoNumber || '',
         date: eco?.date || new Date().toISOString().split('T')[0],
         version: eco?.version || product.currentVersion,
@@ -1068,24 +1081,60 @@ const EcoModal = ({ isOpen, onClose, onSave, eco, productVersions, product }: an
                 </div>
                 <form onSubmit={handleSubmit} className="p-6 space-y-4 max-h-[80vh] overflow-y-auto">
                     <div className="grid grid-cols-2 gap-4">
-                        <div><label className="block text-xs font-bold text-slate-400 uppercase mb-1">ECO Number</label><input required className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg" value={formData.ecoNumber} onChange={e => setFormData({...formData, ecoNumber: e.target.value})} /></div>
-                        <div><label className="block text-xs font-bold text-slate-400 uppercase mb-1">Date</label><input type="date" required className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg" value={formData.date} onChange={e => setFormData({...formData, date: e.target.value})} /></div>
+                        <div>
+                            <label className="block text-xs font-bold text-slate-400 uppercase mb-1">Target Version</label>
+                            {/* CUSTOM VERSION INPUT WITH DATALIST */}
+                            <input 
+                                list="version-suggestions"
+                                required 
+                                className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-intenza-500/20" 
+                                value={formData.version} 
+                                onChange={e => setFormData({...formData, version: e.target.value})} 
+                                placeholder="e.g. v2.5"
+                            />
+                            <datalist id="version-suggestions">
+                                {productVersions.map((v: string) => <option key={v} value={v} />)}
+                            </datalist>
+                        </div>
+                        <div><label className="block text-xs font-bold text-slate-400 uppercase mb-1">Status</label><select className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-intenza-500/20" value={formData.status} onChange={e => setFormData({...formData, status: e.target.value as EcoStatus})}>{Object.values(EcoStatus).map(s => <option key={s} value={s}>{s}</option>)}</select></div>
                     </div>
-                    <div className="grid grid-cols-2 gap-4">
-                        <div><label className="block text-xs font-bold text-slate-400 uppercase mb-1">Target Version</label><select className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg" value={formData.version} onChange={e => setFormData({...formData, version: e.target.value})}>{productVersions.map((v: string) => <option key={v} value={v}>{v}</option>)}</select></div>
-                        <div><label className="block text-xs font-bold text-slate-400 uppercase mb-1">Status</label><select className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg" value={formData.status} onChange={e => setFormData({...formData, status: e.target.value as EcoStatus})}>{Object.values(EcoStatus).map(s => <option key={s} value={s}>{s}</option>)}</select></div>
+
+                    {/* NEW ECR INFORMATION BLOCK */}
+                    <div className="grid grid-cols-2 gap-4 p-4 bg-slate-50 rounded-xl border border-slate-100">
+                        <div className="col-span-2 text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">ECR Information (Engineering Change Request)</div>
+                        <div>
+                            <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">ECR Number</label>
+                            <input className="w-full px-4 py-2 bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-500/20" value={formData.ecrNumber} onChange={e => setFormData({...formData, ecrNumber: e.target.value})} placeholder="ECR-202X-XXX" />
+                        </div>
+                        <div>
+                            <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Initiation Date (啟動時間)</label>
+                            <input type="date" className="w-full px-4 py-2 bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-500/20" value={formData.ecrDate} onChange={e => setFormData({...formData, ecrDate: e.target.value})} />
+                        </div>
                     </div>
-                    <div><label className="block text-xs font-bold text-slate-400 uppercase mb-1">Description</label><textarea required className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg resize-none" rows={3} value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})} /></div>
+
+                    <div className="grid grid-cols-2 gap-4 p-4 bg-indigo-50/30 rounded-xl border border-indigo-100/50">
+                        <div className="col-span-2 text-[10px] font-black text-indigo-400 uppercase tracking-widest mb-1">ECO Information (Engineering Change Order)</div>
+                        <div>
+                            <label className="block text-[10px] font-bold text-indigo-500 uppercase mb-1">ECO Number</label>
+                            <input className="w-full px-4 py-2 bg-white border border-indigo-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20" value={formData.ecoNumber} onChange={e => setFormData({...formData, ecoNumber: e.target.value})} placeholder="ECO-202X-XXX" />
+                        </div>
+                        <div>
+                            <label className="block text-[10px] font-bold text-indigo-500 uppercase mb-1">Completion Date (ECO Date)</label>
+                            <input type="date" className="w-full px-4 py-2 bg-white border border-indigo-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20" value={formData.date} onChange={e => setFormData({...formData, date: e.target.value})} />
+                        </div>
+                    </div>
+
+                    <div><label className="block text-xs font-bold text-slate-400 uppercase mb-1">Description</label><textarea required className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-intenza-500/20" rows={3} value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})} /></div>
                     <div className="grid grid-cols-2 gap-4">
-                        <div><label className="block text-xs font-bold text-slate-400 uppercase mb-1">Affected Batches (Comma sep)</label><input className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg" value={formData.affectedBatches} onChange={e => setFormData({...formData, affectedBatches: e.target.value})} /></div>
-                        <div><label className="block text-xs font-bold text-slate-400 uppercase mb-1">Customers (Comma sep)</label><input className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg" value={formData.affectedCustomers} onChange={e => setFormData({...formData, affectedCustomers: e.target.value})} /></div>
+                        <div><label className="block text-xs font-bold text-slate-400 uppercase mb-1">Affected Batches (Comma sep)</label><input className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-intenza-500/20" value={formData.affectedBatches} onChange={e => setFormData({...formData, affectedBatches: e.target.value})} /></div>
+                        <div><label className="block text-xs font-bold text-slate-400 uppercase mb-1">Customers (Comma sep)</label><input className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-intenza-500/20" value={formData.affectedCustomers} onChange={e => setFormData({...formData, affectedCustomers: e.target.value})} /></div>
                     </div>
                     {formData.status === EcoStatus.IN_PRODUCTION && (
-                        <div><label className="block text-xs font-bold text-slate-400 uppercase mb-1">Implementation Date</label><input type="date" className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg" value={formData.implementationDate} onChange={e => setFormData({...formData, implementationDate: e.target.value})} /></div>
+                        <div><label className="block text-xs font-bold text-slate-400 uppercase mb-1">Implementation Date</label><input type="date" className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-intenza-500/20" value={formData.implementationDate} onChange={e => setFormData({...formData, implementationDate: e.target.value})} /></div>
                     )}
                     <div className="flex gap-4 pt-4 border-t border-slate-100">
                         <button type="button" onClick={onClose} className="flex-1 py-3 text-slate-500 font-bold hover:bg-slate-50 rounded-xl">Cancel</button>
-                        <button type="submit" className="flex-1 py-3 bg-slate-900 text-white font-bold rounded-xl hover:bg-slate-800 transition-all">Save Changes</button>
+                        <button type="submit" className="flex-1 py-3 bg-slate-900 text-white font-bold rounded-xl hover:bg-slate-800 transition-all shadow-lg shadow-slate-900/20">Save Record</button>
                     </div>
                 </form>
             </div>
@@ -1158,40 +1207,40 @@ const TestModal = ({ isOpen, onClose, onSave, test }: any) => {
                     <div className="grid grid-cols-2 gap-4">
                         <div>
                             <label className="block text-xs font-bold text-slate-400 uppercase mb-1">Category</label>
-                            <select className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg" value={formData.category} onChange={e => setFormData({...formData, category: e.target.value})}>
+                            <select className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20" value={formData.category} onChange={e => setFormData({...formData, category: e.target.value})}>
                                 <option value="Mechanical">Mechanical</option>
                                 <option value="Electrical">Electrical</option>
                             </select>
                         </div>
                         <div>
                             <label className="block text-xs font-bold text-slate-400 uppercase mb-1">Test Version</label>
-                            <input className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg" value={formData.version} onChange={e => setFormData({...formData, version: e.target.value})} placeholder="e.g. Prototype v2" />
+                            <input className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20" value={formData.version} onChange={e => setFormData({...formData, version: e.target.value})} placeholder="e.g. Prototype v2" />
                         </div>
                     </div>
 
                     <div>
                         <label className="block text-xs font-bold text-slate-400 uppercase mb-1">Test Name</label>
                         <div className="space-y-2">
-                            <select className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg" value={testNameType} onChange={e => setTestNameType(e.target.value)}>
+                            <select className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20" value={testNameType} onChange={e => setTestNameType(e.target.value)}>
                                 {TEST_NAME_OPTIONS.map(opt => <option key={opt} value={opt}>{opt}</option>)}
                                 <option value="Other">Other (Custom input)</option>
                             </select>
                             {testNameType === 'Other' && (
-                                <input required className="w-full px-4 py-2 bg-white border border-slate-200 rounded-lg ring-1 ring-intenza-100" value={formData.testName} onChange={e => setFormData({...formData, testName: e.target.value})} placeholder="Enter custom test name" />
+                                <input required className="w-full px-4 py-2 bg-white border border-slate-200 rounded-lg ring-1 ring-intenza-100 focus:outline-none focus:ring-2 focus:ring-intenza-500/20" value={formData.testName} onChange={e => setFormData({...formData, testName: e.target.value})} placeholder="Enter custom test name" />
                             )}
                         </div>
                     </div>
 
                     <div className="grid grid-cols-2 gap-4">
-                        <div><label className="block text-xs font-bold text-slate-400 uppercase mb-1">Progress (%)</label><input type="number" min="0" max="100" className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg" value={formData.score} onChange={e => setFormData({...formData, score: Number(e.target.value)})} /></div>
+                        <div><label className="block text-xs font-bold text-slate-400 uppercase mb-1">Progress (%)</label><input type="number" min="0" max="100" className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20" value={formData.score} onChange={e => setFormData({...formData, score: Number(e.target.value)})} /></div>
                         <div>
                             <label className="block text-xs font-bold text-slate-400 uppercase mb-1">Status</label>
-                            <select className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg" value={formData.status} onChange={e => setFormData({...formData, status: e.target.value as TestStatus})}>
+                            <select className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20" value={formData.status} onChange={e => setFormData({...formData, status: e.target.value as TestStatus})}>
                                 {Object.values(TestStatus).filter(s => s !== TestStatus.WARNING).map(s => <option key={s} value={s}>{s}</option>)}
                             </select>
                         </div>
                     </div>
-                    <div><label className="block text-xs font-bold text-slate-400 uppercase mb-1">Details / Notes</label><textarea className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg resize-none" rows={3} value={formData.details} onChange={e => setFormData({...formData, details: e.target.value})} /></div>
+                    <div><label className="block text-xs font-bold text-slate-400 uppercase mb-1">Details / Notes</label><textarea className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-indigo-500/20" rows={3} value={formData.details} onChange={e => setFormData({...formData, details: e.target.value})} /></div>
                     
                     {/* Durability Photo Upload Area */}
                     <div>
@@ -1232,39 +1281,50 @@ const TestModal = ({ isOpen, onClose, onSave, test }: any) => {
     );
 };
 
+// --- Missing Modals Implementation ---
+
 const StartEvaluationModal = ({ isOpen, onClose, onStartProject, allTesters, project }: any) => {
     const { t } = useContext(LanguageContext);
     const [name, setName] = useState(project ? t(project.name) : '');
     const [selectedTesterIds, setSelectedTesterIds] = useState<string[]>(project?.testerIds || []);
 
+    const handleSubmit = (e: React.FormEvent) => {
+        e.preventDefault();
+        onStartProject({ en: name, zh: name }, selectedTesterIds);
+    };
+
+    const toggleTester = (id: string) => {
+        setSelectedTesterIds(prev => prev.includes(id) ? prev.filter(t => t !== id) : [...prev, id]);
+    };
+
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md animate-fade-in">
-            <div className="bg-white rounded-3xl shadow-2xl w-full max-w-lg animate-slide-up">
+            <div className="bg-white rounded-3xl shadow-2xl w-full max-w-lg animate-slide-up overflow-hidden">
                 <div className="flex justify-between items-center p-6 border-b border-slate-100">
-                    <h2 className="text-xl font-bold">{project ? 'Edit Evaluation Project' : 'New Evaluation Project'}</h2>
+                    <h2 className="text-xl font-bold">{project ? 'Edit Evaluation' : 'Start New Evaluation'}</h2>
                     <button onClick={onClose} className="p-2 rounded-full hover:bg-slate-100"><X size={20} /></button>
                 </div>
-                <div className="p-6 space-y-6">
+                <form onSubmit={handleSubmit} className="p-6 space-y-6">
                     <div>
-                        <label className="block text-xs font-bold text-slate-400 uppercase mb-2">Project Name</label>
-                        <input className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg" value={name} onChange={e => setName(e.target.value)} />
+                        <label className="block text-xs font-bold text-slate-400 uppercase mb-1">Project Name</label>
+                        <input required className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-intenza-500/20" value={name} onChange={e => setName(e.target.value)} placeholder="e.g. 550Te2 Handlebar Ergo Review" />
                     </div>
                     <div>
-                        <label className="block text-xs font-bold text-slate-400 uppercase mb-2">Select Testers ({selectedTesterIds.length})</label>
-                        <div className="grid grid-cols-2 gap-2 max-h-[30vh] overflow-y-auto pr-2 custom-scrollbar">
-                            {allTesters.map((tester: Tester) => (
-                                <button key={tester.id} onClick={() => setSelectedTesterIds(prev => prev.includes(tester.id) ? prev.filter(id => id !== tester.id) : [...prev, tester.id])} className={`flex items-center gap-2 p-2 rounded-lg border text-left transition-all ${selectedTesterIds.includes(tester.id) ? 'bg-intenza-50 border-intenza-200 ring-1 ring-intenza-200' : 'bg-slate-50 border-slate-100 hover:border-slate-300'}`}>
-                                    <div className="w-8 h-8 rounded-full overflow-hidden flex-shrink-0 bg-slate-200"><img src={tester.imageUrl} className="w-full h-full object-cover" /></div>
-                                    <span className="text-xs font-bold text-slate-700 truncate">{tester.name}</span>
+                        <label className="block text-xs font-bold text-slate-400 uppercase mb-3">Select Testers</label>
+                        <div className="grid grid-cols-2 gap-2 max-h-48 overflow-y-auto pr-2 custom-scrollbar">
+                            {allTesters.map((tester: any) => (
+                                <button key={tester.id} type="button" onClick={() => toggleTester(tester.id)} className={`flex items-center gap-3 p-2 rounded-xl border transition-all text-left ${selectedTesterIds.includes(tester.id) ? 'bg-slate-900 text-white border-slate-900' : 'bg-white text-slate-600 border-slate-200 hover:border-slate-400'}`}>
+                                    <div className="w-8 h-8 rounded-full overflow-hidden flex-shrink-0 bg-slate-100"><img src={tester.imageUrl} className="w-full h-full object-cover" /></div>
+                                    <span className="text-xs font-bold truncate">{tester.name}</span>
                                 </button>
                             ))}
                         </div>
                     </div>
-                    <div className="flex gap-4 pt-4">
-                        <button onClick={onClose} className="flex-1 py-3 text-slate-500 font-bold hover:bg-slate-50 rounded-xl">Cancel</button>
-                        <button disabled={!name || selectedTesterIds.length === 0} onClick={() => onStartProject({en: name, zh: name}, selectedTesterIds)} className="flex-1 py-3 bg-slate-900 text-white font-bold rounded-xl disabled:bg-slate-300">Confirm</button>
+                    <div className="flex gap-4 pt-4 border-t border-slate-100">
+                        <button type="button" onClick={onClose} className="flex-1 py-3 text-slate-500 font-bold hover:bg-slate-50 rounded-xl">Cancel</button>
+                        <button type="submit" disabled={selectedTesterIds.length === 0} className="flex-1 py-3 bg-slate-900 text-white font-bold rounded-xl shadow-lg disabled:opacity-50">{project ? 'Save Changes' : 'Create Project'}</button>
                     </div>
-                </div>
+                </form>
             </div>
         </div>
     );
@@ -1273,14 +1333,16 @@ const StartEvaluationModal = ({ isOpen, onClose, onStartProject, allTesters, pro
 const AddTaskModal = ({ isOpen, onClose, onSave }: any) => {
     const [name, setName] = useState('');
     return (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm animate-fade-in">
-            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm animate-slide-up p-6">
-                <h3 className="text-lg font-bold mb-4">Add Task</h3>
-                <input autoFocus className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg mb-6" placeholder="Task description..." value={name} onChange={e => setName(e.target.value)} />
-                <div className="flex gap-3">
-                    <button onClick={onClose} className="flex-1 py-2 text-slate-500 font-bold hover:bg-slate-50 rounded-lg">Cancel</button>
-                    <button disabled={!name} onClick={() => onSave(name)} className="flex-1 py-2 bg-slate-900 text-white font-bold rounded-lg">Add</button>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md animate-fade-in">
+            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm animate-slide-up">
+                <div className="p-6 border-b border-slate-100 flex justify-between items-center">
+                    <h2 className="text-lg font-bold">Add Test Task</h2>
+                    <button onClick={onClose} className="p-1 hover:bg-slate-100 rounded-full"><X size={20}/></button>
                 </div>
+                <form onSubmit={(e) => { e.preventDefault(); onSave(name); }} className="p-6 space-y-4">
+                    <input required autoFocus className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-intenza-500/20" value={name} onChange={e => setName(e.target.value)} placeholder="Task name..." />
+                    <button type="submit" className="w-full py-2 bg-slate-900 text-white font-bold rounded-lg hover:bg-slate-800 transition-colors">Add Task</button>
+                </form>
             </div>
         </div>
     );
@@ -1289,113 +1351,208 @@ const AddTaskModal = ({ isOpen, onClose, onSave }: any) => {
 const EditTaskNameModal = ({ isOpen, onClose, currentName, onSave }: any) => {
     const [name, setName] = useState(currentName);
     return (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm animate-fade-in">
-            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm animate-slide-up p-6">
-                <h3 className="text-lg font-bold mb-4">Rename Task</h3>
-                <input autoFocus className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg mb-6" value={name} onChange={e => setName(e.target.value)} />
-                <div className="flex gap-3">
-                    <button onClick={onClose} className="flex-1 py-2 text-slate-500 font-bold hover:bg-slate-50 rounded-lg">Cancel</button>
-                    <button disabled={!name} onClick={() => onSave(name)} className="flex-1 py-2 bg-slate-900 text-white font-bold rounded-lg">Save</button>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md animate-fade-in">
+            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm animate-slide-up">
+                <div className="p-6 border-b border-slate-100 flex justify-between items-center">
+                    <h2 className="text-lg font-bold">Edit Task Name</h2>
+                    <button onClick={onClose} className="p-1 hover:bg-slate-100 rounded-full"><X size={20}/></button>
                 </div>
+                <form onSubmit={(e) => { e.preventDefault(); onSave(name); }} className="p-6 space-y-4">
+                    <input required autoFocus className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-intenza-500/20" value={name} onChange={e => setName(e.target.value)} />
+                    <button type="submit" className="w-full py-2 bg-slate-900 text-white font-bold rounded-lg hover:bg-slate-800 transition-colors">Save Name</button>
+                </form>
             </div>
         </div>
     );
 };
 
-const SetTaskResultsModal = ({ isOpen, onClose, onSave, context, project, testers }: any) => {
-    const [selectedIds, setSelectedIds] = useState<string[]>([]);
-    const projectTesters = testers.filter((t: Tester) => project.testerIds.includes(t.id));
+const SetTaskResultsModal = ({ isOpen, onClose, onSave, project, testers }: any) => {
+    const [passTesterIds, setPassTesterIds] = useState<string[]>([]);
+    
+    const projectTesters = testers.filter((t: any) => project.testerIds.includes(t.id));
 
     return (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm animate-fade-in">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md animate-fade-in">
             <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md animate-slide-up">
-                <div className="p-6 border-b border-slate-100"><h3 className="font-bold">Mark Testers as PASS</h3><p className="text-xs text-slate-400">Unselected testers will be marked as NG.</p></div>
-                <div className="p-6 grid grid-cols-2 gap-3">
-                    {projectTesters.map((tester: Tester) => (
-                        <button key={tester.id} onClick={() => setSelectedIds(prev => prev.includes(tester.id) ? prev.filter(id => id !== tester.id) : [...prev, tester.id])} className={`flex items-center gap-2 p-2 rounded-lg border text-left transition-all ${selectedIds.includes(tester.id) ? 'bg-emerald-50 border-emerald-200 ring-1 ring-emerald-200' : 'bg-slate-50 border-slate-100'}`}>
-                            <div className="w-8 h-8 rounded-full overflow-hidden flex-shrink-0 bg-slate-200"><img src={tester.imageUrl} className="w-full h-full object-cover" /></div>
-                            <span className="text-xs font-bold text-slate-700 truncate">{tester.name}</span>
-                        </button>
-                    ))}
+                <div className="p-6 border-b border-slate-100 flex justify-between items-center">
+                    <h2 className="text-lg font-bold text-slate-900">Batch Set Pass/NG</h2>
+                    <button onClick={onClose} className="p-1 hover:bg-slate-100 rounded-full"><X size={20}/></button>
                 </div>
-                <div className="p-6 pt-0 flex gap-3">
-                    <button onClick={onClose} className="flex-1 py-2 text-slate-600 font-bold hover:bg-slate-50 rounded-lg">Cancel</button>
-                    <button onClick={() => onSave(selectedIds)} className="flex-1 py-2 bg-emerald-600 text-white font-bold rounded-lg hover:bg-emerald-700">Set Results</button>
+                <div className="p-6 space-y-4">
+                   <p className="text-xs text-slate-500 mb-2">Select testers who <span className="text-emerald-600 font-bold uppercase">Passed</span> this task. Unselected testers will be marked as NG.</p>
+                   <div className="grid grid-cols-2 gap-2">
+                       {projectTesters.map((t: any) => (
+                          <button 
+                            key={t.id} 
+                            onClick={() => setPassTesterIds(prev => prev.includes(t.id) ? prev.filter(id => id !== t.id) : [...prev, t.id])}
+                            className={`flex items-center gap-3 p-2 rounded-xl border transition-all text-left ${passTesterIds.includes(t.id) ? 'bg-emerald-50 border-emerald-500 text-emerald-900 shadow-sm' : 'bg-white border-slate-100 text-slate-500 hover:border-slate-300'}`}
+                          >
+                             <div className="w-6 h-6 rounded-full overflow-hidden bg-slate-200"><img src={t.imageUrl} className="w-full h-full object-cover" /></div>
+                             <span className="text-xs font-bold truncate">{t.name}</span>
+                          </button>
+                       ))}
+                   </div>
+                   <div className="flex gap-4 pt-4 border-t border-slate-50">
+                       <button onClick={onClose} className="flex-1 py-3 text-slate-400 font-bold hover:bg-slate-50 rounded-xl transition-colors">Cancel</button>
+                       <button onClick={() => onSave(passTesterIds)} className="flex-1 py-3 bg-slate-900 text-white font-bold rounded-xl shadow-lg hover:bg-slate-800 transition-all">Submit Results</button>
+                   </div>
                 </div>
             </div>
         </div>
     );
 };
 
-const SetPassNgModal = ({ isOpen, onClose, onSet, context, project, existingReason }: any) => {
+const SetPassNgModal = ({ isOpen, onClose, onSet, existingReason, project }: any) => {
     const { t } = useContext(LanguageContext);
     const [reason, setReason] = useState(existingReason ? t(existingReason.reason) : '');
+    const [type, setType] = useState<'ISSUE' | 'IDEA'>(existingReason?.decisionStatus === NgDecisionStatus.IDEA ? 'IDEA' : 'ISSUE');
     const [attachments, setAttachments] = useState<string[]>(existingReason?.attachmentUrls || []);
+    const [isUploading, setIsUploading] = useState(false);
+    const fileInputRef = useRef<HTMLInputElement>(null);
+
+    const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (file) {
+            try {
+                setIsUploading(true);
+                const url = await api.uploadImage(file);
+                setAttachments(prev => [...prev, url]);
+            } catch (err) {
+                alert("Upload failed");
+            } finally {
+                setIsUploading(false);
+            }
+        }
+    };
 
     return (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm animate-fade-in">
-            <div className="bg-white rounded-2xl shadow-2xl w-full max-md animate-slide-up p-6">
-                <h3 className="text-lg font-bold mb-4">Set NG/Idea Reason</h3>
-                <textarea autoFocus className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-lg mb-6 resize-none" rows={4} placeholder="What went wrong or what's the idea?" value={reason} onChange={e => setReason(e.target.value)} />
-                <div className="flex gap-3">
-                    <button onClick={() => onSet({en: reason, zh: reason}, false, attachments, 'ISSUE')} className="flex-1 py-3 bg-rose-600 text-white font-bold rounded-xl text-sm">Update ISSUE</button>
-                    <button onClick={() => onSet({en: reason, zh: reason}, false, attachments, 'IDEA')} className="flex-1 py-3 bg-sky-600 text-white font-bold rounded-xl text-sm">Save as IDEA</button>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md animate-fade-in">
+            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md animate-slide-up">
+                <div className="p-6 border-b border-slate-100 flex justify-between items-center">
+                    <h2 className="text-lg font-bold">Feedback Details</h2>
+                    <button onClick={onClose} className="p-1 hover:bg-slate-100 rounded-full"><X size={20}/></button>
                 </div>
+                <form onSubmit={(e) => { e.preventDefault(); onSet({ en: reason, zh: reason }, false, attachments, type); }} className="p-6 space-y-4">
+                    <div>
+                        <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Category Type</label>
+                        <div className="flex bg-slate-100 p-1 rounded-lg">
+                            <button type="button" onClick={() => setType('ISSUE')} className={`flex-1 py-1.5 text-xs font-bold rounded-md transition-all ${type === 'ISSUE' ? 'bg-white text-rose-600 shadow-sm' : 'text-slate-400'}`}>NG / Issue</button>
+                            <button type="button" onClick={() => setType('IDEA')} className={`flex-1 py-1.5 text-xs font-bold rounded-md transition-all ${type === 'IDEA' ? 'bg-white text-sky-600 shadow-sm' : 'text-slate-400'}`}>UX Idea</button>
+                        </div>
+                    </div>
+                    <div>
+                        <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Detailed Description</label>
+                        <textarea required autoFocus rows={4} className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-intenza-500/20" value={reason} onChange={e => setReason(e.target.value)} placeholder="Describe the findings..." />
+                    </div>
+                    <div>
+                        <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Evidence Photos</label>
+                        <div className="flex flex-wrap gap-2">
+                            {attachments.map((url, i) => (
+                                <div key={i} className="relative w-12 h-12 rounded-lg overflow-hidden group">
+                                    <img src={url} className="w-full h-full object-cover" />
+                                    <button type="button" onClick={() => setAttachments(prev => prev.filter(u => u !== url))} className="absolute inset-0 bg-red-500/80 flex items-center justify-center opacity-0 group-hover:opacity-100"><X size={14} className="text-white"/></button>
+                                </div>
+                            ))}
+                            <button type="button" onClick={() => fileInputRef.current?.click()} className="w-12 h-12 rounded-lg border-2 border-dashed border-slate-200 flex items-center justify-center text-slate-300 hover:border-slate-400 transition-colors">
+                                {isUploading ? <Loader2 size={16} className="animate-spin" /> : <Plus size={16}/>}
+                            </button>
+                            <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleUpload} />
+                        </div>
+                    </div>
+                    <button type="submit" className="w-full py-3 bg-slate-900 text-white font-bold rounded-xl hover:bg-slate-800 transition-all shadow-lg shadow-slate-900/10">Save Record</button>
+                </form>
             </div>
         </div>
     );
 };
 
 const StatusDecisionModal = ({ isOpen, onClose, context, onSetStatus, onLinkEco, onCreateEco, activeEcos }: any) => {
-    return (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm animate-fade-in">
-            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm animate-slide-up p-6 space-y-4">
-                <h3 className="text-lg font-bold">Manage Decision</h3>
-                <div className="grid grid-cols-1 gap-2">
-                    {Object.values(NgDecisionStatus).map(s => (
-                        <button key={s} onClick={() => onSetStatus(s)} className={`py-2 text-xs font-bold rounded-lg border text-center transition-all ${ngDecisionStyles[s]}`}>{s}</button>
-                    ))}
-                </div>
-                <div className="pt-4 border-t border-slate-100 space-y-2">
-                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">ECO Integration</p>
-                    <button onClick={onCreateEco} className="w-full py-2 bg-slate-900 text-white text-xs font-bold rounded-lg">Create New ECO</button>
-                    {activeEcos.length > 0 && (
-                        <select className="w-full py-2 bg-slate-50 border border-slate-200 text-xs font-bold rounded-lg" onChange={e => onLinkEco(e.target.value)} defaultValue="">
-                            <option value="" disabled>Link Existing ECO...</option>
-                            {activeEcos.map((e: any) => <option key={e.id} value={e.id}>{e.ecoNumber}</option>)}
-                        </select>
-                    )}
-                </div>
-                <button onClick={onClose} className="w-full py-2 text-slate-400 text-xs font-bold">Close</button>
+  const [view, setView] = useState<'MAIN' | 'LINK_ECO'>('MAIN');
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md animate-fade-in">
+        <div className="bg-white rounded-3xl shadow-2xl w-full max-w-sm animate-slide-up overflow-hidden">
+            <div className="p-6 border-b border-slate-100 flex justify-between items-center">
+                <h2 className="text-lg font-bold">{view === 'MAIN' ? 'Manage Decision' : 'Link to Open ECO'}</h2>
+                <button onClick={onClose} className="p-1 hover:bg-slate-100 rounded-full"><X size={20}/></button>
             </div>
+            
+            {view === 'MAIN' ? (
+                <div className="p-6 space-y-3">
+                    <button onClick={onCreateEco} className="w-full py-4 px-4 bg-intenza-600 text-white rounded-2xl flex items-center gap-4 hover:bg-intenza-700 transition-all group">
+                        <div className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center group-hover:scale-110 transition-transform"><Plus size={20}/></div>
+                        <div className="text-left">
+                            <div className="font-bold text-sm">Start New ECO</div>
+                            <div className="text-[10px] text-white/60">Create design change record</div>
+                        </div>
+                    </button>
+                    
+                    <button onClick={() => setView('LINK_ECO')} className="w-full py-4 px-4 bg-slate-50 border border-slate-200 text-slate-700 rounded-2xl flex items-center gap-4 hover:bg-slate-100 transition-all group">
+                        <div className="w-10 h-10 rounded-xl bg-slate-200 flex items-center justify-center group-hover:scale-110 transition-transform"><LinkIcon size={20}/></div>
+                        <div className="text-left">
+                            <div className="font-bold text-sm">Link Existing ECO</div>
+                            <div className="text-[10px] text-slate-400">Attach to current open task</div>
+                        </div>
+                    </button>
+
+                    <div className="grid grid-cols-2 gap-2 mt-4">
+                        {[NgDecisionStatus.PENDING, NgDecisionStatus.DISCUSSION, NgDecisionStatus.IGNORED].map(status => (
+                            <button key={status} onClick={() => onSetStatus(status)} className="py-2 text-[10px] font-bold rounded-xl border border-slate-100 bg-slate-50 hover:bg-white transition-all uppercase tracking-widest text-slate-500">{status}</button>
+                        ))}
+                    </div>
+                </div>
+            ) : (
+                <div className="p-6">
+                    <div className="space-y-2 max-h-64 overflow-y-auto pr-1 custom-scrollbar">
+                        {activeEcos.length > 0 ? activeEcos.map((eco: any) => (
+                            <button key={eco.id} onClick={() => onLinkEco(eco.id)} className="w-full p-4 rounded-xl border border-slate-100 hover:border-intenza-200 hover:bg-intenza-50/50 transition-all text-left">
+                                <div className="text-xs font-bold text-intenza-600 mb-1">{eco.ecoNumber}</div>
+                                <div className="text-[11px] font-medium text-slate-700 line-clamp-2">{eco.description.en}</div>
+                            </button>
+                        )) : <div className="text-center py-8 text-slate-400 italic text-sm">No open ECOs found</div>}
+                    </div>
+                    <button onClick={() => setView('MAIN')} className="w-full mt-4 py-2 text-xs font-bold text-slate-400 hover:text-slate-600">Go Back</button>
+                </div>
+            )}
         </div>
-    );
+    </div>
+  );
 };
 
 const FeedbackModal = ({ isOpen, onClose, onSave, feedback, product }: any) => {
     const { t } = useContext(LanguageContext);
     const [formData, setFormData] = useState({
         date: feedback?.date || new Date().toISOString().split('T')[0],
-        category: feedback?.category || 'Resistance profile' as ErgoProjectCategory,
+        category: feedback?.category || 'Resistance profile',
         content: feedback ? t(feedback.content) : '',
         source: feedback?.source || ''
     });
 
+    const categories: ErgoProjectCategory[] = ['Resistance profile', 'Experience', 'Stroke', 'Other Suggestion'];
+
     return (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm animate-fade-in">
-            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md animate-slide-up p-6">
-                <h3 className="text-lg font-bold mb-4">{feedback ? 'Edit Feedback' : 'Add Feedback'}</h3>
-                <form onSubmit={e => { e.preventDefault(); onSave({...formData, content: {en: formData.content, zh: formData.content}}, false); }} className="space-y-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md animate-fade-in">
+            <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md animate-slide-up">
+                <div className="p-6 border-b border-slate-100 flex justify-between items-center">
+                    <h2 className="text-lg font-bold">{feedback ? 'Edit Feedback' : 'Add Customer Complaint'}</h2>
+                    <button onClick={onClose} className="p-1 hover:bg-slate-100 rounded-full"><X size={20}/></button>
+                </div>
+                <form onSubmit={(e) => { e.preventDefault(); onSave({ ...formData, content: { en: formData.content, zh: formData.content } }, false); }} className="p-6 space-y-4">
                     <div className="grid grid-cols-2 gap-4">
-                        <div><label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Date</label><input type="date" className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm" value={formData.date} onChange={e => setFormData({...formData, date: e.target.value})} /></div>
-                        <div><label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Source</label><input required className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm" placeholder="e.g. Equinox" value={formData.source} onChange={e => setFormData({...formData, source: e.target.value})} /></div>
+                        <div><label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Date</label><input type="date" required className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg" value={formData.date} onChange={e => setFormData({...formData, date: e.target.value})} /></div>
+                        <div><label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Source</label><input required className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg" value={formData.source} onChange={e => setFormData({...formData, source: e.target.value})} placeholder="e.g. Sales, Gym Owner" /></div>
                     </div>
-                    <div><label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Category</label><select className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm" value={formData.category} onChange={e => setFormData({...formData, category: e.target.value as ErgoProjectCategory})}><option value="Resistance profile">Resistance profile</option><option value="Experience">Experience</option><option value="Stroke">Stroke</option><option value="Other Suggestion">Other Suggestion</option></select></div>
-                    <div><label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Content</label><textarea required className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm resize-none" rows={4} value={formData.content} onChange={e => setFormData({...formData, content: e.target.value})} /></div>
-                    <div className="flex gap-3 pt-2">
-                        <button type="button" onClick={onClose} className="flex-1 py-2 text-slate-500 font-bold hover:bg-slate-50 rounded-lg">Cancel</button>
-                        <button type="submit" className="flex-1 py-2 bg-slate-900 text-white font-bold rounded-lg">Save</button>
+                    <div>
+                        <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Category</label>
+                        <select className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg" value={formData.category} onChange={e => setFormData({...formData, category: e.target.value as ErgoProjectCategory})}>
+                            {categories.map(c => <option key={c} value={c}>{c}</option>)}
+                        </select>
                     </div>
+                    <div>
+                        <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Content</label>
+                        <textarea required rows={4} className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg resize-none" value={formData.content} onChange={e => setFormData({...formData, content: e.target.value})} placeholder="What was the complaint?" />
+                    </div>
+                    <button type="submit" className="w-full py-3 bg-slate-900 text-white font-bold rounded-xl hover:bg-slate-800 transition-all shadow-lg shadow-slate-900/10">Save Feedback</button>
                 </form>
             </div>
         </div>
@@ -1404,15 +1561,23 @@ const FeedbackModal = ({ isOpen, onClose, onSave, feedback, product }: any) => {
 
 const FeedbackStatusDecisionModal = ({ isOpen, onClose, feedback, onUpdateStatus }: any) => {
     return (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm animate-fade-in">
-            <div className="bg-white rounded-2xl shadow-2xl w-full max-sm animate-slide-up p-6 space-y-4">
-                <h3 className="text-lg font-bold">Feedback Status</h3>
-                <div className="grid grid-cols-1 gap-2">
-                    <button onClick={() => onUpdateStatus(feedback.id, 'PENDING')} className="py-2 bg-amber-50 text-amber-700 border border-amber-200 font-bold rounded-lg text-xs uppercase">Pending</button>
-                    <button onClick={() => onUpdateStatus(feedback.id, 'DISCUSSION')} className="py-2 bg-purple-50 text-purple-700 border border-purple-200 font-bold rounded-lg text-xs uppercase">In Discussion</button>
-                    <button onClick={() => onUpdateStatus(feedback.id, 'IGNORED')} className="py-2 bg-slate-100 text-slate-500 border border-slate-200 font-bold rounded-lg text-xs uppercase">Closed / Ignored</button>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md animate-fade-in">
+            <div className="bg-white rounded-3xl shadow-2xl w-full max-w-sm animate-slide-up overflow-hidden">
+                <div className="p-6 border-b border-slate-100 flex justify-between items-center">
+                    <h2 className="text-lg font-bold">Feedback Status</h2>
+                    <button onClick={onClose} className="p-1 hover:bg-slate-100 rounded-full"><X size={20}/></button>
                 </div>
-                <button onClick={onClose} className="w-full py-2 text-slate-400 text-xs font-bold">Cancel</button>
+                <div className="p-6 space-y-2">
+                    {['PENDING', 'DISCUSSION', 'IGNORED'].map((status: any) => (
+                        <button 
+                            key={status} 
+                            onClick={() => onUpdateStatus(feedback.id, status)} 
+                            className={`w-full py-3 px-4 rounded-xl border text-sm font-bold transition-all text-left ${feedback.status === status ? 'bg-slate-900 text-white border-slate-900 shadow-lg' : 'bg-slate-50 border-slate-100 text-slate-600 hover:bg-white hover:border-slate-300'}`}
+                        >
+                            {status}
+                        </button>
+                    ))}
+                </div>
             </div>
         </div>
     );

@@ -94,6 +94,8 @@ export interface ErgoProject {
 
 export interface DesignChange {
   id: string;
+  ecrNumber?: string;
+  ecrDate?: string;
   ecoNumber: string;
   date: string;
   version: string;
