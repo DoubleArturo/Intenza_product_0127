@@ -48,7 +48,7 @@ const ProductDetail: React.FC<ProductDetailProps> = ({ products, testers = [], o
                 count += t.ngReasons.filter(ng => 
                     !ng.decisionStatus || 
                     ng.decisionStatus === NgDecisionStatus.PENDING || 
-                    ng.decisionStatus === NgDecisionStatus.DISCUSSION ||
+                    ng.decisionStatus === NgDecisionStatus.DISCUSSION || 
                     ng.decisionStatus === NgDecisionStatus.NEEDS_IMPROVEMENT
                 ).length;
             });
@@ -334,7 +334,7 @@ const LifeSection = ({ product, onAddTest, onEditTest, onDeleteTest }: any) => {
       </div>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {product.durabilityTests.map((test: TestResult) => (
-          <div key={test.id} className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm group relative">
+          <div key={test.id} className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm group relative overflow-hidden">
             <div className="flex justify-between items-start mb-3">
               <div>
                 <span className="text-[10px] font-black text-indigo-600 uppercase tracking-widest bg-indigo-50 px-2 py-0.5 rounded border border-indigo-100 mb-1 inline-block">{test.category}</span>
@@ -354,9 +354,21 @@ const LifeSection = ({ product, onAddTest, onEditTest, onDeleteTest }: any) => {
                 <div className={`h-full transition-all duration-1000 ${test.status === TestStatus.PASS ? 'bg-emerald-500' : test.status === TestStatus.FAIL ? 'bg-rose-500' : 'bg-indigo-500'}`} style={{ width: `${test.score}%` }}></div>
             </div>
             <p className="text-xs text-slate-500 line-clamp-2">{t(test.details)}</p>
-            <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                <button onClick={() => onEditTest(test)} className="p-1.5 bg-slate-100 rounded-md text-slate-500 hover:text-slate-900"><Pencil size={12} /></button>
-                <button onClick={() => onDeleteTest(test.id)} className="p-1.5 bg-red-50 rounded-md text-red-500 hover:text-red-700"><Trash2 size={12} /></button>
+            
+            {/* Hover Details Overlay */}
+            {test.details && (
+              <div className="absolute inset-0 z-10 bg-white/95 backdrop-blur-sm p-5 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity flex flex-col pointer-events-none">
+                <div className="flex items-center gap-2 mb-2 pb-2 border-b border-slate-100">
+                  <Info size={14} className="text-intenza-600"/>
+                  <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Notes / Details</span>
+                </div>
+                <p className="text-xs text-slate-700 leading-relaxed overflow-y-auto custom-scrollbar">{t(test.details)}</p>
+              </div>
+            )}
+
+            <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity z-20">
+                <button onClick={() => onEditTest(test)} className="p-1.5 bg-white border border-slate-100 rounded-md text-slate-500 hover:text-slate-900 hover:shadow-sm transition-all pointer-events-auto"><Pencil size={12} /></button>
+                <button onClick={() => onDeleteTest(test.id)} className="p-1.5 bg-white border border-slate-100 rounded-md text-red-500 hover:text-red-700 hover:shadow-sm transition-all pointer-events-auto"><Trash2 size={12} /></button>
             </div>
           </div>
         ))}
