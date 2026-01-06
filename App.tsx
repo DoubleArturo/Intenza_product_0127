@@ -185,7 +185,7 @@ const App = () => {
                   <ProductDetail products={products} testers={testers} onUpdateProduct={async (p) => setProducts(products.map(old => old.id === p.id ? p : old))} showAiInsights={showAiInsights} />
                 } />
                 <Route path="/analytics" element={
-                  <Analytics products={products} shipments={shipments} testers={testers} onImportData={(data) => setShipments([...shipments, ...data])} onBatchAdd吸引Products={(newPs) => setProducts([...products, ...newPs])} showAiInsights={showAiInsights} userRole={currentUser?.role} />
+                  <Analytics products={products} shipments={shipments} testers={testers} onImportData={(data) => setShipments([...shipments, ...data])} onBatchAddProducts={(newPs) => setProducts([...products, ...newPs])} showAiInsights={showAiInsights} userRole={currentUser?.role} />
                 } />
                 <Route path="/settings" element={
                   currentUser?.role === 'admin' ? (

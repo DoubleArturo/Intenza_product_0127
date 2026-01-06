@@ -119,8 +119,9 @@ export const Dashboard: React.FC<DashboardProps> = ({ products, seriesList, onAd
     setIsSubmitting(true);
     
     if (editingProduct) {
-      const updatedModelName = { ...editingProduct.modelName, [language]: formData.modelName };
-      const updatedDescription = { ...editingProduct.description, [language]: formData.description };
+      // Synchronize both languages to the current input to ensure consistency
+      const updatedModelName = { en: formData.modelName, zh: formData.modelName };
+      const updatedDescription = { en: formData.description, zh: formData.description };
 
       await onUpdateProduct({
         ...editingProduct,
@@ -134,11 +135,11 @@ export const Dashboard: React.FC<DashboardProps> = ({ products, seriesList, onAd
     } else {
       const newProductData = {
         series: formData.series,
-        modelName: { en: formData.modelName, zh: formData.modelName, [language]: formData.modelName },
+        modelName: { en: formData.modelName, zh: formData.modelName },
         sku: formData.sku,
         imageUrl: formData.imageUrl,
         currentVersion: formData.version,
-        description: { en: formData.description, zh: formData.description, [language]: formData.description || 'No description available.' },
+        description: { en: formData.description, zh: formData.description },
       };
       await onAddProduct(newProductData as any);
     }
