@@ -283,7 +283,9 @@ const Settings: React.FC<SettingsProps> = ({
                         </td>
                         <td className="px-6 py-4">
                            <span className={`px-2 py-1 rounded text-[10px] font-bold uppercase ${
-                             user.role === 'admin' ? 'bg-intenza-100 text-intenza-700' : 'bg-slate-100 text-slate-600'
+                             user.role === 'admin' ? 'bg-intenza-100 text-intenza-700' : 
+                             user.role === 'uploader' ? 'bg-emerald-100 text-emerald-700' :
+                             'bg-slate-100 text-slate-600'
                            }`}>
                              {user.role}
                            </span>
@@ -481,7 +483,7 @@ const UserAccountModal: React.FC<{
   const [formData, setFormData] = useState({
     username: '',
     password: '',
-    role: 'user' as 'admin' | 'user'
+    role: 'user' as 'admin' | 'user' | 'uploader'
   });
 
   useEffect(() => {
@@ -522,8 +524,9 @@ const UserAccountModal: React.FC<{
               </div>
               <div>
                 <label className="block text-sm font-bold text-slate-700 mb-1">權限角色</label>
-                <div className="grid grid-cols-2 gap-2 p-1 bg-slate-100 rounded-lg">
+                <div className="grid grid-cols-3 gap-2 p-1 bg-slate-100 rounded-lg">
                    <button type="button" onClick={() => setFormData({ ...formData, role: 'admin' })} className={`py-2 text-xs font-bold rounded-md transition-all ${formData.role === 'admin' ? 'bg-white shadow text-intenza-600' : 'text-slate-500'}`}>Admin</button>
+                   <button type="button" onClick={() => setFormData({ ...formData, role: 'uploader' })} className={`py-2 text-xs font-bold rounded-md transition-all ${formData.role === 'uploader' ? 'bg-white shadow text-emerald-600' : 'text-slate-500'}`}>Uploader</button>
                    <button type="button" onClick={() => setFormData({ ...formData, role: 'user' })} className={`py-2 text-xs font-bold rounded-md transition-all ${formData.role === 'user' ? 'bg-white shadow text-slate-900' : 'text-slate-500'}`}>Standard</button>
                 </div>
               </div>

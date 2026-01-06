@@ -38,7 +38,7 @@ const PageLoader = () => (
 const App = () => {
   const [language, setLanguage] = useState<Language>('en'); // Default to English
   const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [currentUser, setCurrentUser] = useState<{username: string, role: 'admin' | 'user'} | null>(null);
+  const [currentUser, setCurrentUser] = useState<{username: string, role: 'admin' | 'user' | 'uploader'} | null>(null);
   
   const [products, setProducts] = useState<ProductModel[]>(MOCK_PRODUCTS);
   const [seriesList, setSeriesList] = useState<LocalizedString[]>(DEFAULT_SERIES);
@@ -185,7 +185,7 @@ const App = () => {
                   <ProductDetail products={products} testers={testers} onUpdateProduct={async (p) => setProducts(products.map(old => old.id === p.id ? p : old))} showAiInsights={showAiInsights} />
                 } />
                 <Route path="/analytics" element={
-                  <Analytics products={products} shipments={shipments} testers={testers} onImportData={(data) => setShipments([...shipments, ...data])} onBatchAdd吸引Products={(newPs) => setProducts([...products, ...newPs])} showAiInsights={showAiInsights} />
+                  <Analytics products={products} shipments={shipments} testers={testers} onImportData={(data) => setShipments([...shipments, ...data])} onBatchAdd吸引Products={(newPs) => setProducts([...products, ...newPs])} showAiInsights={showAiInsights} userRole={currentUser?.role} />
                 } />
                 <Route path="/settings" element={
                   currentUser?.role === 'admin' ? (

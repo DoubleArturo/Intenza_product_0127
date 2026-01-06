@@ -34,12 +34,13 @@ interface AnalyticsProps {
   onImportData: (data: ShipmentData[]) => void;
   onBatchAddProducts: (products: any[]) => void;
   showAiInsights: boolean;
+  userRole?: 'admin' | 'user' | 'uploader';
 }
 
 type DimensionFilter = 'DATA_DRILL' | 'BUYER' | 'COLOR';
 type ViewMode = 'SHIPMENTS' | 'ERGONOMICS' | 'DURABILITY';
 
-const Analytics: React.FC<AnalyticsProps> = ({ products, shipments, onImportData, onBatchAddProducts, showAiInsights }) => {
+const Analytics: React.FC<AnalyticsProps> = ({ products, shipments, onImportData, onBatchAddProducts, showAiInsights, userRole }) => {
   const { language, t } = useContext(LanguageContext);
   const navigate = useNavigate();
   
@@ -49,6 +50,8 @@ const Analytics: React.FC<AnalyticsProps> = ({ products, shipments, onImportData
   const [dimension, setDimension] = useState<DimensionFilter>('DATA_DRILL');
   const [traceSearchQuery, setTraceSearchQuery] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const canImport = userRole === 'admin' || userRole === 'uploader';
 
   /**
    * Helper to format version string
@@ -353,12 +356,14 @@ const Analytics: React.FC<AnalyticsProps> = ({ products, shipments, onImportData
           <h1 className="text-4xl font-black text-slate-900 tracking-tight">Product Dashboard</h1>
           <p className="text-slate-500 mt-2 font-medium">Quality metrics and shipment analytics at a glance.</p>
         </div>
-        <div className="flex gap-3">
-          <button onClick={() => fileInputRef.current?.click()} className="flex items-center gap-2 bg-white border-2 border-slate-100 text-slate-700 px-6 py-3 rounded-2xl font-black text-sm shadow-sm hover:border-slate-900 transition-all active:scale-95">
-            <FileSpreadsheet size={20} className="text-emerald-500" /> Import Data
-          </button>
-          <input ref={fileInputRef} type="file" accept=".xlsx,.xls" className="hidden" onChange={handleFileUpload} />
-        </div>
+        {canImport && (
+          <div className="flex gap-3">
+            <button onClick={() => fileInputRef.current?.click()} className="flex items-center gap-2 bg-white border-2 border-slate-100 text-slate-700 px-6 py-3 rounded-2xl font-black text-sm shadow-sm hover:border-slate-900 transition-all active:scale-95">
+              <FileSpreadsheet size={20} className="text-emerald-500" /> Import Data
+            </button>
+            <input ref={fileInputRef} type="file" accept=".xlsx,.xls" className="hidden" onChange={handleFileUpload} />
+          </div>
+        )}
       </header>
 
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
