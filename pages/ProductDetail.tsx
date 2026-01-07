@@ -353,7 +353,14 @@ const LifeSection = ({ product, onAddTest, onEditTest, onDeleteTest }: any) => {
           <div key={test.id} className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm group relative overflow-hidden">
             <div className="flex justify-between items-start mb-3">
               <div>
-                <span className="text-[10px] font-black text-indigo-600 uppercase tracking-widest bg-indigo-50 px-2 py-0.5 rounded border border-indigo-100 mb-1 inline-block">{test.category}</span>
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="text-[10px] font-black text-indigo-600 uppercase tracking-widest bg-indigo-50 px-2 py-0.5 rounded border border-indigo-100 inline-block">{test.category}</span>
+                  {test.version && (
+                    <span className="text-[10px] font-bold bg-slate-900 text-white px-2 py-0.5 rounded shadow-sm border border-slate-700">
+                      {test.version.toUpperCase().startsWith('V') ? test.version.toUpperCase() : `V${test.version}`}
+                    </span>
+                  )}
+                </div>
                 <h4 className="font-bold text-slate-900">{t(test.testName)}</h4>
               </div>
               <span className={`px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wider border ${
@@ -469,6 +476,7 @@ const ProjectCard = ({ project, testers, product, onOpenAddTask, onEditTaskName,
                                                             <p className="text-[10px] text-slate-600 line-clamp-2 min-h-[1.5rem] italic">"{ngReason?.reason ? t(ngReason.reason) : 'No description'}"</p>
                                                             <div className="flex items-center justify-between pt-2 border-t border-slate-50">
                                                                 <button 
+                                                                    // Fix: changed 'testerId' to 'tid' to match the loop variable
                                                                     onClick={() => onEditNgReason(cat, task.id, tid)}
                                                                     className="text-[9px] font-bold text-intenza-600 hover:underline"
                                                                 >
@@ -1334,7 +1342,7 @@ const TestModal = ({ isOpen, onClose, onSave, test }: any) => {
                     <div>
                         <label className="block text-xs font-bold text-slate-400 uppercase mb-1">Test Name</label>
                         <div className="space-y-2">
-                            <select className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20" value={testNameType} onChange={e => setTestNameType(e.target.value)}>
+                            <select className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-intenza-500/20" value={testNameType} onChange={e => setTestNameType(e.target.value)}>
                                 {TEST_NAME_OPTIONS.map(opt => <option key={opt} value={opt}>{opt}</option>)}
                                 <option value="Other">Other (Custom input)</option>
                             </select>
