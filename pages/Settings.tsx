@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useContext, useEffect, useMemo } from 'react';
 import { Plus, X, Save, Download, Upload, AlertTriangle, CheckCircle, Pencil, History, Sparkles, Shield, User, Trash2, Eye, EyeOff, Key, Database, HardDrive, Info, Cloud, LogOut, Loader2, Link as LinkIcon, Activity, Layers, Image as ImageIcon, RotateCcw } from 'lucide-react';
 import { AppState, LocalizedString, UserAccount } from '../types';
@@ -209,7 +208,6 @@ const Settings: React.FC<SettingsProps> = ({
                  <h2 className="text-xl font-bold text-slate-900">品牌視覺配置 (Login Logo)</h2>
              </div>
              <div className="flex flex-col md:flex-row gap-8 items-center">
-                {/* Changed background to bg-slate-900 to accommodate white logos */}
                 <div className="w-32 h-32 rounded-2xl bg-slate-900 border-2 border-slate-800 flex items-center justify-center overflow-hidden relative group shadow-inner">
                     {currentAppState.customLogoUrl ? (
                         <img src={currentAppState.customLogoUrl} alt="Logo Preview" className="w-full h-full object-contain p-2" />
@@ -285,6 +283,7 @@ const Settings: React.FC<SettingsProps> = ({
                            <span className={`px-2 py-1 rounded text-[10px] font-bold uppercase ${
                              user.role === 'admin' ? 'bg-intenza-100 text-intenza-700' : 
                              user.role === 'uploader' ? 'bg-emerald-100 text-emerald-700' :
+                             user.role === 'viewer' ? 'bg-amber-100 text-amber-700' :
                              'bg-slate-100 text-slate-600'
                            }`}>
                              {user.role}
@@ -483,7 +482,7 @@ const UserAccountModal: React.FC<{
   const [formData, setFormData] = useState({
     username: '',
     password: '',
-    role: 'user' as 'admin' | 'user' | 'uploader'
+    role: 'user' as 'admin' | 'user' | 'uploader' | 'viewer'
   });
 
   useEffect(() => {
@@ -524,10 +523,11 @@ const UserAccountModal: React.FC<{
               </div>
               <div>
                 <label className="block text-sm font-bold text-slate-700 mb-1">權限角色</label>
-                <div className="grid grid-cols-3 gap-2 p-1 bg-slate-100 rounded-lg">
-                   <button type="button" onClick={() => setFormData({ ...formData, role: 'admin' })} className={`py-2 text-xs font-bold rounded-md transition-all ${formData.role === 'admin' ? 'bg-white shadow text-intenza-600' : 'text-slate-500'}`}>Admin</button>
-                   <button type="button" onClick={() => setFormData({ ...formData, role: 'uploader' })} className={`py-2 text-xs font-bold rounded-md transition-all ${formData.role === 'uploader' ? 'bg-white shadow text-emerald-600' : 'text-slate-500'}`}>Uploader</button>
-                   <button type="button" onClick={() => setFormData({ ...formData, role: 'user' })} className={`py-2 text-xs font-bold rounded-md transition-all ${formData.role === 'user' ? 'bg-white shadow text-slate-900' : 'text-slate-500'}`}>Standard</button>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 p-1 bg-slate-100 rounded-lg">
+                   <button type="button" onClick={() => setFormData({ ...formData, role: 'admin' })} className={`py-2 text-[10px] font-bold rounded-md transition-all ${formData.role === 'admin' ? 'bg-white shadow text-intenza-600' : 'text-slate-500'}`}>Admin</button>
+                   <button type="button" onClick={() => setFormData({ ...formData, role: 'uploader' })} className={`py-2 text-[10px] font-bold rounded-md transition-all ${formData.role === 'uploader' ? 'bg-white shadow text-emerald-600' : 'text-slate-500'}`}>Uploader</button>
+                   <button type="button" onClick={() => setFormData({ ...formData, role: 'user' })} className={`py-2 text-[10px] font-bold rounded-md transition-all ${formData.role === 'user' ? 'bg-white shadow text-slate-900' : 'text-slate-500'}`}>Standard</button>
+                   <button type="button" onClick={() => setFormData({ ...formData, role: 'viewer' })} className={`py-2 text-[10px] font-bold rounded-md transition-all ${formData.role === 'viewer' ? 'bg-white shadow text-amber-600' : 'text-slate-500'}`}>Viewer</button>
                 </div>
               </div>
            </div>
