@@ -1,6 +1,6 @@
 
 import React, { useState, useRef, useContext, useEffect, useMemo } from 'react';
-import { Plus, X, Save, Download, Upload, AlertTriangle, CheckCircle, Pencil, History, Sparkles, Shield, User, Trash2, Eye, EyeOff, Key, Database, HardDrive, Info, Cloud, LogOut, Loader2, Link as LinkIcon, Activity, Layers, Image as ImageIcon, RotateCcw, Settings2, LayoutGrid } from 'lucide-react';
+import { Plus, X, Save, Download, Upload, AlertTriangle, CheckCircle, Pencil, History, Sparkles, Shield, User, Trash2, Eye, EyeOff, Key, Database, HardDrive, Info, Cloud, LogOut, Loader2, Link as LinkIcon, Activity, Layers, Image as ImageIcon, RotateCcw, Settings2, LayoutGrid, Maximize } from 'lucide-react';
 import { AppState, LocalizedString, UserAccount } from '../types';
 import { LanguageContext } from '../App';
 import { api } from '../services/api';
@@ -17,6 +17,7 @@ interface SettingsProps {
   onUpdateLogo: (url: string | undefined) => void;
   onUpdateStatusLightSize: (size: 'SMALL' | 'NORMAL' | 'LARGE') => void;
   onUpdateDashboardColumns: (count: number) => void;
+  onUpdateCardAspectRatio: (ratio: string) => void;
   onAddUser: (user: Omit<UserAccount, 'id'>) => void;
   onUpdateUser: (user: UserAccount) => void;
   onDeleteUser: (id: string) => void;
@@ -29,7 +30,7 @@ interface SettingsProps {
 const Settings: React.FC<SettingsProps> = ({ 
   seriesList, onAddSeries, onUpdateSeriesList, onRenameSeries, 
   currentAppState, onLoadProject, onUpdateMaxHistory, onToggleAiInsights,
-  onUpdateLogo, onUpdateStatusLightSize, onUpdateDashboardColumns, onAddUser, onUpdateUser, onDeleteUser, onSyncCloud, onLogout, syncStatus, onResetDashboard
+  onUpdateLogo, onUpdateStatusLightSize, onUpdateDashboardColumns, onUpdateCardAspectRatio, onAddUser, onUpdateUser, onDeleteUser, onSyncCloud, onLogout, syncStatus, onResetDashboard
 }) => {
   const { t, language } = useContext(LanguageContext);
   const [newSeriesName, setNewSeriesName] = useState('');
@@ -177,6 +178,13 @@ const Settings: React.FC<SettingsProps> = ({
   const [editingUser, setEditingUser] = useState<UserAccount | null>(null);
   const [showPasswordMap, setShowPasswordMap] = useState<Record<string, boolean>>({});
 
+  const aspectRatios = [
+    { label: t({ en: 'Square (1:1)', zh: '方形 (1:1)' }), value: '1/1' },
+    { label: t({ en: 'Portrait (3:4)', zh: '直式 (3:4)' }), value: '3/4' },
+    { label: t({ en: 'Standard (4:3)', zh: '標準 (4:3)' }), value: '4/3' },
+    { label: t({ en: 'Cinematic (16:9)', zh: '寬螢幕 (16:9)' }), value: '16/9' },
+  ];
+
   return (
     <div className="p-8 max-w-5xl mx-auto animate-fade-in space-y-8">
       <header className="border-b border-slate-100 pb-6 flex justify-between items-end">
@@ -297,6 +305,31 @@ const Settings: React.FC<SettingsProps> = ({
                       ))}
                    </div>
                    <p className="text-[10px] text-slate-400 mt-4 italic">{t({ en: 'Defines how many product cards are shown per row on large screens.', zh: '定義大螢幕下每列顯示的產品卡片數量。' })}</p>
+                </div>
+
+                {/* Card Aspect Ratio */}
+                <div>
+                   <label className="flex items-center gap-2 text-xs font-black text-slate-400 uppercase tracking-widest mb-4">
+                      <Maximize size={14} />
+                      {t({ en: 'Product Card Proportions', zh: '產品卡片長寬比例 (自訂調整)' })}
+                   </label>
+                   <div className="grid grid-cols-2 gap-3">
+                      {aspectRatios.map(ratio => (
+                         <button 
+                           key={ratio.value}
+                           type="button"
+                           onClick={() => onUpdateCardAspectRatio(ratio.value)}
+                           className={`py-3 px-4 rounded-xl text-xs font-bold border-2 transition-all ${
+                              (currentAppState.cardAspectRatio || '3/4') === ratio.value 
+                              ? 'bg-slate-900 text-white border-slate-900 shadow-lg' 
+                              : 'bg-white text-slate-500 border-slate-100 hover:border-slate-300'
+                           }`}
+                         >
+                            {ratio.label}
+                         </button>
+                      ))}
+                   </div>
+                   <p className="text-[10px] text-slate-400 mt-4 italic">{t({ en: 'Changes the visual shape of the product preview cards on the dashboard.', zh: '變更儀表板上產品預覽卡片的視覺形狀比例。' })}</p>
                 </div>
              </div>
           </section>

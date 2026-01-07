@@ -186,6 +186,7 @@ export interface AppState {
   customLogoUrl?: string;
   globalStatusLightSize?: 'SMALL' | 'NORMAL' | 'LARGE';
   dashboardColumns?: number;
+  cardAspectRatio?: string;
 }
 
 export interface Tester {

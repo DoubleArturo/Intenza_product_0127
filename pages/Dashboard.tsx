@@ -12,6 +12,7 @@ interface DashboardProps {
   userRole?: 'admin' | 'user' | 'uploader' | 'viewer';
   globalStatusLightSize: 'SMALL' | 'NORMAL' | 'LARGE';
   dashboardColumns: number;
+  cardAspectRatio: string;
   onAddProduct: (productData: Omit<ProductModel, 'id' | 'ergoProjects' | 'customerFeedback' | 'designHistory' | 'ergoTests' | 'durabilityTests'>) => Promise<void>;
   onUpdateProduct: (product: ProductModel) => Promise<void>;
   onToggleWatch: (id: string) => void;
@@ -30,8 +31,16 @@ const gridColsClassMap: Record<number, string> = {
   6: 'xl:grid-cols-6',
 };
 
+// Map for Tailwind aspect ratio classes
+const aspectClassMap: Record<string, string> = {
+  '1/1': 'aspect-square',
+  '3/4': 'aspect-[3/4]',
+  '4/3': 'aspect-[4/3]',
+  '16/9': 'aspect-video',
+};
+
 export const Dashboard: React.FC<DashboardProps> = ({ 
-  products, seriesList, userRole, globalStatusLightSize, dashboardColumns, 
+  products, seriesList, userRole, globalStatusLightSize, dashboardColumns, cardAspectRatio,
   onAddProduct, onUpdateProduct, onToggleWatch, onDeleteProduct 
 }) => {
   const navigate = useNavigate();
@@ -304,7 +313,6 @@ export const Dashboard: React.FC<DashboardProps> = ({
         </div>
       </div>
 
-      {/* Grid container with dynamic column count from settings */}
       <div className={`grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 ${gridColsClassMap[dashboardColumns] || 'xl:grid-cols-4'} gap-8`}>
         {filteredProducts.map((p) => {
           const productionInfo = getCurrentProductionInfo(p);
@@ -319,7 +327,8 @@ export const Dashboard: React.FC<DashboardProps> = ({
               className="group bg-white rounded-[2rem] border-2 border-slate-100 shadow-sm hover:shadow-2xl hover:shadow-slate-200/60 hover:border-slate-200 transition-all duration-300 overflow-hidden flex flex-col cursor-pointer active:scale-[0.98]"
               onClick={() => navigate(`/product/${p.id}`)}
             >
-              <div className="relative aspect-[3/4] bg-slate-50 p-6 flex items-center justify-center overflow-hidden border-b border-slate-50">
+              {/* Product Card Ratio dynamic based on setting */}
+              <div className={`relative ${aspectClassMap[cardAspectRatio] || 'aspect-[3/4]'} bg-slate-50 p-6 flex items-center justify-center overflow-hidden border-b border-slate-50`}>
                 {p.imageUrl ? (
                   <img src={p.imageUrl} alt={t(p.modelName)} className="w-full h-full object-contain transition-transform duration-500 group-hover:scale-105" />
                 ) : (
