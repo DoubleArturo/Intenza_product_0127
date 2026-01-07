@@ -107,10 +107,11 @@ export interface DesignChange {
   status: EcoStatus;
   implementationDate?: string;
   sourceFeedbacks?: {
-    projectId: string;
+    projectId?: string;
     category: ErgoProjectCategory;
-    taskId: string;
-    testerId: string;
+    taskId?: string;
+    testerId?: string;
+    feedbackId?: string;
   }[];
 }
 

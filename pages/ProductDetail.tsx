@@ -47,7 +47,8 @@ const ProductDetail: React.FC<ProductDetailProps> = ({ products, shipments = [],
   const [selectedVersionForModal, setSelectedVersionForModal] = useState('');
 
   const ergoSectionRef = useRef<HTMLDivElement>(null);
-  const [highlightedFeedback, setHighlightedFeedback] = useState<{projectId: string, taskId: string, testerId: string} | null>(null);
+  const [highlightedFeedback, setHighlightedFeedback] = useState<{projectId?: string, taskId?: string, testerId?: string, feedbackId?: string} | null>(null);
+  const [isFeedbackPanelOpen, setIsFeedbackPanelOpen] = useState(false);
 
   const pendingNgCount = useMemo(() => {
     if (!product) return 0;
@@ -78,18 +79,32 @@ const ProductDetail: React.FC<ProductDetailProps> = ({ products, shipments = [],
     }
     if (location.state?.highlightFeedback) {
         setActiveTab('ERGO');
-        setHighlightedFeedback(location.state.highlightFeedback);
+        const highlight = location.state.highlightFeedback;
+        if (highlight.feedbackId) {
+            setIsFeedbackPanelOpen(true);
+        }
+        setHighlightedFeedback(highlight);
         navigate(location.pathname, { replace: true, state: {} });
     }
   }, [location.state, navigate, location.pathname]);
 
   useEffect(() => {
     if (highlightedFeedback && ergoSectionRef.current) {
-        const element = ergoSectionRef.current.querySelector(`[data-feedback-id="${highlightedFeedback.projectId}-${highlightedFeedback.taskId}-${highlightedFeedback.testerId}"]`);
-        if (element) {
-            element.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            setTimeout(() => setHighlightedFeedback(null), 3500);
+        let selector = '';
+        if (highlightedFeedback.feedbackId) {
+            selector = `[data-customer-feedback-id="${highlightedFeedback.feedbackId}"]`;
+        } else {
+            selector = `[data-feedback-id="${highlightedFeedback.projectId}-${highlightedFeedback.taskId}-${highlightedFeedback.testerId}"]`;
         }
+        
+        // Use a small delay to ensure panel is open or tab has switched
+        setTimeout(() => {
+            const element = ergoSectionRef.current?.querySelector(selector);
+            if (element) {
+                element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                setTimeout(() => setHighlightedFeedback(null), 3500);
+            }
+        }, 100);
     }
   }, [highlightedFeedback]);
 
@@ -156,12 +171,12 @@ const ProductDetail: React.FC<ProductDetailProps> = ({ products, shipments = [],
     setEditingTest(null);
   };
 
-  const handleSaveTest = async (testData: Omit<TestResult, 'id'>) => {
+  const handleSaveTest = async (testResult: Omit<TestResult, 'id'>) => {
       let updatedTests;
       if (editingTest) {
-          updatedTests = product.durabilityTests.map(t => t.id === editingTest.id ? { ...editingTest, ...testData } : t);
+          updatedTests = product.durabilityTests.map(t => t.id === editingTest.id ? { ...editingTest, ...testResult } : t);
       } else {
-          const newTest = { ...testData, id: `test-${Date.now()}` };
+          const newTest = { ...testResult, id: `test-${Date.now()}` };
           updatedTests = [...product.durabilityTests, newTest];
       }
       await onUpdateProduct({ ...product, durabilityTests: updatedTests });
@@ -227,7 +242,18 @@ const ProductDetail: React.FC<ProductDetailProps> = ({ products, shipments = [],
                  }}
                />
              )}
-             {activeTab === 'ERGO' && <div ref={ergoSectionRef}><ErgoSection product={product} testers={testers} onUpdateProduct={onUpdateProduct} highlightedFeedback={highlightedFeedback} /></div>}
+             {activeTab === 'ERGO' && (
+                <div ref={ergoSectionRef}>
+                    <ErgoSection 
+                        product={product} 
+                        testers={testers} 
+                        onUpdateProduct={onUpdateProduct} 
+                        highlightedFeedback={highlightedFeedback} 
+                        isFeedbackPanelOpen={isFeedbackPanelOpen}
+                        setIsFeedbackPanelOpen={setIsFeedbackPanelOpen}
+                    />
+                </div>
+             )}
              {activeTab === 'LIFE' && <LifeSection product={product} onAddTest={() => handleOpenTestModal()} onEditTest={handleOpenTestModal} onDeleteTest={handleDeleteTest} />}
           </div>
           <div className="space-y-6 sticky top-40">
@@ -325,13 +351,6 @@ const ngDecisionTranslations: { [key in NgDecisionStatus]: string } = {
     [NgDecisionStatus.DISCUSSION]: 'IN DISCUSSION',
     [NgDecisionStatus.IGNORED]: 'IGNORED',
     [NgDecisionStatus.IDEA]: 'LOGGED AS IDEA'
-};
-
-const categoryStyles: Record<ErgoProjectCategory, { bg: string, border: string, text: string }> = {
-  'Resistance profile': { bg: 'bg-[#eef2ff]', border: 'border-indigo-100', text: 'text-indigo-900' },
-  'Experience': { bg: 'bg-[#f0fdfa]', border: 'border-teal-100', text: 'text-teal-900' },
-  'Stroke': { bg: 'bg-[#fff7ed]', border: 'border-orange-100', text: 'text-orange-900' },
-  'Other Suggestion': { bg: 'bg-slate-50', border: 'border-slate-200', text: 'text-slate-700' }
 };
 
 // Component for Durability Tests
@@ -503,12 +522,17 @@ const ProjectCard = ({ project, testers, product, onOpenAddTask, onEditTaskName,
 };
 
 // Customer Feedback Card
-const CustomerFeedbackCard = ({ feedback, onStatusClick, onEdit, onDelete, product }: any) => {
+const CustomerFeedbackCard = ({ feedback, onStatusClick, onEdit, onDelete, product, isHighlighted }: any) => {
     const { t } = useContext(LanguageContext);
     const linkedEco = product.designHistory.find((eco: DesignChange) => eco.id === feedback.linkedEcoId);
 
     return (
-        <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-sm group hover:border-slate-300 transition-all">
+        <div 
+            data-customer-feedback-id={feedback.id}
+            className={`rounded-xl border p-4 shadow-sm group transition-all ${
+                isHighlighted ? 'bg-intenza-50 border-intenza-400 shadow-md ring-2 ring-intenza-500/10 scale-[1.02]' : 'bg-white border-slate-200 hover:border-slate-300'
+            }`}
+        >
             <div className="flex justify-between items-start mb-2">
                 <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">{feedback.date}</span>
                 <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -700,10 +724,9 @@ const DesignSection = ({ product, shipments, onAddEco, onEditEco, onDeleteEco, o
 };
 
 // Ergonomics Section
-const ErgoSection = ({ product, testers, onUpdateProduct, highlightedFeedback }: { product: ProductModel, testers: Tester[], onUpdateProduct: (p: ProductModel) => void, highlightedFeedback: any }) => {
+const ErgoSection = ({ product, testers, onUpdateProduct, highlightedFeedback, isFeedbackPanelOpen, setIsFeedbackPanelOpen }: { product: ProductModel, testers: Tester[], onUpdateProduct: (p: ProductModel) => void, highlightedFeedback: any, isFeedbackPanelOpen: boolean, setIsFeedbackPanelOpen: (o: boolean) => void }) => {
   const { t, language } = useContext(LanguageContext);
   const navigate = useNavigate();
-  const [isFeedbackPanelOpen, setIsFeedbackPanelOpen] = useState(false);
   
   const [isStartEvaluationModalOpen, setStartEvaluationModalOpen] = useState(false);
   const [editingProject, setEditingProject] = useState<ErgoProject | null>(null);
@@ -883,7 +906,8 @@ const ErgoSection = ({ product, testers, onUpdateProduct, highlightedFeedback }:
           affectedBatches: [],
           affectedCustomers: [],
           status: EcoStatus.EVALUATING,
-          imageUrls: feedback.attachmentUrls || []
+          imageUrls: feedback.attachmentUrls || [],
+          sourceFeedbacks: [{ category: feedback.category, feedbackId: feedback.id }]
       };
       
       onUpdateProduct({
@@ -896,13 +920,25 @@ const ErgoSection = ({ product, testers, onUpdateProduct, highlightedFeedback }:
 
   const handleLinkEcoToCustomerFeedback = (feedbackId: string, ecoId: string) => {
       const currentFeedback = product.customerFeedback.find(f => f.id === feedbackId);
-      const isUnlinking = currentFeedback?.linkedEcoId === ecoId;
+      if (!currentFeedback) return;
+      const oldEcoId = currentFeedback.linkedEcoId;
+      const isUnlinking = oldEcoId === ecoId;
 
       const newLinkedId = isUnlinking ? undefined : ecoId;
       const newStatus = isUnlinking ? 'PENDING' : 'DISCUSSION';
 
+      // Clean up source feedbacks in all ECOs for this feedbackId, then add to new selection
+      const updatedDesignHistory = product.designHistory.map(eco => {
+          let sources = (eco.sourceFeedbacks || []).filter(s => s.feedbackId !== feedbackId);
+          if (eco.id === ecoId && !isUnlinking) {
+              sources.push({ category: currentFeedback.category, feedbackId });
+          }
+          return { ...eco, sourceFeedbacks: sources };
+      });
+
       onUpdateProduct({
           ...product,
+          designHistory: updatedDesignHistory,
           customerFeedback: product.customerFeedback.map(f => f.id === feedbackId ? { ...f, status: newStatus as any, linkedEcoId: newLinkedId } : f)
       });
       
@@ -916,23 +952,22 @@ const ErgoSection = ({ product, testers, onUpdateProduct, highlightedFeedback }:
   };
 
   const handleLinkExistingEco = (projectId: string, category: ErgoProjectCategory, taskId: string, testerId: string, ecoId: string) => {
-      const isUnlinking = statusModalState.context?.linkedEcoId === ecoId;
+      const oldEcoId = statusModalState.context?.linkedEcoId;
+      const isUnlinking = oldEcoId === ecoId;
+
+      // Clean up source feedbacks in all ECOs for this specific project/task/tester triplet
       const updatedDesignHistory = product.designHistory.map(eco => {
-          if (eco.id === ecoId) {
-              const currentSources = eco.sourceFeedbacks || [];
-              if (isUnlinking) {
-                  return { 
-                    ...eco, 
-                    sourceFeedbacks: currentSources.filter(s => !(s.projectId === projectId && s.taskId === taskId && s.testerId === testerId))
-                  };
-              } else {
-                  const newSource = { projectId, category, taskId, testerId };
-                  const exists = currentSources.some(s => s.projectId === projectId && s.taskId === taskId && s.testerId === testerId);
-                  if (!exists) return { ...eco, sourceFeedbacks: [...currentSources, newSource] };
-              }
+          let sources = (eco.sourceFeedbacks || []).filter(s => 
+              !(s.projectId === projectId && s.taskId === taskId && s.testerId === testerId)
+          );
+          
+          if (eco.id === ecoId && !isUnlinking) {
+              sources.push({ projectId, category, taskId, testerId });
           }
-          return eco;
+          
+          return { ...eco, sourceFeedbacks: sources };
       });
+
       const updatedProjects = product.ergoProjects.map(p => {
           if (p.id === projectId) {
               const updatedTasks = p.tasks[category].map(t => {
@@ -1093,6 +1128,7 @@ const ErgoSection = ({ product, testers, onUpdateProduct, highlightedFeedback }:
                                             feedback={fb}
                                             category={cat}
                                             product={product}
+                                            isHighlighted={highlightedFeedback?.feedbackId === fb.id}
                                             onStatusClick={() => setFeedbackStatusModal({ isOpen: true, feedback: fb })}
                                             onEdit={() => setFeedbackModalState({ isOpen: true, feedback: fb })}
                                             onDelete={() => handleDeleteFeedback(fb.id)}
