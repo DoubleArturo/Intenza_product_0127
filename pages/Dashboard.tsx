@@ -1,7 +1,7 @@
 
 import React, { useState, useRef, useEffect, useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Search, ChevronRight, X, Upload, Pencil, Save, Star, Trash2, Image as ImageIcon, Loader2, ArrowUpDown, Calendar } from 'lucide-react';
+import { Plus, Search, ChevronRight, X, Upload, Pencil, Save, Star, Trash2, Image as ImageIcon, Loader2, ArrowUpDown, Calendar, Info } from 'lucide-react';
 import { ProductModel, LocalizedString, EcoStatus } from '../types';
 import { LanguageContext } from '../App';
 import { api } from '../services/api';
@@ -26,6 +26,11 @@ export const Dashboard: React.FC<DashboardProps> = ({ products, seriesList, user
   const [selectedSeries, setSelectedSeries] = useState<string>('ALL');
   const [sortOrder, setSortOrder] = useState<SortType>('SKU_ASC');
   
+  // Tooltip State
+  const [hoveredLightId, setHoveredLightId] = useState<string | null>(null);
+  // FIX: Using ReturnType<typeof setTimeout> instead of NodeJS.Timeout to avoid namespace errors in browser environment.
+  const hoverTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   // Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -152,6 +157,36 @@ export const Dashboard: React.FC<DashboardProps> = ({ products, seriesList, user
     handleCloseModal();
   };
 
+  // Helper to determine product status color
+  const getProductStatusColor = (p: ProductModel): 'red' | 'blue' | 'green' => {
+    const pendingEcos = p.designHistory.filter(h => h.status !== EcoStatus.IN_PRODUCTION && h.status !== EcoStatus.DESIGN_COMPLETE);
+    if (pendingEcos.length === 0) return 'green';
+    
+    const isMajor = pendingEcos.some(eco => {
+      const desc = (t(eco.description)).toLowerCase();
+      const hasSource = (eco.sourceFeedbacks && eco.sourceFeedbacks.length > 0);
+      return hasSource || 
+             desc.includes('safety') || desc.includes('安全') || 
+             desc.includes('major') || desc.includes('重大') || 
+             desc.includes('ergo') || desc.includes('人因');
+    });
+    
+    return isMajor ? 'red' : 'blue';
+  };
+
+  const handleMouseEnterLight = (id: string) => {
+    hoverTimeoutRef.current = setTimeout(() => {
+      setHoveredLightId(id);
+    }, 1000);
+  };
+
+  const handleMouseLeaveLight = () => {
+    if (hoverTimeoutRef.current) {
+      clearTimeout(hoverTimeoutRef.current);
+    }
+    setHoveredLightId(null);
+  };
+
   // 取得目前設定版本的量產日期資訊
   const getCurrentProductionInfo = (p: ProductModel) => {
     return (p.designHistory || []).find(
@@ -229,6 +264,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ products, seriesList, user
         {filteredProducts.map((p) => {
           const productionInfo = getCurrentProductionInfo(p);
           const displayVersion = p.currentVersion;
+          const statusColor = getProductStatusColor(p);
           
           return (
             <div 
@@ -237,6 +273,52 @@ export const Dashboard: React.FC<DashboardProps> = ({ products, seriesList, user
               onClick={() => navigate(`/product/${p.id}`)}
             >
               <div className="relative h-64 bg-slate-50 p-6 flex items-center justify-center overflow-hidden border-b border-slate-50">
+                {/* Traffic Light Indicator */}
+                <div 
+                  className="absolute top-5 left-5 z-20"
+                  onMouseEnter={() => handleMouseEnterLight(p.id)}
+                  onMouseLeave={handleMouseLeaveLight}
+                >
+                  <div className={`w-4 h-4 rounded-full shadow-lg border-2 border-white animate-pulse-slow ${
+                    statusColor === 'red' ? 'bg-rose-500 shadow-rose-500/50' :
+                    statusColor === 'blue' ? 'bg-blue-500 shadow-blue-500/50' :
+                    'bg-emerald-500 shadow-emerald-500/50'
+                  }`} />
+                  
+                  {/* Status Tooltip */}
+                  {hoveredLightId === p.id && (
+                    <div className="absolute top-full left-0 mt-3 w-64 p-4 bg-slate-900 text-white rounded-2xl shadow-2xl z-[60] animate-fade-in border border-slate-700/50 backdrop-blur-md">
+                      <div className="flex items-center gap-2 mb-3 border-b border-white/10 pb-2">
+                        <Info size={14} className="text-slate-400" />
+                        <span className="text-[10px] font-black uppercase tracking-widest text-slate-300">Status Guide</span>
+                      </div>
+                      <div className="space-y-3">
+                        <div className="flex items-start gap-3">
+                           <div className="w-2.5 h-2.5 rounded-full bg-blue-500 mt-1 shadow-lg shadow-blue-500/40" />
+                           <div className="flex-1">
+                              <div className="text-[11px] font-bold text-white leading-none">General ECO</div>
+                              <div className="text-[10px] text-slate-400 mt-1">一般設變中</div>
+                           </div>
+                        </div>
+                        <div className="flex items-start gap-3">
+                           <div className="w-2.5 h-2.5 rounded-full bg-rose-500 mt-1 shadow-lg shadow-rose-500/40" />
+                           <div className="flex-1">
+                              <div className="text-[11px] font-bold text-white leading-none">Major ECO</div>
+                              <div className="text-[10px] text-slate-400 mt-1">安全、人因重大設變中</div>
+                           </div>
+                        </div>
+                        <div className="flex items-start gap-3">
+                           <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 mt-1 shadow-lg shadow-emerald-500/40" />
+                           <div className="flex-1">
+                              <div className="text-[11px] font-bold text-white leading-none">Ready for Production</div>
+                              <div className="text-[10px] text-slate-400 mt-1">可量產狀態</div>
+                           </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
                 {p.imageUrl ? (
                   <img 
                     src={p.imageUrl} 
