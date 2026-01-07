@@ -7,12 +7,13 @@ import { api } from '../services/api';
 
 interface TesterDatabaseProps {
   testers: Tester[];
+  userRole?: 'admin' | 'user' | 'uploader' | 'viewer';
   onAddTester: (tester: Omit<Tester, 'id'>) => void;
   onUpdateTester: (tester: Tester) => void;
   onDeleteTester: (id: string) => void;
 }
 
-const TesterDatabase: React.FC<TesterDatabaseProps> = ({ testers, onAddTester, onUpdateTester, onDeleteTester }) => {
+const TesterDatabase: React.FC<TesterDatabaseProps> = ({ testers, userRole, onAddTester, onUpdateTester, onDeleteTester }) => {
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -20,6 +21,8 @@ const TesterDatabase: React.FC<TesterDatabaseProps> = ({ testers, onAddTester, o
   const [editingTester, setEditingTester] = useState<Tester | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   
+  const isViewer = userRole === 'viewer';
+
   // Selection Mode State
   const selectionMode = location.state?.selectionMode || false;
   const [selectedTesterIds, setSelectedTesterIds] = useState<string[]>([]);
@@ -80,6 +83,7 @@ const TesterDatabase: React.FC<TesterDatabaseProps> = ({ testers, onAddTester, o
   }, [isModalOpen, editingTester]);
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (isViewer) return;
     const file = e.target.files?.[0];
     if (file) {
       try {
@@ -98,6 +102,7 @@ const TesterDatabase: React.FC<TesterDatabaseProps> = ({ testers, onAddTester, o
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (isViewer) return;
     if (isUploading) {
       alert("照片正在上傳中，請稍候");
       return;
@@ -112,7 +117,7 @@ const TesterDatabase: React.FC<TesterDatabaseProps> = ({ testers, onAddTester, o
   };
   
   const handleEditClick = (tester: Tester) => {
-      if (selectionMode) return; // Disable edit in selection mode
+      if (selectionMode || isViewer) return; // Disable edit in selection mode or for viewer
       setEditingTester(tester);
       setIsModalOpen(true);
   };
@@ -219,7 +224,7 @@ const TesterDatabase: React.FC<TesterDatabaseProps> = ({ testers, onAddTester, o
                 </div>
             </div>
             
-            {!selectionMode && (
+            {!selectionMode && !isViewer && (
                 <button 
                     onClick={() => { resetForm(); setIsModalOpen(true); }}
                     className="w-full py-2.5 bg-slate-900 text-white font-medium rounded-xl hover:bg-slate-800 transition-colors flex items-center justify-center gap-2 shadow-lg shadow-slate-900/10"
@@ -238,6 +243,7 @@ const TesterDatabase: React.FC<TesterDatabaseProps> = ({ testers, onAddTester, o
                 <TesterCard 
                     key={tester.id} 
                     tester={tester} 
+                    userRole={userRole}
                     onDelete={() => onDeleteTester(tester.id)} 
                     onEdit={() => handleEditClick(tester)}
                     isSelected={selectionMode && selectedTesterIds.includes(tester.id)}
@@ -270,7 +276,7 @@ const TesterDatabase: React.FC<TesterDatabaseProps> = ({ testers, onAddTester, o
         </div>
       )}
 
-      {isModalOpen && (
+      {isModalOpen && !isViewer && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm animate-fade-in">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md animate-slide-up overflow-hidden">
             <div className="flex justify-between items-center p-6 border-b border-slate-100">
@@ -370,12 +376,13 @@ const TesterDatabase: React.FC<TesterDatabaseProps> = ({ testers, onAddTester, o
   );
 };
 
-const TesterCard: React.FC<{ tester: Tester, onDelete: () => void, onEdit: () => void, isSelected: boolean, onSelect: () => void, selectionMode: boolean }> = ({ tester, onDelete, onEdit, isSelected, onSelect, selectionMode }) => {
-  const cardAction = selectionMode ? onSelect : onEdit;
+const TesterCard: React.FC<{ tester: Tester, userRole?: string, onDelete: () => void, onEdit: () => void, isSelected: boolean, onSelect: () => void, selectionMode: boolean }> = ({ tester, userRole, onDelete, onEdit, isSelected, onSelect, selectionMode }) => {
+  const isViewer = userRole === 'viewer';
+  const cardAction = selectionMode ? onSelect : (!isViewer ? onEdit : () => {});
 
   return (
     <div 
-      className={`group bg-white rounded-2xl border transition-all duration-300 cursor-pointer overflow-hidden flex flex-col ${isSelected ? 'border-intenza-500 shadow-xl ring-2 ring-intenza-500/20' : 'border-slate-200 shadow-sm hover:shadow-xl hover:shadow-slate-200/50 hover:-translate-y-1'}`} 
+      className={`group bg-white rounded-2xl border transition-all duration-300 overflow-hidden flex flex-col ${isSelected ? 'border-intenza-500 shadow-xl ring-2 ring-intenza-500/20' : 'border-slate-200 shadow-sm hover:shadow-xl hover:shadow-slate-200/50 hover:-translate-y-1'} ${isViewer && !selectionMode ? 'cursor-default' : 'cursor-pointer'}`} 
       onClick={cardAction}
     >
       <div className="relative h-64 bg-slate-100 overflow-hidden">
@@ -394,7 +401,7 @@ const TesterCard: React.FC<{ tester: Tester, onDelete: () => void, onEdit: () =>
             </div>
         )}
 
-        {!selectionMode && (
+        {!selectionMode && !isViewer && (
           <div className="absolute top-4 right-4 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-10">
              <button 
                 onClick={(e) => { e.stopPropagation(); onEdit(); }}
@@ -422,7 +429,7 @@ const TesterCard: React.FC<{ tester: Tester, onDelete: () => void, onEdit: () =>
       
       <div className="p-5 flex-1 flex flex-col">
         <div className="flex justify-between items-start mb-2">
-            <h3 className="text-lg font-bold text-slate-900 group-hover:text-intenza-600 transition-colors">
+            <h3 className={`text-lg font-bold text-slate-900 transition-colors ${!isViewer ? 'group-hover:text-intenza-600' : ''}`}>
                 {tester.name}
             </h3>
             <div className="flex gap-0.5 pt-1">

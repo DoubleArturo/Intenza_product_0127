@@ -1,3 +1,4 @@
+
 import React, { useState, createContext, useCallback, useEffect, lazy, Suspense, useRef } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { MOCK_PRODUCTS, MOCK_SHIPMENTS, MOCK_TESTERS } from './services/mockData';
@@ -37,7 +38,7 @@ const PageLoader = () => (
 const App = () => {
   const [language, setLanguage] = useState<Language>('en'); // Default to English
   const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [currentUser, setCurrentUser] = useState<{username: string, role: 'admin' | 'user' | 'uploader'} | null>(null);
+  const [currentUser, setCurrentUser] = useState<{username: string, role: 'admin' | 'user' | 'uploader' | 'viewer'} | null>(null);
   
   const [products, setProducts] = useState<ProductModel[]>(MOCK_PRODUCTS);
   const [seriesList, setSeriesList] = useState<LocalizedString[]>(DEFAULT_SERIES);
@@ -67,7 +68,7 @@ const App = () => {
   }, []);
 
   const handleSyncToCloud = useCallback(async (isAutoSync = false) => {
-    if (isSyncingRef.current || !isLoggedIn) return;
+    if (isSyncingRef.current || !isLoggedIn || currentUser?.role === 'viewer') return;
     
     isSyncingRef.current = true;
     setSyncStatus('saving');
@@ -88,7 +89,7 @@ const App = () => {
       setErrorDetail(error.message || 'Connection Error');
       isSyncingRef.current = false;
     }
-  }, [products, seriesList, shipments, testers, users, language, showAiInsights, maxHistorySteps, customLogoUrl, isLoggedIn]);
+  }, [products, seriesList, shipments, testers, users, language, showAiInsights, maxHistorySteps, customLogoUrl, isLoggedIn, currentUser]);
 
   const handleLoadFromCloud = useCallback(async () => {
     if (isSyncingRef.current) return;
@@ -119,17 +120,18 @@ const App = () => {
   }, []);
 
   const handleResetShipments = useCallback(() => {
+    if (currentUser?.role === 'viewer') return;
     setShipments([]);
     // Immediately trigger a sync to cloud after clearing
     setTimeout(() => handleSyncToCloud(true), 100);
-  }, [handleSyncToCloud]);
+  }, [handleSyncToCloud, currentUser]);
 
   // Keyboard shortcut Ctrl + S for Pushing to cloud
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
         e.preventDefault();
-        if (isLoggedIn) {
+        if (isLoggedIn && currentUser?.role !== 'viewer') {
           handleSyncToCloud();
         }
       }
@@ -137,7 +139,7 @@ const App = () => {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isLoggedIn, handleSyncToCloud]);
+  }, [isLoggedIn, handleSyncToCloud, currentUser]);
 
   // 初始載入（無論登入與否，為了讀取 Logo）
   useEffect(() => {
@@ -148,11 +150,11 @@ const App = () => {
 
   // 自動同步：僅在初始載入完成後，且資料發生變動時觸發
   useEffect(() => {
-    if (isLoggedIn && initialLoadDone.current) {
+    if (isLoggedIn && initialLoadDone.current && currentUser?.role !== 'viewer') {
       const timer = setTimeout(() => handleSyncToCloud(true), 2000);
       return () => clearTimeout(timer);
     }
-  }, [users, seriesList, products, testers, shipments, customLogoUrl, isLoggedIn, handleSyncToCloud]);
+  }, [users, seriesList, products, testers, shipments, customLogoUrl, isLoggedIn, handleSyncToCloud, currentUser]);
 
   return (
     <LanguageContext.Provider value={{ language, setLanguage, t }}>
@@ -168,7 +170,7 @@ const App = () => {
         <div className="flex min-h-screen bg-slate-50 relative">
           <Sidebar 
             onLogout={handleLogout} 
-            isAdmin={currentUser?.role === 'admin'} 
+            userRole={currentUser?.role} 
             onPush={handleSyncToCloud}
             onPull={handleLoadFromCloud}
             syncStatus={syncStatus}
@@ -180,6 +182,7 @@ const App = () => {
                 <Route path="/" element={
                   <Dashboard 
                     products={products} seriesList={seriesList} 
+                    userRole={currentUser?.role}
                     onAddProduct={async (p) => setProducts([...products, { ...p, id: `p-${Date.now()}`, ergoProjects: [], customerFeedback: [], designHistory: [], ergoTests: [], durabilityTests: [], isWatched: false, customSortOrder: products.length, uniqueFeedbackTags: {} } as any])}
                     onUpdateProduct={async (p) => setProducts(products.map(old => old.id === p.id ? p : old))}
                     onToggleWatch={(id) => setProducts(products.map(p => p.id === id ? { ...p, isWatched: !p.isWatched } : p))}
@@ -196,7 +199,7 @@ const App = () => {
                   />
                 } />
                 <Route path="/product/:id" element={
-                  <ProductDetail products={products} shipments={shipments} testers={testers} onUpdateProduct={async (p) => setProducts(products.map(old => old.id === p.id ? p : old))} showAiInsights={showAiInsights} />
+                  <ProductDetail products={products} shipments={shipments} testers={testers} userRole={currentUser?.role} onUpdateProduct={async (p) => setProducts(products.map(old => old.id === p.id ? p : old))} showAiInsights={showAiInsights} />
                 } />
                 <Route path="/analytics" element={
                   <Analytics products={products} shipments={shipments} testers={testers} onImportData={(data) => setShipments([...shipments, ...data])} onBatchAddProducts={(newPs) => setProducts([...products, ...newPs])} showAiInsights={showAiInsights} userRole={currentUser?.role} />
@@ -230,7 +233,7 @@ const App = () => {
                   ) : <Navigate to="/" />
                 } />
                 <Route path="/testers" element={
-                  <TesterDatabase testers={testers} onAddTester={(t) => setTesters([...testers, { ...t, id: Date.now().toString() }])} onUpdateTester={(t) => setTesters(testers.map(old => old.id === t.id ? t : old))} onDeleteTester={(id) => setTesters(testers.filter(t => t.id !== id))} />
+                  <TesterDatabase testers={testers} userRole={currentUser?.role} onAddTester={(t) => setTesters([...testers, { ...t, id: Date.now().toString() }])} onUpdateTester={(t) => setTesters(testers.map(old => old.id === t.id ? t : old))} onDeleteTester={(id) => setTesters(testers.filter(t => t.id !== id))} />
                 } />
               </Routes>
             </Suspense>

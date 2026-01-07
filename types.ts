@@ -19,7 +19,7 @@ export interface UserAccount {
   id: string;
   username: string;
   password: string;
-  role: 'admin' | 'user' | 'uploader';
+  role: 'admin' | 'user' | 'uploader' | 'viewer';
   lastLogin?: string;
 }
 

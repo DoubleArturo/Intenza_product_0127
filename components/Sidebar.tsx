@@ -1,3 +1,4 @@
+
 import React, { useContext, useState } from 'react';
 import { NavLink } from 'react-router-dom';
 import { LayoutDashboard, BarChart2, Settings, LogOut, CloudUpload, CloudDownload, Cloud, Loader2 } from 'lucide-react';
@@ -6,16 +7,18 @@ import LanguageSwitcher from './LanguageSwitcher';
 
 interface SidebarProps {
   onLogout: () => void;
-  isAdmin: boolean;
+  userRole?: string;
   onPush: () => void;
   onPull: () => void;
   syncStatus: 'idle' | 'saving' | 'success' | 'error';
   customLogoUrl?: string;
 }
 
-const Sidebar: React.FC<SidebarProps> = ({ onLogout, isAdmin, onPush, onPull, syncStatus, customLogoUrl }) => {
+const Sidebar: React.FC<SidebarProps> = ({ onLogout, userRole, onPush, onPull, syncStatus, customLogoUrl }) => {
   const { t } = useContext(LanguageContext);
   const [isExpanded, setIsExpanded] = useState(false);
+  const isAdmin = userRole === 'admin';
+  const isViewer = userRole === 'viewer';
 
   const containerClass = `bg-white border-r border-slate-200 h-screen sticky top-0 flex flex-col transition-all duration-300 ease-in-out z-50 ${
     isExpanded ? 'w-64 shadow-2xl' : 'w-20'
@@ -75,17 +78,19 @@ const Sidebar: React.FC<SidebarProps> = ({ onLogout, isAdmin, onPush, onPull, sy
           </div>
           
           <div className={`flex gap-1 w-full ${!isExpanded ? 'flex-col' : ''}`}>
-            <button 
-              onClick={(e) => { e.preventDefault(); onPush(); }}
-              disabled={syncStatus === 'saving'}
-              title={t({ en: 'Push', zh: '推送' })}
-              className={`flex-1 flex items-center justify-center gap-2 p-2 rounded-lg transition-all ${
-                syncStatus === 'saving' ? 'bg-slate-200 text-slate-400' : 'bg-white border border-slate-200 text-slate-600 hover:text-intenza-600 hover:border-intenza-200 hover:shadow-sm'
-              }`}
-            >
-              <CloudUpload size={18} />
-              {isExpanded && <span className="text-[11px] font-bold">Push</span>}
-            </button>
+            {!isViewer && (
+              <button 
+                onClick={(e) => { e.preventDefault(); onPush(); }}
+                disabled={syncStatus === 'saving'}
+                title={t({ en: 'Push', zh: '推送' })}
+                className={`flex-1 flex items-center justify-center gap-2 p-2 rounded-lg transition-all ${
+                  syncStatus === 'saving' ? 'bg-slate-200 text-slate-400' : 'bg-white border border-slate-200 text-slate-600 hover:text-intenza-600 hover:border-intenza-200 hover:shadow-sm'
+                }`}
+              >
+                <CloudUpload size={18} />
+                {isExpanded && <span className="text-[11px] font-bold">Push</span>}
+              </button>
+            )}
             {isAdmin && (
               <button 
                 onClick={(e) => { e.preventDefault(); onPull(); }}

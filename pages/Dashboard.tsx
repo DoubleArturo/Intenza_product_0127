@@ -9,6 +9,7 @@ import { api } from '../services/api';
 interface DashboardProps {
   products: ProductModel[];
   seriesList: LocalizedString[];
+  userRole?: 'admin' | 'user' | 'uploader' | 'viewer';
   onAddProduct: (productData: Omit<ProductModel, 'id' | 'ergoProjects' | 'customerFeedback' | 'designHistory' | 'ergoTests' | 'durabilityTests'>) => Promise<void>;
   onUpdateProduct: (product: ProductModel) => Promise<void>;
   onToggleWatch: (id: string) => void;
@@ -18,7 +19,7 @@ interface DashboardProps {
 
 type SortType = 'NAME_ASC' | 'SKU_ASC' | 'SKU_DESC';
 
-export const Dashboard: React.FC<DashboardProps> = ({ products, seriesList, onAddProduct, onUpdateProduct, onToggleWatch, onDeleteProduct }) => {
+export const Dashboard: React.FC<DashboardProps> = ({ products, seriesList, userRole, onAddProduct, onUpdateProduct, onToggleWatch, onDeleteProduct }) => {
   const navigate = useNavigate();
   const { language, t } = useContext(LanguageContext);
   const [searchTerm, setSearchTerm] = useState('');
@@ -40,6 +41,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ products, seriesList, onAd
   });
   
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const isViewer = userRole === 'viewer';
   
   useEffect(() => {
     if (isModalOpen) {
@@ -89,6 +92,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ products, seriesList, onAd
   const seriesTabs = ['ALL', ...seriesList.map(s => t(s))];
   
   const handleStartEdit = (product: ProductModel) => {
+    if (isViewer) return;
     setEditingProduct(product);
     setIsModalOpen(true);
   };
@@ -99,6 +103,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ products, seriesList, onAd
   };
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (isViewer) return;
     const file = e.target.files?.[0];
     if (file) {
       try {
@@ -116,6 +121,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ products, seriesList, onAd
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isViewer) return;
     setIsSubmitting(true);
     
     if (editingProduct) {
@@ -162,13 +168,15 @@ export const Dashboard: React.FC<DashboardProps> = ({ products, seriesList, onAd
           <h1 className="text-4xl font-black text-slate-900 tracking-tight">{t({ en: 'Product Portfolio', zh: '產品組合'})}</h1>
           <p className="text-slate-500 mt-2 font-medium">{t({ en: 'Manage design quality across all series.', zh: '管理所有系列的設計品質。'})}</p>
         </div>
-        <button 
-          onClick={() => setIsModalOpen(true)}
-          className="bg-slate-900 hover:bg-slate-800 text-white px-6 py-3 rounded-2xl font-bold flex items-center gap-2 transition-all shadow-xl shadow-slate-900/20 active:scale-95"
-        >
-          <Plus size={20} strokeWidth={3} />
-          {t({ en: 'New Product', zh: '新增產品'})}
-        </button>
+        {!isViewer && (
+          <button 
+            onClick={() => setIsModalOpen(true)}
+            className="bg-slate-900 hover:bg-slate-800 text-white px-6 py-3 rounded-2xl font-bold flex items-center gap-2 transition-all shadow-xl shadow-slate-900/20 active:scale-95"
+          >
+            <Plus size={20} strokeWidth={3} />
+            {t({ en: 'New Product', zh: '新增產品'})}
+          </button>
+        )}
       </header>
 
       <div className="flex flex-col xl:flex-row gap-6 mb-10 items-start xl:items-center">
@@ -242,26 +250,28 @@ export const Dashboard: React.FC<DashboardProps> = ({ products, seriesList, onAd
                   </div>
                 )}
                 
-                <div className="absolute top-4 right-4 flex flex-col gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-10">
-                  <button 
-                    onClick={(e) => { e.stopPropagation(); onToggleWatch(p.id); }}
-                    className={`p-2.5 rounded-full transition-all shadow-lg border ${p.isWatched ? 'bg-amber-400 text-white border-amber-300' : 'bg-white/95 text-slate-400 border-slate-100 hover:text-amber-500'}`}
-                  >
-                    <Star size={18} fill={p.isWatched ? 'currentColor' : 'none'} strokeWidth={2.5} />
-                  </button>
-                  <button 
-                    onClick={(e) => { e.stopPropagation(); handleStartEdit(p); }}
-                    className="p-2.5 bg-white/95 backdrop-blur-sm rounded-full text-slate-400 border border-slate-100 hover:text-slate-900 transition-all shadow-lg"
-                  >
-                    <Pencil size={18} strokeWidth={2.5} />
-                  </button>
-                  <button 
-                    onClick={(e) => { e.stopPropagation(); if(window.confirm('Delete product?')) onDeleteProduct(p.id); }}
-                    className="p-2.5 bg-white/95 backdrop-blur-sm rounded-full text-slate-400 border border-slate-100 hover:text-red-500 transition-all shadow-lg"
-                  >
-                    <Trash2 size={18} strokeWidth={2.5} />
-                  </button>
-                </div>
+                {!isViewer && (
+                  <div className="absolute top-4 right-4 flex flex-col gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-10">
+                    <button 
+                      onClick={(e) => { e.stopPropagation(); onToggleWatch(p.id); }}
+                      className={`p-2.5 rounded-full transition-all shadow-lg border ${p.isWatched ? 'bg-amber-400 text-white border-amber-300' : 'bg-white/95 text-slate-400 border-slate-100 hover:text-amber-500'}`}
+                    >
+                      <Star size={18} fill={p.isWatched ? 'currentColor' : 'none'} strokeWidth={2.5} />
+                    </button>
+                    <button 
+                      onClick={(e) => { e.stopPropagation(); handleStartEdit(p); }}
+                      className="p-2.5 bg-white/95 backdrop-blur-sm rounded-full text-slate-400 border border-slate-100 hover:text-slate-900 transition-all shadow-lg"
+                    >
+                      <Pencil size={18} strokeWidth={2.5} />
+                    </button>
+                    <button 
+                      onClick={(e) => { e.stopPropagation(); if(window.confirm('Delete product?')) onDeleteProduct(p.id); }}
+                      className="p-2.5 bg-white/95 backdrop-blur-sm rounded-full text-slate-400 border border-slate-100 hover:text-red-500 transition-all shadow-lg"
+                    >
+                      <Trash2 size={18} strokeWidth={2.5} />
+                    </button>
+                  </div>
+                )}
               </div>
 
               <div className="p-6 flex-1 flex flex-col">
@@ -311,7 +321,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ products, seriesList, onAd
         )}
       </div>
 
-      {isModalOpen && (
+      {isModalOpen && !isViewer && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md animate-fade-in">
           <div className="bg-white rounded-[2.5rem] shadow-2xl w-full max-w-xl animate-slide-up overflow-hidden border border-white/20">
             <div className="flex justify-between items-center p-8 border-b border-slate-100 bg-white sticky top-0 z-10">
