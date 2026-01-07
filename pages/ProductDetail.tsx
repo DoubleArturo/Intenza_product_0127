@@ -320,11 +320,11 @@ const ngDecisionStyles: { [key in NgDecisionStatus]: string } = {
 };
 
 const ngDecisionTranslations: { [key in NgDecisionStatus]: string } = {
-    [NgDecisionStatus.PENDING]: '待審查',
-    [NgDecisionStatus.NEEDS_IMPROVEMENT]: '需改進',
-    [NgDecisionStatus.DISCUSSION]: '討論中',
-    [NgDecisionStatus.IGNORED]: '已忽略',
-    [NgDecisionStatus.IDEA]: '點子'
+    [NgDecisionStatus.PENDING]: 'PENDING',
+    [NgDecisionStatus.NEEDS_IMPROVEMENT]: 'NEEDS IMPROVEMENT',
+    [NgDecisionStatus.DISCUSSION]: 'IN DISCUSSION',
+    [NgDecisionStatus.IGNORED]: 'IGNORED',
+    [NgDecisionStatus.IDEA]: 'LOGGED AS IDEA'
 };
 
 const categoryStyles: Record<ErgoProjectCategory, { bg: string, border: string, text: string }> = {
@@ -1294,9 +1294,9 @@ const StatusDecisionModal = ({ isOpen, onClose, context, onSetStatus, onLinkEco,
                             </div>
                         </button>
 
-                        <div className="grid grid-cols-2 gap-2 mt-4">
+                        <div className="grid grid-cols-1 gap-2 mt-4">
                             {[NgDecisionStatus.PENDING, NgDecisionStatus.DISCUSSION, NgDecisionStatus.IGNORED].map(status => (
-                                <button key={status} onClick={() => onSetStatus(status)} className={`py-2 text-[10px] font-bold rounded-xl border border-slate-100 transition-all uppercase tracking-widest ${context.currentStatus === status ? 'bg-slate-900 text-white border-slate-800' : 'bg-slate-50 text-slate-500 hover:bg-white'}`}>{status}</button>
+                                <button key={status} onClick={() => onSetStatus(status)} className={`py-3 text-[10px] font-bold rounded-xl border border-slate-100 transition-all uppercase tracking-widest ${context.currentStatus === status ? 'bg-slate-900 text-white border-slate-800' : 'bg-slate-50 text-slate-500 hover:bg-white'}`}>{status}</button>
                             ))}
                         </div>
                     </div>
