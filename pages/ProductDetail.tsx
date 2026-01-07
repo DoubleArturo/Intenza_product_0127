@@ -1,4 +1,3 @@
-
 import React, { useState, useMemo, useEffect, useContext, useRef } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { ArrowLeft, GitCommit, UserCheck, Activity, AlertTriangle, CheckCircle, Clock, Calendar, Layers, Users, Plus, X, Pencil, Trash2, Upload, MessageSquare, ChevronsRight, ChevronsLeft, Tag, FileText, User, Database, Mars, Venus, Link as LinkIcon, Search, ClipboardList, ListPlus, Check, ChevronDown, RefreshCw, HelpCircle, BarChart3, AlertCircle, PlayCircle, Loader2, StickyNote, Lightbulb, Paperclip, Video, Image as ImageIcon, Save, Star, Info, Ship } from 'lucide-react';
@@ -376,6 +375,17 @@ const LifeSection = ({ product, onAddTest, onEditTest, onDeleteTest }: any) => {
             </div>
             <p className="text-xs text-slate-500 line-clamp-2">{t(test.details)}</p>
             
+            {/* Hover Details Overlay */}
+            {test.details && (
+              <div className="absolute inset-0 z-10 bg-white/95 backdrop-blur-sm p-5 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity flex flex-col pointer-events-none">
+                <div className="flex items-center gap-2 mb-2 pb-2 border-b border-slate-100">
+                  <Info size={14} className="text-intenza-600"/>
+                  <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Details / Notes</span>
+                </div>
+                <p className="text-xs text-slate-700 leading-relaxed overflow-y-auto custom-scrollbar">{t(test.details)}</p>
+              </div>
+            )}
+
             <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity z-20">
                 <button onClick={() => onEditTest(test)} className="p-1.5 bg-white border border-slate-100 rounded-md text-slate-500 hover:text-slate-900 hover:shadow-sm transition-all pointer-events-auto"><Pencil size={12} /></button>
                 <button onClick={() => onDeleteTest(test.id)} className="p-1.5 bg-white border border-slate-100 rounded-md text-red-500 hover:text-red-700 hover:shadow-sm transition-all pointer-events-auto"><Trash2 size={12} /></button>
@@ -853,6 +863,40 @@ const ErgoSection = ({ product, testers, onUpdateProduct, highlightedFeedback }:
       setStatusModalState({ isOpen: false, context: null });
   };
 
+  const handleCreateEcoFromCustomerFeedback = (feedbackId: string) => {
+      const feedback = product.customerFeedback.find(f => f.id === feedbackId);
+      if (!feedback) return;
+      const ecoNumber = `CUST-${Date.now().toString().slice(-4)}`;
+      const ecoDescriptionText = `[Customer Feedback] ${t(feedback.content)}`;
+      const newEcoId = `eco-${Date.now()}`;
+      const newEco: DesignChange = {
+          id: newEcoId,
+          ecoNumber: ecoNumber,
+          date: new Date().toISOString().split('T')[0],
+          version: product.currentVersion,
+          description: {en: ecoDescriptionText, zh: ecoDescriptionText},
+          affectedBatches: [],
+          affectedCustomers: [],
+          status: EcoStatus.EVALUATING,
+          imageUrls: feedback.attachmentUrls || []
+      };
+      
+      onUpdateProduct({
+          ...product,
+          designHistory: [...product.designHistory, newEco],
+          customerFeedback: product.customerFeedback.map(f => f.id === feedbackId ? { ...f, status: 'DISCUSSION' } : f)
+      });
+      setFeedbackStatusModal({ isOpen: false, feedback: null });
+  };
+
+  const handleLinkEcoToCustomerFeedback = (feedbackId: string, ecoId: string) => {
+      onUpdateProduct({
+          ...product,
+          customerFeedback: product.customerFeedback.map(f => f.id === feedbackId ? { ...f, status: 'DISCUSSION' } : f)
+      });
+      setFeedbackStatusModal({ isOpen: false, feedback: null });
+  };
+
   const handleLinkExistingEco = (projectId: string, category: ErgoProjectCategory, taskId: string, testerId: string, ecoId: string) => {
       const updatedDesignHistory = product.designHistory.map(eco => {
           if (eco.id === ecoId) {
@@ -1025,7 +1069,17 @@ const ErgoSection = ({ product, testers, onUpdateProduct, highlightedFeedback }:
       {ngReasonModalState.isOpen && ngReasonModalState.context && <SetPassNgModal isOpen={ngReasonModalState.isOpen} onClose={() => setNgReasonModalState({ isOpen: false, context: null })} onSet={handleSetNgReason} context={ngReasonModalState.context} project={product.ergoProjects.find(p => p.id === ngReasonModalState.context!.projectId)!} existingReason={product.ergoProjects.find(p => p.id === ngReasonModalState.context!.projectId)?.tasks[ngReasonModalState.context!.category].find(t => t.id === ngReasonModalState.context!.taskId)?.ngReasons.find(ng => ng.testerId === ngReasonModalState.context!.testerId)} />}
       {statusModalState.isOpen && statusModalState.context && <StatusDecisionModal isOpen={statusModalState.isOpen} onClose={() => setStatusModalState({ isOpen: false, context: null })} context={statusModalState.context} onSetStatus={(status) => handleSetNgDecision(statusModalState.context!.projectId, statusModalState.context!.category, statusModalState.context!.taskId, statusModalState.context!.testerId, status)} onLinkEco={(ecoId) => handleLinkExistingEco(statusModalState.context!.projectId, statusModalState.context!.category, statusModalState.context!.taskId, statusModalState.context!.testerId, ecoId)} onCreateEco={() => handleCreateEcoFromFeedback(statusModalState.context!.projectId, statusModalState.context!.category, statusModalState.context!.taskId, statusModalState.context!.testerId)} activeEcos={activeEcosList} />}
       {feedbackModalState.isOpen && <FeedbackModal isOpen={feedbackModalState.isOpen} onClose={() => setFeedbackModalState({ isOpen: false, feedback: null })} onSave={handleSaveFeedback} feedback={feedbackModalState.feedback} product={product} />}
-      {feedbackStatusModal.isOpen && feedbackStatusModal.feedback && <FeedbackStatusDecisionModal isOpen={feedbackStatusModal.isOpen} onClose={() => setFeedbackStatusModal({ isOpen: false, feedback: null })} feedback={feedbackStatusModal.feedback} onUpdateStatus={handleUpdateFeedbackStatus} />}
+      {feedbackStatusModal.isOpen && feedbackStatusModal.feedback && (
+        <FeedbackStatusDecisionModal 
+            isOpen={feedbackStatusModal.isOpen} 
+            onClose={() => setFeedbackStatusModal({ isOpen: false, feedback: null })} 
+            feedback={feedbackStatusModal.feedback} 
+            onUpdateStatus={handleUpdateFeedbackStatus} 
+            onCreateEco={() => handleCreateEcoFromCustomerFeedback(feedbackStatusModal.feedback!.id)}
+            onLinkEco={(ecoId) => handleLinkEcoToCustomerFeedback(feedbackStatusModal.feedback!.id, ecoId)}
+            activeEcos={activeEcosList}
+        />
+      )}
     </div>
   );
 };
@@ -1212,27 +1266,53 @@ const SetPassNgModal = ({ isOpen, onClose, onSet, existingReason }: any) => {
 };
 
 const StatusDecisionModal = ({ isOpen, onClose, context, onSetStatus, onLinkEco, onCreateEco, activeEcos }: any) => {
+    const [view, setView] = useState<'MAIN' | 'LINK_ECO'>('MAIN');
+
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
-            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6">
-                <h3 className="text-lg font-bold mb-4">Decision Status</h3>
-                <div className="space-y-2">
-                    {Object.values(NgDecisionStatus).map(status => (
-                        <button key={status} onClick={() => onSetStatus(status)} className={`w-full py-2.5 rounded-lg text-sm font-bold border transition-all ${context.currentStatus === status ? 'bg-slate-900 text-white border-slate-800' : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'}`}>{status}</button>
-                    ))}
-                    <div className="py-2 border-t border-slate-100 mt-4">
-                        <h4 className="text-[10px] font-bold text-slate-400 uppercase mb-2">ECO Management</h4>
-                        <button onClick={onCreateEco} className="w-full py-2.5 bg-intenza-600 text-white rounded-lg text-sm font-bold hover:bg-intenza-700 mb-2">Create New ECO</button>
-                        {activeEcos.length > 0 && (
-                            <div className="max-h-32 overflow-y-auto space-y-1">
-                                {activeEcos.map((eco: DesignChange) => (
-                                    <button key={eco.id} onClick={() => onLinkEco(eco.id)} className="w-full text-left p-2 text-xs hover:bg-slate-50 rounded border border-transparent hover:border-slate-200 flex justify-between items-center"><span className="truncate">{eco.ecoNumber} - {eco.description.en}</span><LinkIcon size={12}/></button>
-                                ))}
-                            </div>
-                        )}
-                    </div>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md animate-fade-in">
+            <div className="bg-white rounded-3xl shadow-2xl w-full max-w-sm animate-slide-up overflow-hidden">
+                <div className="p-6 border-b border-slate-100 flex justify-between items-center">
+                    <h2 className="text-lg font-bold">{view === 'MAIN' ? 'Manage Decision' : 'Link to Open ECO'}</h2>
+                    <button onClick={onClose} className="p-1 hover:bg-slate-100 rounded-full"><X size={20}/></button>
                 </div>
-                <button onClick={onClose} className="w-full py-2 mt-4 text-slate-400 font-bold">Close</button>
+                
+                {view === 'MAIN' ? (
+                    <div className="p-6 space-y-3">
+                        <button onClick={onCreateEco} className="w-full py-4 px-4 bg-intenza-600 text-white rounded-2xl flex items-center gap-4 hover:bg-intenza-700 transition-all group">
+                            <div className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center group-hover:scale-110 transition-transform"><Plus size={20}/></div>
+                            <div className="text-left">
+                                <div className="font-bold text-sm">Start New ECO</div>
+                                <div className="text-[10px] text-white/60">Create design change record</div>
+                            </div>
+                        </button>
+                        
+                        <button onClick={() => setView('LINK_ECO')} className="w-full py-4 px-4 bg-slate-50 border border-slate-200 text-slate-700 rounded-2xl flex items-center gap-4 hover:bg-slate-100 transition-all group">
+                            <div className="w-10 h-10 rounded-xl bg-slate-200 flex items-center justify-center group-hover:scale-110 transition-transform"><LinkIcon size={20}/></div>
+                            <div className="text-left">
+                                <div className="font-bold text-sm">Link Existing ECO</div>
+                                <div className="text-[10px] text-slate-400">Attach to current open task</div>
+                            </div>
+                        </button>
+
+                        <div className="grid grid-cols-2 gap-2 mt-4">
+                            {[NgDecisionStatus.PENDING, NgDecisionStatus.DISCUSSION, NgDecisionStatus.IGNORED].map(status => (
+                                <button key={status} onClick={() => onSetStatus(status)} className={`py-2 text-[10px] font-bold rounded-xl border border-slate-100 transition-all uppercase tracking-widest ${context.currentStatus === status ? 'bg-slate-900 text-white border-slate-800' : 'bg-slate-50 text-slate-500 hover:bg-white'}`}>{status}</button>
+                            ))}
+                        </div>
+                    </div>
+                ) : (
+                    <div className="p-6">
+                        <div className="space-y-2 max-h-64 overflow-y-auto pr-1 custom-scrollbar">
+                            {activeEcos.length > 0 ? activeEcos.map((eco: any) => (
+                                <button key={eco.id} onClick={() => onLinkEco(eco.id)} className="w-full p-4 rounded-xl border border-slate-100 hover:border-intenza-200 hover:bg-intenza-50/50 transition-all text-left">
+                                    <div className="text-xs font-bold text-intenza-600 mb-1">{eco.ecoNumber}</div>
+                                    <div className="text-[11px] font-medium text-slate-700 line-clamp-2">{eco.description.en}</div>
+                                </button>
+                            )) : <div className="text-center py-8 text-slate-400 italic text-sm">No open ECOs found</div>}
+                        </div>
+                        <button onClick={() => setView('MAIN')} className="w-full mt-4 py-2 text-xs font-bold text-slate-400 hover:text-slate-600">Go Back</button>
+                    </div>
+                )}
             </div>
         </div>
     );
@@ -1262,18 +1342,63 @@ const FeedbackModal = ({ isOpen, onClose, onSave, feedback, product }: any) => {
     );
 };
 
-const FeedbackStatusDecisionModal = ({ isOpen, onClose, feedback, onUpdateStatus }: any) => (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
-        <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6 text-center">
-            <h3 className="text-lg font-bold mb-6">Update Feedback Status</h3>
-            <div className="space-y-2">
-                {['PENDING', 'DISCUSSION', 'IGNORED'].map((status: any) => (
-                    <button key={status} onClick={() => onUpdateStatus(feedback.id, status)} className={`w-full py-3 rounded-xl font-bold border transition-all ${feedback.status === status ? 'bg-slate-900 text-white border-slate-800' : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'}`}>{status}</button>
-                ))}
+const FeedbackStatusDecisionModal = ({ isOpen, onClose, feedback, onUpdateStatus, onCreateEco, onLinkEco, activeEcos }: any) => {
+    const [view, setView] = useState<'MAIN' | 'LINK_ECO'>('MAIN');
+
+    return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md animate-fade-in">
+            <div className="bg-white rounded-3xl shadow-2xl w-full max-w-sm animate-slide-up overflow-hidden text-center">
+                <div className="p-6 border-b border-slate-100 flex justify-between items-center">
+                    <h2 className="text-lg font-bold">{view === 'MAIN' ? 'Feedback Status' : 'Link to Open ECO'}</h2>
+                    <button onClick={onClose} className="p-1 hover:bg-slate-100 rounded-full"><X size={20}/></button>
+                </div>
+                
+                {view === 'MAIN' ? (
+                    <div className="p-6 space-y-3">
+                        <button onClick={onCreateEco} className="w-full py-4 px-4 bg-intenza-600 text-white rounded-2xl flex items-center gap-4 hover:bg-intenza-700 transition-all group text-left">
+                            <div className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center group-hover:scale-110 transition-transform"><Plus size={20}/></div>
+                            <div>
+                                <div className="font-bold text-sm">Start New ECO</div>
+                                <div className="text-[10px] text-white/60">Address this complaint via ECO</div>
+                            </div>
+                        </button>
+                        
+                        <button onClick={() => setView('LINK_ECO')} className="w-full py-4 px-4 bg-slate-50 border border-slate-200 text-slate-700 rounded-2xl flex items-center gap-4 hover:bg-slate-100 transition-all group text-left">
+                            <div className="w-10 h-10 rounded-xl bg-slate-200 flex items-center justify-center group-hover:scale-110 transition-transform"><LinkIcon size={20}/></div>
+                            <div>
+                                <div className="font-bold text-sm">Link Existing ECO</div>
+                                <div className="text-[10px] text-slate-400">Attach to existing design change</div>
+                            </div>
+                        </button>
+
+                        <div className="grid grid-cols-1 gap-2 mt-4">
+                            {['PENDING', 'DISCUSSION', 'IGNORED'].map((status: any) => (
+                                <button 
+                                    key={status} 
+                                    onClick={() => onUpdateStatus(feedback.id, status)} 
+                                    className={`py-3 rounded-xl border text-xs font-bold transition-all uppercase tracking-widest ${feedback.status === status ? 'bg-slate-900 text-white border-slate-800 shadow-md' : 'bg-slate-50 text-slate-500 hover:bg-white hover:border-slate-200'}`}
+                                >
+                                    {status}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+                ) : (
+                    <div className="p-6">
+                        <div className="space-y-2 max-h-64 overflow-y-auto pr-1 custom-scrollbar">
+                            {activeEcos.length > 0 ? activeEcos.map((eco: any) => (
+                                <button key={eco.id} onClick={() => onLinkEco(eco.id)} className="w-full p-4 rounded-xl border border-slate-100 hover:border-intenza-200 hover:bg-intenza-50/50 transition-all text-left">
+                                    <div className="text-xs font-bold text-intenza-600 mb-1">{eco.ecoNumber}</div>
+                                    <div className="text-[11px] font-medium text-slate-700 line-clamp-2">{eco.description.en}</div>
+                                </button>
+                            )) : <div className="text-center py-8 text-slate-400 italic text-sm">No open ECOs found</div>}
+                        </div>
+                        <button onClick={() => setView('MAIN')} className="w-full mt-4 py-2 text-xs font-bold text-slate-400 hover:text-slate-600">Go Back</button>
+                    </div>
+                )}
             </div>
-            <button onClick={onClose} className="mt-6 text-slate-400 text-sm font-bold">Cancel</button>
         </div>
-    </div>
-);
+    );
+};
 
 export default ProductDetail;
