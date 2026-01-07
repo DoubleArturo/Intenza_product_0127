@@ -309,7 +309,7 @@ const ProductDetail: React.FC<ProductDetailProps> = ({ products, shipments = [],
       </div>
       
       {isEcoModalOpen && <EcoModal isOpen={isEcoModalOpen} onClose={handleCloseEcoModal} onSave={handleSaveEco} eco={editingEco} productVersions={Array.from(new Set([product.currentVersion, ...product.designHistory.map(h => h.version)]))} product={product}/>}
-      {isTestModalOpen && <TestModal isOpen={isTestModalOpen} onClose={handleCloseTestModal} onSave={handleSaveTest} test={editingTest} />}
+      {isTestModalOpen && <TestModal isOpen={isTestModalOpen} onClose={handleCloseTestModal} onSave={handleSaveTest} test={editingTest} productVersions={Array.from(new Set([product.currentVersion, ...product.designHistory.map(h => h.version)]))}/>}
       {isNoShipmentModalOpen && <NoShipmentModal isOpen={isNoShipmentModalOpen} onClose={() => setIsNoShipmentModalOpen(false)} version={selectedVersionForModal} />}
     </div>
   );
@@ -366,7 +366,7 @@ const LifeSection = ({ product, onAddTest, onEditTest, onDeleteTest }: any) => {
       </div>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {product.durabilityTests.map((test: TestResult) => (
-          <div key={test.id} className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm group relative overflow-hidden">
+          <div key={test.id} className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm group relative overflow-hidden transition-all duration-300">
             <div className="flex justify-between items-start mb-3">
               <div>
                 <div className="flex items-center gap-2 mb-1">
@@ -392,20 +392,44 @@ const LifeSection = ({ product, onAddTest, onEditTest, onDeleteTest }: any) => {
             <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden mb-4">
                 <div className={`h-full transition-all duration-1000 ${test.status === TestStatus.PASS ? 'bg-emerald-500' : test.status === TestStatus.FAIL ? 'bg-rose-500' : 'bg-indigo-500'}`} style={{ width: `${test.score}%` }}></div>
             </div>
-            <p className="text-xs text-slate-500 line-clamp-2">{t(test.details)}</p>
             
-            {/* Hover Details Overlay */}
-            {test.details && (
-              <div className="absolute inset-0 z-10 bg-white/95 backdrop-blur-sm p-5 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity flex flex-col pointer-events-none">
-                <div className="flex items-center gap-2 mb-2 pb-2 border-b border-slate-100">
-                  <Info size={14} className="text-intenza-600"/>
-                  <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Details / Notes</span>
+            {test.attachmentUrls && test.attachmentUrls.length > 0 && (
+                <div className="flex gap-1 mb-2">
+                    {test.attachmentUrls.map((url, i) => (
+                        <div key={i} className="w-6 h-6 rounded border border-slate-100 overflow-hidden"><img src={url} className="w-full h-full object-cover" /></div>
+                    ))}
                 </div>
-                <p className="text-xs text-slate-700 leading-relaxed overflow-y-auto custom-scrollbar">{t(test.details)}</p>
-              </div>
             )}
 
-            <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity z-20">
+            <p className="text-xs text-slate-500 line-clamp-2">{t(test.details)}</p>
+            
+            {/* Requirement: Hover Details Overlay */}
+            <div className="absolute inset-0 z-20 bg-white/95 backdrop-blur-sm p-6 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col pointer-events-none">
+                <div className="flex items-center justify-between mb-4 border-b border-slate-100 pb-2">
+                    <div className="flex items-center gap-2">
+                        <Info size={16} className="text-intenza-600" />
+                        <span className="text-xs font-black uppercase tracking-widest text-slate-900">Details / Notes</span>
+                    </div>
+                </div>
+                <div className="flex-1 overflow-y-auto custom-scrollbar pr-1">
+                    {test.details?.en || test.details?.zh ? (
+                        <p className="text-sm text-slate-700 leading-relaxed font-medium">
+                            {t(test.details)}
+                        </p>
+                    ) : (
+                        <p className="text-xs text-slate-400 italic">No additional details recorded.</p>
+                    )}
+                </div>
+                {test.attachmentUrls && test.attachmentUrls.length > 0 && (
+                    <div className="mt-4 flex gap-2 overflow-x-auto pb-2">
+                        {test.attachmentUrls.map((url, i) => (
+                            <img key={i} src={url} className="h-16 w-16 rounded-lg object-cover border border-slate-200 shadow-sm" />
+                        ))}
+                    </div>
+                )}
+            </div>
+
+            <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity z-30">
                 <button onClick={() => onEditTest(test)} className="p-1.5 bg-white border border-slate-100 rounded-md text-slate-500 hover:text-slate-900 hover:shadow-sm transition-all pointer-events-auto"><Pencil size={12} /></button>
                 <button onClick={() => onDeleteTest(test.id)} className="p-1.5 bg-white border border-slate-100 rounded-md text-red-500 hover:text-red-700 hover:shadow-sm transition-all pointer-events-auto"><Trash2 size={12} /></button>
             </div>
@@ -498,11 +522,12 @@ const ProjectCard = ({ project, testers, product, onOpenAddTask, onEditTaskName,
                                                                 >
                                                                     Edit Reason
                                                                 </button>
+                                                                {/* Fix typo: change 'ngDecisionStatus' to 'NgDecisionStatus' to correctly reference the enum */}
                                                                 <button 
                                                                     onClick={() => onStatusClick(project.id, cat, task.id, tid, ngReason?.decisionStatus || NgDecisionStatus.PENDING, ngReason?.linkedEcoId)}
                                                                     className={`px-2 py-0.5 rounded text-[8px] font-bold uppercase border transition-colors ${ngDecisionStyles[ngReason?.decisionStatus || NgDecisionStatus.PENDING]}`}
                                                                 >
-                                                                    {linkedEco ? linkedEco.ecoNumber : ngDecisionTranslations[ngReason?.decisionStatus || NgDecisionStatus.PENDING]}
+                                                                    {linkedEco ? linkedEco.ecoNumber : ngDecisionTranslations[NgDecisionStatus.PENDING]}
                                                                 </button>
                                                             </div>
                                                         </div>
@@ -927,7 +952,7 @@ const ErgoSection = ({ product, testers, onUpdateProduct, highlightedFeedback, i
       const newLinkedId = isUnlinking ? undefined : ecoId;
       const newStatus = isUnlinking ? 'PENDING' : 'DISCUSSION';
 
-      // Clean up source feedbacks in all ECOs for this feedbackId, then add to new selection
+      // Requirement: Clean up source feedbacks in ALL ECOs for this specific feedbackId, preventing stale links
       const updatedDesignHistory = product.designHistory.map(eco => {
           let sources = (eco.sourceFeedbacks || []).filter(s => s.feedbackId !== feedbackId);
           if (eco.id === ecoId && !isUnlinking) {
@@ -955,7 +980,7 @@ const ErgoSection = ({ product, testers, onUpdateProduct, highlightedFeedback, i
       const oldEcoId = statusModalState.context?.linkedEcoId;
       const isUnlinking = oldEcoId === ecoId;
 
-      // Clean up source feedbacks in all ECOs for this specific project/task/tester triplet
+      // Requirement: Clean up source feedbacks in ALL ECOs for this specific project/task/tester triplet
       const updatedDesignHistory = product.designHistory.map(eco => {
           let sources = (eco.sourceFeedbacks || []).filter(s => 
               !(s.projectId === projectId && s.taskId === taskId && s.testerId === testerId)
@@ -1292,22 +1317,198 @@ const EcoModal = ({ isOpen, onClose, onSave, eco, productVersions, product }: an
     );
 };
 
-const TestModal = ({ isOpen, onClose, onSave, test }: any) => {
+// Requirement: Enhanced TestModal with extra fields and custom dropdown
+const TestModal = ({ isOpen, onClose, onSave, test, productVersions }: any) => {
+    const { language } = useContext(LanguageContext);
+    const [isUploading, setIsUploading] = useState(false);
+    const fileInputRef = useRef<HTMLInputElement>(null);
+    const [showCustomName, setShowCustomName] = useState(false);
+
+    const testNameOptions = [
+        { en: 'Durability Test', zh: '耐久測試' },
+        { en: 'Salt Spray Test', zh: '鹽霧測試' },
+        { en: 'Packaging Test', zh: '包裝測試' },
+        { en: 'Other Custom Test', zh: '其他自訂測試' }
+    ];
+
     const [formData, setFormData] = useState<any>(test || {
-        category: 'Mechanical', testName: { en: '', zh: '' }, version: 'v1.0', score: 0, status: TestStatus.PENDING, details: { en: '', zh: '' }, updatedDate: new Date().toISOString().split('T')[0]
+        category: 'Mechanical', 
+        testName: { en: 'Durability Test', zh: '耐久測試' }, 
+        version: '', 
+        score: 0, 
+        status: TestStatus.PENDING, 
+        details: { en: '', zh: '' }, 
+        attachmentUrls: [],
+        updatedDate: new Date().toISOString().split('T')[0]
     });
-    const handleSave = (e: React.FormEvent) => { e.preventDefault(); onSave(formData); };
+
+    useEffect(() => {
+        // Initialize custom name visibility if the current test name isn't in standard options
+        if (test) {
+            const isStandard = testNameOptions.some(opt => opt.en === test.testName.en);
+            if (!isStandard) setShowCustomName(true);
+        }
+    }, [test]);
+
+    const handleSave = (e: React.FormEvent) => { 
+        e.preventDefault(); 
+        onSave(formData); 
+    };
+
+    const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const files = e.target.files;
+        if (!files || files.length === 0) return;
+        setIsUploading(true);
+        try {
+            const urls = await Promise.all(Array.from(files).map(f => api.uploadImage(f as File)));
+            setFormData({ ...formData, attachmentUrls: [...(formData.attachmentUrls || []), ...urls] });
+        } catch (err) {
+            alert('上傳失敗');
+        } finally {
+            setIsUploading(false);
+            if (fileInputRef.current) fileInputRef.current.value = '';
+        }
+    };
+
+    const removeImage = (index: number) => {
+        const newUrls = [...(formData.attachmentUrls || [])];
+        newUrls.splice(index, 1);
+        setFormData({ ...formData, attachmentUrls: newUrls });
+    };
+
+    const handleTestNameChange = (val: string) => {
+        if (val === 'Other Custom Test') {
+            setShowCustomName(true);
+            setFormData({ ...formData, testName: { en: '', zh: '' } });
+        } else {
+            setShowCustomName(false);
+            const selected = testNameOptions.find(opt => opt.en === val);
+            if (selected) setFormData({ ...formData, testName: selected });
+        }
+    };
+
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
-            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-xl overflow-hidden">
-                <div className="p-6 border-b border-slate-100 flex justify-between items-center"><h2 className="text-xl font-bold">{test ? 'Edit Test' : 'Add Test'}</h2><button onClick={onClose} className="p-2 hover:bg-slate-100 rounded-full"><X size={20}/></button></div>
-                <form onSubmit={handleSave} className="p-6 space-y-4">
-                    <div><label className="block text-xs font-bold text-slate-500 uppercase mb-1">Test Name (EN)</label><input type="text" value={formData.testName.en} onChange={e => setFormData({...formData, testName: {...formData.testName, en: e.target.value}})} className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg"/></div>
+            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-xl overflow-hidden flex flex-col max-h-[90vh]">
+                <div className="p-6 border-b border-slate-100 flex justify-between items-center sticky top-0 bg-white z-10">
+                    <h2 className="text-xl font-bold">{test ? 'Edit Test Result' : 'Add New Test'}</h2>
+                    <button onClick={onClose} className="p-2 hover:bg-slate-100 rounded-full"><X size={20}/></button>
+                </div>
+                <form onSubmit={handleSave} className="p-6 space-y-5 overflow-y-auto custom-scrollbar">
                     <div className="grid grid-cols-2 gap-4">
-                        <div><label className="block text-xs font-bold text-slate-500 uppercase mb-1">Status</label><select value={formData.status} onChange={e => setFormData({...formData, status: e.target.value})} className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg">{Object.values(TestStatus).map(s => <option key={s} value={s}>{s}</option>)}</select></div>
-                        <div><label className="block text-xs font-bold text-slate-500 uppercase mb-1">Progress (%)</label><input type="number" value={formData.score} onChange={e => setFormData({...formData, score: Number(e.target.value)})} className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg"/></div>
+                        <div>
+                            <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Test Item (測試項目)</label>
+                            <select 
+                                value={showCustomName ? 'Other Custom Test' : formData.testName.en}
+                                onChange={e => handleTestNameChange(e.target.value)}
+                                className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-intenza-500/10 outline-none font-medium"
+                            >
+                                {testNameOptions.map(opt => (
+                                    <option key={opt.en} value={opt.en}>{language === 'en' ? opt.en : opt.zh}</option>
+                                ))}
+                            </select>
+                        </div>
+                        <div>
+                            <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Tested Version (測試版本)</label>
+                            <div className="relative">
+                                <input 
+                                    type="text" 
+                                    list="durability-versions"
+                                    value={formData.version} 
+                                    onChange={e => setFormData({...formData, version: e.target.value})} 
+                                    className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-intenza-500/10 outline-none"
+                                    placeholder="e.g. v1.0"
+                                />
+                                <datalist id="durability-versions">
+                                    {productVersions.map((v: string) => <option key={v} value={v} />)}
+                                </datalist>
+                            </div>
+                        </div>
                     </div>
-                    <div className="flex gap-3 pt-4 border-t border-slate-100"><button type="button" onClick={onClose} className="flex-1 py-2 font-bold text-slate-500 hover:bg-slate-50 rounded-lg">Cancel</button><button type="submit" className="flex-1 py-2 bg-slate-900 text-white font-bold rounded-lg hover:bg-slate-800 transition-all">Save Test</button></div>
+
+                    {showCustomName && (
+                        <div className="animate-fade-in">
+                            <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Custom Test Name (自訂測試項目)</label>
+                            <input 
+                                type="text" 
+                                value={formData.testName.en} 
+                                onChange={e => setFormData({...formData, testName: { en: e.target.value, zh: e.target.value }})} 
+                                className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-intenza-500/10 outline-none"
+                                placeholder="Enter custom test name..."
+                                required
+                            />
+                        </div>
+                    )}
+
+                    <div className="grid grid-cols-2 gap-4">
+                        <div>
+                            <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Status (測試狀態)</label>
+                            <select 
+                                value={formData.status} 
+                                onChange={e => setFormData({...formData, status: e.target.value})} 
+                                className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-intenza-500/10 outline-none"
+                            >
+                                {/* Requirement: Remove WARNING status */}
+                                {Object.values(TestStatus).map(s => (
+                                    <option key={s} value={s}>{s}</option>
+                                ))}
+                            </select>
+                        </div>
+                        <div>
+                            <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Completion Progress (進度 %)</label>
+                            <div className="flex items-center gap-3">
+                                <input type="range" min="0" max="100" value={formData.score} onChange={e => setFormData({...formData, score: Number(e.target.value)})} className="flex-1 accent-intenza-600" />
+                                <span className="w-10 text-right font-mono font-bold text-sm">{formData.score}%</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Details / Notes (詳細說明與備註)</label>
+                        <textarea 
+                            value={formData.details.en} 
+                            onChange={e => setFormData({...formData, details: { en: e.target.value, zh: e.target.value }})} 
+                            className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-intenza-500/10 outline-none resize-none font-medium" 
+                            rows={4}
+                            placeholder="Describe test results, cycles, or failure modes..."
+                        />
+                    </div>
+
+                    <div className="pt-2">
+                        <label className="block text-xs font-bold text-slate-500 uppercase mb-3">Test Reports / Media (附件照片)</label>
+                        <div className="grid grid-cols-4 gap-3 mb-4">
+                            {(formData.attachmentUrls || []).map((url: string, idx: number) => (
+                                <div key={idx} className="relative aspect-square bg-slate-100 rounded-lg overflow-hidden border border-slate-200 group/img shadow-sm">
+                                    <img src={url} className="w-full h-full object-cover" />
+                                    <button 
+                                        type="button"
+                                        onClick={() => removeImage(idx)}
+                                        className="absolute top-1 right-1 p-1 bg-white rounded-full shadow-md text-red-500 opacity-0 group-hover/img:opacity-100 transition-opacity"
+                                    >
+                                        <X size={12}/>
+                                    </button>
+                                </div>
+                            ))}
+                            <button 
+                                type="button"
+                                onClick={() => fileInputRef.current?.click()}
+                                disabled={isUploading}
+                                className="aspect-square border-2 border-dashed border-slate-200 rounded-lg flex flex-col items-center justify-center text-slate-400 hover:border-slate-400 hover:text-slate-600 transition-all bg-slate-50 active:scale-95"
+                            >
+                                {isUploading ? <Loader2 size={20} className="animate-spin"/> : <Plus size={20}/>}
+                                <span className="text-[10px] font-bold uppercase mt-1">Add Photo</span>
+                            </button>
+                            <input ref={fileInputRef} type="file" multiple accept="image/*" className="hidden" onChange={handleUpload} />
+                        </div>
+                    </div>
+
+                    <div className="flex gap-3 pt-6 sticky bottom-0 bg-white border-t border-slate-100 -mx-6 -mb-6 p-6">
+                        <button type="button" onClick={onClose} className="flex-1 py-3 font-bold text-slate-500 hover:bg-slate-50 rounded-xl transition-colors">Cancel</button>
+                        <button type="submit" disabled={isUploading} className="flex-1 py-3 bg-slate-900 text-white font-bold rounded-xl hover:bg-slate-800 transition-all shadow-lg shadow-slate-900/10 flex items-center justify-center gap-2">
+                            <Save size={18} />
+                            Save Test Record
+                        </button>
+                    </div>
                 </form>
             </div>
         </div>

@@ -26,7 +26,6 @@ export interface UserAccount {
 export enum TestStatus {
   PASS = 'PASS',
   FAIL = 'FAIL',
-  WARNING = 'WARNING',
   PENDING = 'PENDING',
   ONGOING = 'ONGOING'
 }
