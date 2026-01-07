@@ -1,7 +1,7 @@
 
 import React, { useState, useRef, useEffect, useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Search, ChevronRight, X, Upload, Pencil, Save, Star, Trash2, Image as ImageIcon, Loader2, ArrowUpDown, Calendar, Info, Settings2 } from 'lucide-react';
+import { Plus, Search, ChevronRight, X, Upload, Pencil, Save, Star, Trash2, Image as ImageIcon, Loader2, ArrowUpDown, Calendar, Info, Settings2, Check } from 'lucide-react';
 import { ProductModel, LocalizedString, EcoStatus } from '../types';
 import { LanguageContext } from '../App';
 import { api } from '../services/api';
@@ -30,6 +30,9 @@ export const Dashboard: React.FC<DashboardProps> = ({ products, seriesList, user
   const [hoveredLightId, setHoveredLightId] = useState<string | null>(null);
   const hoverTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // Direct Selection State
+  const [selectorProductId, setSelectorProductId] = useState<string | null>(null);
+
   // Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -49,8 +52,10 @@ export const Dashboard: React.FC<DashboardProps> = ({ products, seriesList, user
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const isViewer = userRole === 'viewer';
+  const isUploader = userRole === 'uploader';
   const isAdmin = userRole === 'admin';
   const isStandard = userRole === 'user';
+  const canEditLight = isAdmin || isStandard;
   
   useEffect(() => {
     if (isModalOpen) {
@@ -191,6 +196,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ products, seriesList, user
   };
 
   const handleMouseEnterLight = (id: string) => {
+    if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current);
     hoverTimeoutRef.current = setTimeout(() => {
       setHoveredLightId(id);
     }, 1000);
@@ -201,6 +207,20 @@ export const Dashboard: React.FC<DashboardProps> = ({ products, seriesList, user
       clearTimeout(hoverTimeoutRef.current);
     }
     setHoveredLightId(null);
+  };
+
+  const handleStatusLightClick = (e: React.MouseEvent, p: ProductModel) => {
+    e.stopPropagation();
+    if (!canEditLight) {
+        navigate(`/product/${p.id}`);
+        return;
+    }
+    setSelectorProductId(p.id);
+  };
+
+  const updateProductStatusDirectly = async (p: ProductModel, status: 'RED' | 'BLUE' | 'GREEN' | 'AUTO') => {
+    await onUpdateProduct({ ...p, statusOverride: status });
+    setSelectorProductId(null);
   };
 
   const getCurrentProductionInfo = (p: ProductModel) => {
@@ -218,7 +238,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ products, seriesList, user
           <h1 className="text-4xl font-black text-slate-900 tracking-tight">{t({ en: 'Product Portfolio', zh: '產品組合'})}</h1>
           <p className="text-slate-500 mt-2 font-medium">{t({ en: 'Manage design quality across all series.', zh: '管理所有系列的設計品質。'})}</p>
         </div>
-        {!isViewer && (
+        {!isViewer && !isUploader && (
           <button 
             onClick={() => setIsModalOpen(true)}
             className="bg-slate-900 hover:bg-slate-800 text-white px-6 py-3 rounded-2xl font-bold flex items-center gap-2 transition-all shadow-xl shadow-slate-900/20 active:scale-95"
@@ -280,8 +300,10 @@ export const Dashboard: React.FC<DashboardProps> = ({ products, seriesList, user
           const productionInfo = getCurrentProductionInfo(p);
           const displayVersion = p.currentVersion;
           const statusColor = getProductStatusColor(p);
-          const lightSize = p.statusLightSize || 'NORMAL';
-          const sizeClass = lightSize === 'SMALL' ? 'w-3 h-3' : lightSize === 'LARGE' ? 'w-6 h-6' : 'w-4 h-4';
+          const lightSizeSetting = p.statusLightSize || 'NORMAL';
+          
+          // Use specific dot size inside the large button container
+          const dotSizeClass = lightSizeSetting === 'SMALL' ? 'w-3 h-3' : lightSizeSetting === 'LARGE' ? 'w-6 h-6' : 'w-4 h-4';
           
           return (
             <div 
@@ -290,50 +312,6 @@ export const Dashboard: React.FC<DashboardProps> = ({ products, seriesList, user
               onClick={() => navigate(`/product/${p.id}`)}
             >
               <div className="relative h-64 bg-slate-50 p-6 flex items-center justify-center overflow-hidden border-b border-slate-50">
-                <div 
-                  className="absolute top-5 left-5 z-20"
-                  onMouseEnter={() => handleMouseEnterLight(p.id)}
-                  onMouseLeave={handleMouseLeaveLight}
-                >
-                  <div className={`${sizeClass} rounded-full shadow-lg border-2 border-white animate-pulse-slow ${
-                    statusColor === 'red' ? 'bg-rose-500 shadow-rose-500/50' :
-                    statusColor === 'blue' ? 'bg-blue-500 shadow-blue-500/50' :
-                    'bg-emerald-500 shadow-emerald-500/50'
-                  }`} />
-                  
-                  {hoveredLightId === p.id && (
-                    <div className="absolute top-full left-0 mt-3 w-64 p-4 bg-slate-900 text-white rounded-2xl shadow-2xl z-[60] animate-fade-in border border-slate-700/50 backdrop-blur-md">
-                      <div className="flex items-center gap-2 mb-3 border-b border-white/10 pb-2">
-                        <Info size={14} className="text-slate-400" />
-                        <span className="text-[10px] font-black uppercase tracking-widest text-slate-300">{t({ en: 'Status Guide', zh: '燈號狀態說明' })}</span>
-                      </div>
-                      <div className="space-y-3">
-                        <div className="flex items-start gap-3">
-                           <div className="w-2.5 h-2.5 rounded-full bg-blue-500 mt-1 shadow-lg shadow-blue-500/40" />
-                           <div className="flex-1">
-                              <div className="text-[11px] font-bold text-white leading-none">{t({ en: 'General ECO', zh: '一般設變中' })}</div>
-                              <div className="text-[10px] text-slate-400 mt-1">{t({ en: 'ECO in progress', zh: '設計變更進行中' })}</div>
-                           </div>
-                        </div>
-                        <div className="flex items-start gap-3">
-                           <div className="w-2.5 h-2.5 rounded-full bg-rose-500 mt-1 shadow-lg shadow-rose-500/40" />
-                           <div className="flex-1">
-                              <div className="text-[11px] font-bold text-white leading-none">{t({ en: 'Major ECO', zh: '重大設變中' })}</div>
-                              <div className="text-[10px] text-slate-400 mt-1">{t({ en: 'Safety or Ergonomic changes', zh: '安全、人因重大設變中' })}</div>
-                           </div>
-                        </div>
-                        <div className="flex items-start gap-3">
-                           <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 mt-1 shadow-lg shadow-emerald-500/40" />
-                           <div className="flex-1">
-                              <div className="text-[11px] font-bold text-white leading-none">{t({ en: 'Ready for Production', zh: '可量產' })}</div>
-                              <div className="text-[10px] text-slate-400 mt-1">{t({ en: 'No pending critical changes', zh: '目前無待處理重大設變' })}</div>
-                           </div>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                </div>
-
                 {p.imageUrl ? (
                   <img src={p.imageUrl} alt={t(p.modelName)} className="w-full h-full object-contain transition-transform duration-500 group-hover:scale-105" />
                 ) : (
@@ -343,7 +321,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ products, seriesList, user
                   </div>
                 )}
                 
-                {!isViewer && (
+                {!isViewer && !isUploader && (
                   <div className="absolute top-4 right-4 flex flex-col gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-10">
                     <button onClick={(e) => { e.stopPropagation(); onToggleWatch(p.id); }} className={`p-2.5 rounded-full transition-all shadow-lg border ${p.isWatched ? 'bg-amber-400 text-white border-amber-300' : 'bg-white/95 text-slate-400 border-slate-100 hover:text-amber-500'}`}>
                       <Star size={18} fill={p.isWatched ? 'currentColor' : 'none'} strokeWidth={2.5} />
@@ -371,9 +349,97 @@ export const Dashboard: React.FC<DashboardProps> = ({ products, seriesList, user
                   </div>
                 </div>
                 <p className="text-sm text-slate-500 line-clamp-2 mb-6 leading-relaxed flex-1 font-medium">{t(p.description)}</p>
-                <div className="pt-5 border-t-2 border-slate-50 flex items-center justify-between">
+                <div className="pt-5 border-t-2 border-slate-50 flex items-center justify-between relative">
                   <div className="flex flex-col"><span className="text-[10px] font-black text-slate-300 uppercase tracking-[0.2em] mb-1">SKU Identity</span><span className="text-sm font-bold text-slate-800 font-mono tracking-tight">{p.sku}</span></div>
-                  <div className="w-10 h-10 rounded-full bg-slate-50 flex items-center justify-center text-slate-300 group-hover:bg-intenza-500 group-hover:text-white transition-all shadow-inner group-hover:shadow-lg group-hover:shadow-intenza-500/30"><ChevronRight size={24} strokeWidth={3} /></div>
+                  
+                  {/* Status Light replaces original Arrow Icon */}
+                  <div className="relative">
+                    <button 
+                      onClick={(e) => handleStatusLightClick(e, p)}
+                      onMouseEnter={() => handleMouseEnterLight(p.id)}
+                      onMouseLeave={handleMouseLeaveLight}
+                      className={`w-10 h-10 rounded-full flex items-center justify-center transition-all shadow-inner relative z-20 ${
+                        canEditLight ? 'hover:scale-110 active:scale-95' : 'cursor-pointer'
+                      } ${
+                        statusColor === 'red' ? 'bg-rose-50 hover:bg-rose-100 shadow-rose-200' :
+                        statusColor === 'blue' ? 'bg-blue-50 hover:bg-blue-100 shadow-blue-200' :
+                        'bg-emerald-50 hover:bg-emerald-100 shadow-emerald-200'
+                      }`}
+                    >
+                      <div className={`${dotSizeClass} rounded-full shadow-lg border-2 border-white animate-pulse-slow ${
+                        statusColor === 'red' ? 'bg-rose-500 shadow-rose-500/50' :
+                        statusColor === 'blue' ? 'bg-blue-500 shadow-blue-500/50' :
+                        'bg-emerald-500 shadow-emerald-500/50'
+                      }`} />
+                    </button>
+
+                    {/* Direct Selector Pop-up */}
+                    {selectorProductId === p.id && (
+                        <div className="absolute bottom-full right-0 mb-4 bg-white border border-slate-200 shadow-2xl rounded-2xl p-2 z-[70] min-w-[120px] animate-slide-up flex flex-col gap-1">
+                            <div className="text-[9px] font-black text-slate-400 uppercase tracking-widest px-3 py-1 border-b border-slate-50 mb-1">Change Status</div>
+                            {(['AUTO', 'RED', 'BLUE', 'GREEN'] as const).map(mode => (
+                                <button 
+                                    key={mode}
+                                    onClick={(e) => { e.stopPropagation(); updateProductStatusDirectly(p, mode); }}
+                                    className={`flex items-center justify-between px-3 py-2 rounded-lg text-xs font-bold transition-all text-left group/btn ${
+                                        (p.statusOverride === mode || (mode === 'AUTO' && !p.statusOverride)) 
+                                        ? 'bg-slate-900 text-white' 
+                                        : 'bg-white text-slate-600 hover:bg-slate-50'
+                                    }`}
+                                >
+                                    <span className="flex items-center gap-2">
+                                        <div className={`w-2 h-2 rounded-full ${
+                                            mode === 'RED' ? 'bg-rose-500' : 
+                                            mode === 'BLUE' ? 'bg-blue-500' : 
+                                            mode === 'GREEN' ? 'bg-emerald-500' : 'bg-slate-400'
+                                        }`} />
+                                        {mode === 'AUTO' ? t({ en: 'Auto', zh: '系統自動' }) : mode}
+                                    </span>
+                                    {(p.statusOverride === mode || (mode === 'AUTO' && !p.statusOverride)) && <Check size={12} />}
+                                </button>
+                            ))}
+                            <button 
+                                onClick={(e) => { e.stopPropagation(); setSelectorProductId(null); }}
+                                className="mt-1 px-3 py-1.5 text-[10px] font-bold text-slate-400 hover:text-slate-600 text-center"
+                            >
+                                {t({ en: 'Cancel', zh: '取消' })}
+                            </button>
+                        </div>
+                    )}
+
+                    {/* Status Tooltip (Hover) */}
+                    {hoveredLightId === p.id && selectorProductId !== p.id && (
+                        <div className="absolute bottom-full right-0 mb-4 w-64 p-4 bg-slate-900 text-white rounded-2xl shadow-2xl z-[60] animate-fade-in border border-slate-700/50 backdrop-blur-md">
+                        <div className="flex items-center gap-2 mb-3 border-b border-white/10 pb-2">
+                            <Info size={14} className="text-slate-400" />
+                            <span className="text-[10px] font-black uppercase tracking-widest text-slate-300">{t({ en: 'Status Guide', zh: '燈號狀態說明' })}</span>
+                        </div>
+                        <div className="space-y-3">
+                            <div className="flex items-start gap-3">
+                            <div className="w-2.5 h-2.5 rounded-full bg-blue-500 mt-1 shadow-lg shadow-blue-500/40" />
+                            <div className="flex-1">
+                                <div className="text-[11px] font-bold text-white leading-none">{t({ en: 'General ECO', zh: '一般設變中' })}</div>
+                                <div className="text-[10px] text-slate-400 mt-1">{t({ en: 'ECO in progress', zh: '設計變更進行中' })}</div>
+                            </div>
+                            </div>
+                            <div className="flex items-start gap-3">
+                            <div className="w-2.5 h-2.5 rounded-full bg-rose-500 mt-1 shadow-lg shadow-rose-500/40" />
+                            <div className="flex-1">
+                                <div className="text-[11px] font-bold text-white leading-none">{t({ en: 'Major ECO', zh: '重大設變中' })}</div>
+                                <div className="text-[10px] text-slate-400 mt-1">{t({ en: 'Safety or Ergonomic changes', zh: '安全、人因重大設變中' })}</div>
+                            </div>
+                            </div>
+                            <div className="flex items-start gap-3">
+                            <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 mt-1 shadow-lg shadow-emerald-500/40" />
+                            <div className="flex-1">
+                                <div className="text-[11px] font-bold text-white leading-none">{t({ en: 'Ready for Production', zh: '可量產' })}</div>
+                                <div className="text-[10px] text-slate-400 mt-1">{t({ en: 'No pending critical changes', zh: '目前無待處理重大設變' })}</div>
+                            </div>
+                            </div>
+                        </div>
+                        </div>
+                    )}
+                  </div>
                 </div>
               </div>
             </div>
@@ -381,7 +447,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ products, seriesList, user
         })}
       </div>
 
-      {isModalOpen && !isViewer && (
+      {isModalOpen && !isViewer && !isUploader && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md animate-fade-in">
           <div className="bg-white rounded-[2.5rem] shadow-2xl w-full max-w-xl animate-slide-up overflow-hidden border border-white/20">
             <div className="flex justify-between items-center p-8 border-b border-slate-100 bg-white sticky top-0 z-10">
