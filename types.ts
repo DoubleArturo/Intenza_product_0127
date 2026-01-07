@@ -51,6 +51,7 @@ export interface ErgoFeedback {
   source: string;
   status?: 'PENDING' | 'DISCUSSION' | 'IGNORED';
   attachmentUrls?: string[];
+  linkedEcoId?: string; // Track linked design changes
 }
 
 export enum NgDecisionStatus {
