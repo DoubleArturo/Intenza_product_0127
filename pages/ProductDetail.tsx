@@ -289,7 +289,7 @@ const ProductDetail: React.FC<ProductDetailProps> = ({ products, shipments = [],
   );
 };
 
-// --- Sub-components & Help components ---
+// --- Sub-components & Helpers ---
 
 const TabButton = ({ active, onClick, icon, label }: any) => (
   <button onClick={onClick} className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-all ${active ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-200/50'}`}>
@@ -334,7 +334,6 @@ const categoryStyles: Record<ErgoProjectCategory, { bg: string, border: string, 
   'Other Suggestion': { bg: 'bg-slate-50', border: 'border-slate-200', text: 'text-slate-700' }
 };
 
-// Component for Durability Tests
 const LifeSection = ({ product, onAddTest, onEditTest, onDeleteTest }: any) => {
   const { t } = useContext(LanguageContext);
   return (
@@ -374,21 +373,9 @@ const LifeSection = ({ product, onAddTest, onEditTest, onDeleteTest }: any) => {
                 <div className={`h-full transition-all duration-1000 ${test.status === TestStatus.PASS ? 'bg-emerald-500' : test.status === TestStatus.FAIL ? 'bg-rose-500' : 'bg-indigo-500'}`} style={{ width: `${test.score}%` }}></div>
             </div>
             <p className="text-xs text-slate-500 line-clamp-2">{t(test.details)}</p>
-            
-            {/* Hover Details Overlay */}
-            {test.details && (
-              <div className="absolute inset-0 z-10 bg-white/95 backdrop-blur-sm p-5 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity flex flex-col pointer-events-none">
-                <div className="flex items-center gap-2 mb-2 pb-2 border-b border-slate-100">
-                  <Info size={14} className="text-intenza-600"/>
-                  <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Details / Notes</span>
-                </div>
-                <p className="text-xs text-slate-700 leading-relaxed overflow-y-auto custom-scrollbar">{t(test.details)}</p>
-              </div>
-            )}
-
             <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity z-20">
-                <button onClick={() => onEditTest(test)} className="p-1.5 bg-white border border-slate-100 rounded-md text-slate-500 hover:text-slate-900 hover:shadow-sm transition-all pointer-events-auto"><Pencil size={12} /></button>
-                <button onClick={() => onDeleteTest(test.id)} className="p-1.5 bg-white border border-slate-100 rounded-md text-red-500 hover:text-red-700 hover:shadow-sm transition-all pointer-events-auto"><Trash2 size={12} /></button>
+                <button onClick={() => onEditTest(test)} className="p-1.5 bg-white border border-slate-100 rounded-md text-slate-500 hover:text-slate-900 hover:shadow-sm transition-all"><Pencil size={12} /></button>
+                <button onClick={() => onDeleteTest(test.id)} className="p-1.5 bg-white border border-slate-100 rounded-md text-red-500 hover:text-red-700 hover:shadow-sm transition-all"><Trash2 size={12} /></button>
             </div>
           </div>
         ))}
@@ -400,7 +387,6 @@ const LifeSection = ({ product, onAddTest, onEditTest, onDeleteTest }: any) => {
   );
 };
 
-// Project Card for Ergo Tab
 const ProjectCard = ({ project, testers, product, onOpenAddTask, onEditTaskName, onDeleteTask, onOpenTaskResults, onDeleteProject, onEditProject, categoryTranslations, onStatusClick, onEditNgReason, highlightedFeedback }: any) => {
     const { t, language } = useContext(LanguageContext);
     const categories: ErgoProjectCategory[] = ['Resistance profile', 'Experience', 'Stroke', 'Other Suggestion'];
@@ -502,7 +488,6 @@ const ProjectCard = ({ project, testers, product, onOpenAddTask, onEditTaskName,
     );
 };
 
-// Customer Feedback Card
 const CustomerFeedbackCard = ({ feedback, onStatusClick, onEdit, onDelete, product }: any) => {
     const { t } = useContext(LanguageContext);
     const linkedEco = product.designHistory.find((eco: DesignChange) => eco.id === feedback.linkedEcoId);
@@ -536,7 +521,6 @@ const CustomerFeedbackCard = ({ feedback, onStatusClick, onEdit, onDelete, produ
     );
 };
 
-// Design Section
 const DesignSection = ({ product, shipments, onAddEco, onEditEco, onDeleteEco, onDeleteVersion, onSetCurrentVersion, onNoShipment }: { product: ProductModel, shipments: ShipmentData[], onAddEco: () => void, onEditEco: (eco: DesignChange) => void, onDeleteEco: (id: string) => void, onDeleteVersion: (version: string) => void, onSetCurrentVersion: (version: string) => void, onNoShipment: (version: string) => void }) => {
   const { t, language } = useContext(LanguageContext);
   const navigate = useNavigate();
@@ -674,15 +658,6 @@ const DesignSection = ({ product, shipments, onAddEco, onEditEco, onDeleteEco, o
                                  ))}
                               </div>
                            )}
-                           {change.sourceFeedbacks && change.sourceFeedbacks.length > 0 && (
-                              <div className="mt-2 flex flex-col gap-1">
-                                 {change.sourceFeedbacks.map((fb, idx) => (
-                                    <button key={idx} onClick={() => handleLinkBack(fb)} className="text-xs text-blue-600 font-semibold flex items-center gap-1 hover:underline w-fit">
-                                       <LinkIcon size={12}/> View Feedback Source #{idx + 1}
-                                    </button>
-                                 ))}
-                              </div>
-                           )}
                         </div>
                      </div>
                      <div className="absolute top-2 right-2 flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -699,7 +674,6 @@ const DesignSection = ({ product, shipments, onAddEco, onEditEco, onDeleteEco, o
   );
 };
 
-// Ergonomics Section
 const ErgoSection = ({ product, testers, onUpdateProduct, highlightedFeedback }: { product: ProductModel, testers: Tester[], onUpdateProduct: (p: ProductModel) => void, highlightedFeedback: any }) => {
   const { t, language } = useContext(LanguageContext);
   const navigate = useNavigate();
@@ -894,29 +868,38 @@ const ErgoSection = ({ product, testers, onUpdateProduct, highlightedFeedback }:
       setFeedbackStatusModal({ isOpen: false, feedback: null });
   };
 
-  const handleLinkEcoToCustomerFeedback = (feedbackId: string, ecoId: string) => {
+  const handleLinkEcoToCustomerFeedback = (feedbackId: string, ecoId: string | undefined) => {
       onUpdateProduct({
           ...product,
-          customerFeedback: product.customerFeedback.map(f => f.id === feedbackId ? { ...f, status: 'DISCUSSION', linkedEcoId: ecoId } : f)
+          customerFeedback: product.customerFeedback.map(f => f.id === feedbackId ? { ...f, status: ecoId ? 'DISCUSSION' : 'PENDING', linkedEcoId: ecoId } : f)
       });
       setFeedbackStatusModal({ isOpen: false, feedback: null });
   };
 
-  const handleLinkExistingEco = (projectId: string, category: ErgoProjectCategory, taskId: string, testerId: string, ecoId: string) => {
-      const updatedDesignHistory = product.designHistory.map(eco => {
-          if (eco.id === ecoId) {
-              const currentSources = eco.sourceFeedbacks || [];
-              const newSource = { projectId, category, taskId, testerId };
-              const exists = currentSources.some(s => s.projectId === projectId && s.taskId === taskId && s.testerId === testerId);
-              if (!exists) return { ...eco, sourceFeedbacks: [...currentSources, newSource] };
-          }
-          return eco;
-      });
+  const handleLinkExistingEco = (projectId: string, category: ErgoProjectCategory, taskId: string, testerId: string, ecoId: string | undefined) => {
+      let updatedDesignHistory = [...product.designHistory];
+      if (ecoId) {
+          updatedDesignHistory = product.designHistory.map(eco => {
+              if (eco.id === ecoId) {
+                  const currentSources = eco.sourceFeedbacks || [];
+                  const newSource = { projectId, category, taskId, testerId };
+                  const exists = currentSources.some(s => s.projectId === projectId && s.taskId === taskId && s.testerId === testerId);
+                  if (!exists) return { ...eco, sourceFeedbacks: [...currentSources, newSource] };
+              }
+              return eco;
+          });
+      } else {
+          updatedDesignHistory = product.designHistory.map(eco => ({
+              ...eco,
+              sourceFeedbacks: (eco.sourceFeedbacks || []).filter(s => !(s.projectId === projectId && s.taskId === taskId && s.testerId === testerId))
+          }));
+      }
+
       const updatedProjects = product.ergoProjects.map(p => {
           if (p.id === projectId) {
               const updatedTasks = p.tasks[category].map(t => {
                   if (t.id === taskId) {
-                      const updatedNgReasons = t.ngReasons.map(ng => ng.testerId === testerId ? { ...ng, linkedEcoId: ecoId, decisionStatus: NgDecisionStatus.NEEDS_IMPROVEMENT } : ng);
+                      const updatedNgReasons = t.ngReasons.map(ng => ng.testerId === testerId ? { ...ng, linkedEcoId: ecoId, decisionStatus: ecoId ? NgDecisionStatus.NEEDS_IMPROVEMENT : NgDecisionStatus.PENDING } : ng);
                       return { ...t, ngReasons: updatedNgReasons };
                   }
                   return t;
@@ -980,7 +963,7 @@ const ErgoSection = ({ product, testers, onUpdateProduct, highlightedFeedback }:
   };
 
   const handleUpdateFeedbackStatus = (feedbackId: string, status: 'PENDING' | 'DISCUSSION' | 'IGNORED') => {
-      const updatedFeedbackList = product.customerFeedback.map(fb => fb.id === feedbackId ? { ...fb, status } : fb);
+      const updatedFeedbackList = product.customerFeedback.map(fb => fb.id === feedbackId ? { ...fb, status, linkedEcoId: status === 'PENDING' ? undefined : fb.linkedEcoId } : fb);
       onUpdateProduct({ ...product, customerFeedback: updatedFeedbackList });
       setFeedbackStatusModal({ isOpen: false, feedback: null });
   };
@@ -1095,177 +1078,117 @@ const ErgoSection = ({ product, testers, onUpdateProduct, highlightedFeedback }:
 // --- Modal Implementations ---
 
 const EcoModal = ({ isOpen, onClose, onSave, eco, productVersions, product }: any) => {
-    const [formData, setFormData] = useState<any>(eco || {
-        ecoNumber: '', date: new Date().toISOString().split('T')[0], version: product.currentVersion,
-        description: { en: '', zh: '' }, affectedBatches: [], affectedCustomers: [], status: EcoStatus.EVALUATING, imageUrls: []
-    });
-    const [isUploading, setIsUploading] = useState(false);
-    const fileInputRef = useRef<HTMLInputElement>(null);
+  const [formData, setFormData] = useState({
+    ecoNumber: eco?.ecoNumber || '',
+    date: eco?.date || new Date().toISOString().split('T')[0],
+    version: eco?.version || product.currentVersion,
+    description: eco?.description?.en || '',
+    status: eco?.status || EcoStatus.EVALUATING,
+    implementationDate: eco?.implementationDate || ''
+  });
 
-    const handleSave = (e: React.FormEvent) => { e.preventDefault(); onSave(formData); };
+  if (!isOpen) return null;
 
-    const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-        const files = e.target.files;
-        if (!files || files.length === 0) return;
-        setIsUploading(true);
-        try {
-            // Fix: Explicitly cast each element to File to avoid TypeScript 'unknown' error when mapping from FileList
-            const urls = await Promise.all(Array.from(files).map(f => api.uploadImage(f as File)));
-            setFormData({ ...formData, imageUrls: [...(formData.imageUrls || []), ...urls] });
-        } catch (err) {
-            alert('上傳失敗');
-        } finally {
-            setIsUploading(false);
-            if (fileInputRef.current) fileInputRef.current.value = '';
-        }
-    };
-
-    const removeImage = (index: number) => {
-        const newUrls = [...formData.imageUrls];
-        newUrls.splice(index, 1);
-        setFormData({ ...formData, imageUrls: newUrls });
-    };
-
-    return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
-            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-xl overflow-hidden flex flex-col max-h-[90vh]">
-                <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-white sticky top-0 z-10">
-                    <h2 className="text-xl font-bold">{eco ? 'Edit ECO' : 'Add New ECO'}</h2>
-                    <button onClick={onClose} className="p-2 hover:bg-slate-100 rounded-full"><X size={20}/></button>
-                </div>
-                <form onSubmit={handleSave} className="p-6 space-y-4 overflow-y-auto custom-scrollbar">
-                    <div className="grid grid-cols-2 gap-4">
-                        <div>
-                            <label className="block text-xs font-bold text-slate-500 uppercase mb-1">ECO Number</label>
-                            <input type="text" value={formData.ecoNumber} onChange={e => setFormData({...formData, ecoNumber: e.target.value})} className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-intenza-500/10 outline-none"/>
-                        </div>
-                        <div>
-                            <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Version (Customizable)</label>
-                            <div className="relative">
-                                <input 
-                                    type="text" 
-                                    list="versions-datalist"
-                                    value={formData.version} 
-                                    onChange={e => setFormData({...formData, version: e.target.value})} 
-                                    className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-intenza-500/10 outline-none"
-                                    placeholder="Enter or select version"
-                                />
-                                <datalist id="versions-datalist">
-                                    {productVersions.map((v: string) => <option key={v} value={v} />)}
-                                </datalist>
-                            </div>
-                        </div>
-                    </div>
-                    <div>
-                        <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Description (EN)</label>
-                        <textarea value={formData.description.en} onChange={e => setFormData({...formData, description: {...formData.description, en: e.target.value}})} className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-intenza-500/10 outline-none" rows={3}/>
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
-                        <div>
-                            <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Status</label>
-                            <select value={formData.status} onChange={e => setFormData({...formData, status: e.target.value})} className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-intenza-500/10 outline-none">
-                                {Object.values(EcoStatus).map(s => <option key={s} value={s}>{s}</option>)}
-                            </select>
-                        </div>
-                        <div>
-                            <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Date</label>
-                            <input type="date" value={formData.date} onChange={e => setFormData({...formData, date: e.target.value})} className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-intenza-500/10 outline-none"/>
-                        </div>
-                    </div>
-
-                    <div className="pt-4 border-t border-slate-100">
-                        <label className="block text-xs font-bold text-slate-500 uppercase mb-3">Reference Media</label>
-                        <div className="grid grid-cols-4 gap-3 mb-4">
-                            {(formData.imageUrls || []).map((url: string, idx: number) => (
-                                <div key={idx} className="relative aspect-square bg-slate-100 rounded-lg overflow-hidden border border-slate-200 group/img">
-                                    {isVideo(url) ? (
-                                        <div className="w-full h-full flex items-center justify-center text-slate-400 bg-slate-50"><Video size={24}/></div>
-                                    ) : (
-                                        <img src={url} className="w-full h-full object-cover" />
-                                    )}
-                                    <button 
-                                        type="button"
-                                        onClick={() => removeImage(idx)}
-                                        className="absolute top-1 right-1 p-1 bg-white rounded-full shadow-md text-red-500 opacity-0 group-hover/img:opacity-100 transition-opacity"
-                                    >
-                                        <X size={12}/>
-                                    </button>
-                                </div>
-                            ))}
-                            <button 
-                                type="button"
-                                onClick={() => fileInputRef.current?.click()}
-                                disabled={isUploading}
-                                className="aspect-square border-2 border-dashed border-slate-200 rounded-lg flex flex-col items-center justify-center text-slate-400 hover:border-slate-400 hover:text-slate-600 transition-all bg-slate-50"
-                            >
-                                {isUploading ? <Loader2 size={20} className="animate-spin"/> : <Plus size={20}/>}
-                                <span className="text-[10px] font-bold uppercase mt-1">Upload</span>
-                            </button>
-                            <input ref={fileInputRef} type="file" multiple accept="image/*,video/*" className="hidden" onChange={handleUpload} />
-                        </div>
-                    </div>
-
-                    <div className="flex gap-3 pt-6 sticky bottom-0 bg-white border-t border-slate-100 -mx-6 -mb-6 p-6">
-                        <button type="button" onClick={onClose} className="flex-1 py-3 font-bold text-slate-500 hover:bg-slate-50 rounded-xl">Cancel</button>
-                        <button type="submit" className="flex-1 py-3 bg-slate-900 text-white font-bold rounded-xl hover:bg-slate-800 transition-all shadow-lg shadow-slate-900/10">Save ECO</button>
-                    </div>
-                </form>
-            </div>
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6">
+        <h2 className="text-xl font-bold mb-4">{eco ? 'Edit ECO' : 'New ECO'}</h2>
+        <div className="space-y-4">
+          <input type="text" placeholder="ECO Number" className="w-full p-2 border rounded" value={formData.ecoNumber} onChange={e => setFormData({...formData, ecoNumber: e.target.value})} />
+          <input type="date" className="w-full p-2 border rounded" value={formData.date} onChange={e => setFormData({...formData, date: e.target.value})} />
+          <select className="w-full p-2 border rounded" value={formData.version} onChange={e => setFormData({...formData, version: e.target.value})}>
+            {productVersions.map((v: string) => <option key={v} value={v}>{v}</option>)}
+          </select>
+          <textarea placeholder="Description" className="w-full p-2 border rounded" value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})} />
+          <select className="w-full p-2 border rounded" value={formData.status} onChange={e => setFormData({...formData, status: e.target.value as EcoStatus})}>
+            {Object.values(EcoStatus).map(s => <option key={s} value={s}>{s}</option>)}
+          </select>
+          {formData.status === EcoStatus.IN_PRODUCTION && (
+             <input type="date" placeholder="Implementation Date" className="w-full p-2 border rounded" value={formData.implementationDate} onChange={e => setFormData({...formData, implementationDate: e.target.value})} />
+          )}
         </div>
-    );
+        <div className="flex gap-2 mt-6">
+          <button onClick={onClose} className="flex-1 p-2 bg-slate-100 rounded font-bold">Cancel</button>
+          <button onClick={() => onSave({ ...formData, description: { en: formData.description, zh: formData.description } })} className="flex-1 p-2 bg-slate-900 text-white rounded font-bold">Save</button>
+        </div>
+      </div>
+    </div>
+  );
 };
 
 const TestModal = ({ isOpen, onClose, onSave, test }: any) => {
-    const [formData, setFormData] = useState<any>(test || {
-        category: 'Mechanical', testName: { en: '', zh: '' }, version: 'v1.0', score: 0, status: TestStatus.PENDING, details: { en: '', zh: '' }, updatedDate: new Date().toISOString().split('T')[0]
-    });
-    const handleSave = (e: React.FormEvent) => { e.preventDefault(); onSave(formData); };
-    return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
-            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-xl overflow-hidden">
-                <div className="p-6 border-b border-slate-100 flex justify-between items-center"><h2 className="text-xl font-bold">{test ? 'Edit Test' : 'Add Test'}</h2><button onClick={onClose} className="p-2 hover:bg-slate-100 rounded-full"><X size={20}/></button></div>
-                <form onSubmit={handleSave} className="p-6 space-y-4">
-                    <div><label className="block text-xs font-bold text-slate-500 uppercase mb-1">Test Name (EN)</label><input type="text" value={formData.testName.en} onChange={e => setFormData({...formData, testName: {...formData.testName, en: e.target.value}})} className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg"/></div>
-                    <div className="grid grid-cols-2 gap-4">
-                        <div><label className="block text-xs font-bold text-slate-500 uppercase mb-1">Status</label><select value={formData.status} onChange={e => setFormData({...formData, status: e.target.value})} className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg">{Object.values(TestStatus).map(s => <option key={s} value={s}>{s}</option>)}</select></div>
-                        <div><label className="block text-xs font-bold text-slate-500 uppercase mb-1">Progress (%)</label><input type="number" value={formData.score} onChange={e => setFormData({...formData, score: Number(e.target.value)})} className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg"/></div>
-                    </div>
-                    <div className="flex gap-3 pt-4 border-t border-slate-100"><button type="button" onClick={onClose} className="flex-1 py-2 font-bold text-slate-500 hover:bg-slate-50 rounded-lg">Cancel</button><button type="submit" className="flex-1 py-2 bg-slate-900 text-white font-bold rounded-lg hover:bg-slate-800 transition-all">Save Test</button></div>
-                </form>
-            </div>
+  const [formData, setFormData] = useState({
+    testName: test?.testName?.en || '',
+    category: test?.category || '',
+    version: test?.version || '',
+    score: test?.score || 0,
+    status: test?.status || TestStatus.PENDING,
+    details: test?.details?.en || ''
+  });
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6">
+        <h2 className="text-xl font-bold mb-4">{test ? 'Edit Test' : 'New Test'}</h2>
+        <div className="space-y-4">
+          <input type="text" placeholder="Test Name" className="w-full p-2 border rounded" value={formData.testName} onChange={e => setFormData({...formData, testName: e.target.value})} />
+          <input type="text" placeholder="Category" className="w-full p-2 border rounded" value={formData.category} onChange={e => setFormData({...formData, category: e.target.value})} />
+          <input type="text" placeholder="Version" className="w-full p-2 border rounded" value={formData.version} onChange={e => setFormData({...formData, version: e.target.value})} />
+          <input type="number" placeholder="Progress %" className="w-full p-2 border rounded" value={formData.score} onChange={e => setFormData({...formData, score: Number(e.target.value)})} />
+          <select className="w-full p-2 border rounded" value={formData.status} onChange={e => setFormData({...formData, status: e.target.value as TestStatus})}>
+            {Object.values(TestStatus).map(s => <option key={s} value={s}>{s}</option>)}
+          </select>
+          <textarea placeholder="Details" className="w-full p-2 border rounded" value={formData.details} onChange={e => setFormData({...formData, details: e.target.value})} />
         </div>
-    );
+        <div className="flex gap-2 mt-6">
+          <button onClick={onClose} className="flex-1 p-2 bg-slate-100 rounded font-bold">Cancel</button>
+          <button onClick={() => onSave({ ...formData, testName: { en: formData.testName, zh: formData.testName }, details: { en: formData.details, zh: formData.details } })} className="flex-1 p-2 bg-slate-900 text-white rounded font-bold">Save</button>
+        </div>
+      </div>
+    </div>
+  );
 };
 
-const NoShipmentModal = ({ isOpen, onClose, version }: any) => (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
-        <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-8 text-center">
-            <div className="w-16 h-16 bg-amber-50 rounded-full flex items-center justify-center mx-auto mb-4"><Ship size={32} className="text-amber-500" /></div>
-            <h3 className="text-lg font-bold text-slate-900 mb-2">No Market Data Found</h3>
-            <p className="text-sm text-slate-500 mb-6">Version <span className="font-mono font-bold text-slate-900">{version}</span> currently has no recorded shipments in the dashboard database.</p>
-            <button onClick={onClose} className="w-full py-2 bg-slate-900 text-white font-bold rounded-lg hover:bg-slate-800 transition-all">Close</button>
+const NoShipmentModal = ({ isOpen, onClose, version }: any) => {
+  if (!isOpen) return null;
+  return (
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-8 text-center">
+        <div className="w-16 h-16 bg-amber-50 text-amber-500 rounded-full flex items-center justify-center mx-auto mb-4">
+          <AlertTriangle size={32} />
         </div>
+        <h3 className="text-xl font-bold mb-2">No Market Data</h3>
+        <p className="text-slate-500 text-sm mb-6">Version {version} has no recorded shipments in the analytics database yet.</p>
+        <button onClick={onClose} className="w-full py-2 bg-slate-900 text-white rounded-lg font-bold">Close</button>
+      </div>
     </div>
-);
+  );
+};
 
 const StartEvaluationModal = ({ isOpen, onClose, onStartProject, allTesters, project }: any) => {
-    const [name, setName] = useState(project ? project.name.en : '');
-    const [selectedTesterIds, setSelectedTesterIds] = useState<string[]>(project ? project.testerIds : []);
-    const handleSave = () => onStartProject({ en: name, zh: name }, selectedTesterIds);
+    const [name, setName] = useState(project?.name?.en || '');
+    const [selectedTesterIds, setSelectedTesterIds] = useState<string[]>(project?.testerIds || []);
+    
+    if (!isOpen) return null;
+
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
-            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden">
-                <div className="p-6 border-b border-slate-100 flex justify-between items-center"><h2 className="text-xl font-bold">{project ? 'Edit Project' : 'Start Evaluation'}</h2><button onClick={onClose} className="p-2 hover:bg-slate-100 rounded-full"><X size={20}/></button></div>
-                <div className="p-6 space-y-4">
-                    <div><label className="block text-xs font-bold text-slate-500 uppercase mb-1">Project Name</label><input type="text" value={name} onChange={e => setName(e.target.value)} className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg"/></div>
-                    <div><label className="block text-xs font-bold text-slate-500 uppercase mb-1">Select Testers</label>
-                        <div className="max-h-40 overflow-y-auto space-y-2 border border-slate-100 p-2 rounded-lg">
-                            {allTesters.map((t: Tester) => (
-                                <label key={t.id} className="flex items-center gap-2 text-sm"><input type="checkbox" checked={selectedTesterIds.includes(t.id)} onChange={e => e.target.checked ? setSelectedTesterIds([...selectedTesterIds, t.id]) : setSelectedTesterIds(selectedTesterIds.filter(id => id !== t.id))}/>{t.name}</label>
-                            ))}
-                        </div>
-                    </div>
-                    <button onClick={handleSave} className="w-full py-3 bg-slate-900 text-white font-bold rounded-xl shadow-lg mt-4">{project ? 'Update Project' : 'Launch Project'}</button>
+            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg p-6">
+                <h2 className="text-xl font-bold mb-4">{project ? 'Edit Project' : 'Start New Evaluation'}</h2>
+                <input type="text" placeholder="Project Name" className="w-full p-2 border rounded mb-4" value={name} onChange={e => setName(e.target.value)} />
+                <div className="max-h-60 overflow-y-auto border rounded p-2 mb-4">
+                    {allTesters.map((t: Tester) => (
+                        <label key={t.id} className="flex items-center gap-2 p-1 hover:bg-slate-50">
+                            <input type="checkbox" checked={selectedTesterIds.includes(t.id)} onChange={e => e.target.checked ? setSelectedTesterIds([...selectedTesterIds, t.id]) : setSelectedTesterIds(selectedTesterIds.filter(id => id !== t.id))} />
+                            <span className="text-sm">{t.name}</span>
+                        </label>
+                    ))}
+                </div>
+                <div className="flex gap-2">
+                    <button onClick={onClose} className="flex-1 p-2 bg-slate-100 rounded font-bold">Cancel</button>
+                    <button onClick={() => onStartProject({ en: name, zh: name }, selectedTesterIds)} className="flex-1 p-2 bg-slate-900 text-white rounded font-bold">Start</button>
                 </div>
             </div>
         </div>
@@ -1274,12 +1197,16 @@ const StartEvaluationModal = ({ isOpen, onClose, onStartProject, allTesters, pro
 
 const AddTaskModal = ({ isOpen, onClose, onSave }: any) => {
     const [name, setName] = useState('');
+    if (!isOpen) return null;
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
             <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6">
-                <h3 className="text-lg font-bold mb-4">Add Task</h3>
-                <input type="text" value={name} onChange={e => setName(e.target.value)} className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg mb-4" placeholder="e.g. Max Resistance Comfort"/>
-                <div className="flex gap-2"><button onClick={onClose} className="flex-1 py-2 text-slate-500">Cancel</button><button onClick={() => onSave(name)} className="flex-1 py-2 bg-slate-900 text-white rounded-lg">Add Task</button></div>
+                <h2 className="text-lg font-bold mb-4">Add Task</h2>
+                <input type="text" autoFocus className="w-full p-2 border rounded mb-4" placeholder="Task Name" value={name} onChange={e => setName(e.target.value)} onKeyPress={e => e.key === 'Enter' && onSave(name)} />
+                <div className="flex gap-2">
+                    <button onClick={onClose} className="flex-1 p-2 bg-slate-100 rounded font-bold">Cancel</button>
+                    <button onClick={() => onSave(name)} className="flex-1 p-2 bg-slate-900 text-white rounded font-bold">Add</button>
+                </div>
             </div>
         </div>
     );
@@ -1287,244 +1214,151 @@ const AddTaskModal = ({ isOpen, onClose, onSave }: any) => {
 
 const EditTaskNameModal = ({ isOpen, onClose, currentName, onSave }: any) => {
     const [name, setName] = useState(currentName);
+    if (!isOpen) return null;
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
             <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6">
-                <h3 className="text-lg font-bold mb-4">Rename Task</h3>
-                <input type="text" value={name} onChange={e => setName(e.target.value)} className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg mb-4"/>
-                <div className="flex gap-2"><button onClick={onClose} className="flex-1 py-2 text-slate-500">Cancel</button><button onClick={() => onSave(name)} className="flex-1 py-2 bg-slate-900 text-white rounded-lg">Save</button></div>
+                <h2 className="text-lg font-bold mb-4">Edit Task Name</h2>
+                <input type="text" autoFocus className="w-full p-2 border rounded mb-4" value={name} onChange={e => setName(e.target.value)} onKeyPress={e => e.key === 'Enter' && onSave(name)} />
+                <div className="flex gap-2">
+                    <button onClick={onClose} className="flex-1 p-2 bg-slate-100 rounded font-bold">Cancel</button>
+                    <button onClick={() => onSave(name)} className="flex-1 p-2 bg-slate-900 text-white rounded font-bold">Save</button>
+                </div>
             </div>
         </div>
     );
 };
 
-const SetTaskResultsModal = ({ isOpen, onClose, onSave, project, testers }: any) => {
-    const [passIds, setPassIds] = useState<string[]>([]);
-    const projectTesters = testers.filter((t: Tester) => project.testerIds.includes(t.id));
+const SetTaskResultsModal = ({ isOpen, onClose, onSave, context, project, testers }: any) => {
+    const [passIds, setPassIds] = useState<string[]>(project.tasks[context.category].find((t: any) => t.id === context.taskId)?.passTesterIds || []);
+    if (!isOpen) return null;
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
             <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6">
-                <h3 className="text-lg font-bold mb-4">Set Results</h3>
-                <div className="space-y-2 mb-6 max-h-60 overflow-y-auto">
-                    {projectTesters.map((t: Tester) => (
-                        <label key={t.id} className="flex items-center justify-between p-2 border border-slate-50 rounded-lg hover:bg-slate-50 transition-colors cursor-pointer">
-                            <span className="text-sm font-medium">{t.name}</span>
-                            <div className="flex gap-1">
-                                <button onClick={() => setPassIds([...passIds.filter(id => id !== t.id), t.id])} className={`px-3 py-1 rounded text-xs font-bold ${passIds.includes(t.id) ? 'bg-emerald-500 text-white' : 'bg-slate-100 text-slate-400'}`}>PASS</button>
-                                <button onClick={() => setPassIds(passIds.filter(id => id !== t.id))} className={`px-3 py-1 rounded text-xs font-bold ${!passIds.includes(t.id) ? 'bg-rose-500 text-white' : 'bg-slate-100 text-slate-400'}`}>NG</button>
-                            </div>
-                        </label>
-                    ))}
+                <h2 className="text-lg font-bold mb-4">Select PASS Testers</h2>
+                <div className="space-y-2 mb-6">
+                    {project.testerIds.map((tid: string) => {
+                        const tester = testers.find((ts: any) => ts.id === tid);
+                        return (
+                            <label key={tid} className="flex items-center gap-2 p-2 hover:bg-slate-50 rounded cursor-pointer">
+                                <input type="checkbox" checked={passIds.includes(tid)} onChange={e => e.target.checked ? setPassIds([...passIds, tid]) : setPassIds(passIds.filter(id => id !== tid))} />
+                                <span>{tester?.name}</span>
+                            </label>
+                        );
+                    })}
                 </div>
-                <div className="flex gap-2"><button onClick={onClose} className="flex-1 py-2 text-slate-500">Cancel</button><button onClick={() => onSave(passIds)} className="flex-1 py-2 bg-slate-900 text-white rounded-lg">Confirm</button></div>
+                <div className="flex gap-2">
+                    <button onClick={onClose} className="flex-1 p-2 bg-slate-100 rounded font-bold">Cancel</button>
+                    <button onClick={() => onSave(passIds)} className="flex-1 p-2 bg-slate-900 text-white rounded font-bold">Save</button>
+                </div>
             </div>
         </div>
     );
 };
 
-const SetPassNgModal = ({ isOpen, onClose, onSet, existingReason }: any) => {
-    const [reason, setReason] = useState(existingReason ? existingReason.reason.en : '');
-    const [type, setType] = useState<'ISSUE' | 'IDEA'>(existingReason?.decisionStatus === NgDecisionStatus.IDEA ? 'IDEA' : 'ISSUE');
+const SetPassNgModal = ({ isOpen, onClose, onSet, context, project, existingReason }: any) => {
+    const [reason, setReason] = useState(existingReason?.reason?.en || '');
+    if (!isOpen) return null;
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
-            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6">
-                <h3 className="text-lg font-bold mb-4">NG Reason</h3>
-                <div className="flex gap-2 mb-4">
-                    <button onClick={() => setType('ISSUE')} className={`flex-1 py-2 text-xs font-bold rounded-lg border transition-all ${type === 'ISSUE' ? 'bg-rose-50 border-rose-200 text-rose-600' : 'bg-slate-50 border-slate-100 text-slate-400'}`}>Report Issue</button>
-                    <button onClick={() => setType('IDEA')} className={`flex-1 py-2 text-xs font-bold rounded-lg border transition-all ${type === 'IDEA' ? 'bg-sky-50 border-sky-200 text-sky-600' : 'bg-slate-50 border-slate-100 text-slate-400'}`}>Log as Idea</button>
+            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6">
+                <h2 className="text-lg font-bold mb-4">NG Reason</h2>
+                <textarea rows={4} className="w-full p-2 border rounded mb-4" value={reason} onChange={e => setReason(e.target.value)} />
+                <div className="flex gap-2">
+                    <button onClick={onClose} className="flex-1 p-2 bg-slate-100 rounded font-bold">Cancel</button>
+                    <button onClick={() => onSet({ en: reason, zh: reason }, false, [], 'ISSUE')} className="flex-1 p-2 bg-slate-900 text-white rounded font-bold">Save</button>
                 </div>
-                <textarea value={reason} onChange={e => setReason(e.target.value)} className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg mb-4" rows={3} placeholder="Describe the issue or suggestion..."/>
-                <div className="flex gap-2"><button onClick={onClose} className="flex-1 py-2 text-slate-500">Cancel</button><button onClick={() => onSet({ en: reason, zh: reason }, false, [], type)} className="flex-1 py-2 bg-slate-900 text-white rounded-lg">Save</button></div>
             </div>
         </div>
     );
 };
 
 const StatusDecisionModal = ({ isOpen, onClose, context, onSetStatus, onLinkEco, onCreateEco, activeEcos, versions, currentProductVersion }: any) => {
-    const [view, setView] = useState<'MAIN' | 'LINK_ECO' | 'SELECT_VERSION'>('MAIN');
     const [selectedVersion, setSelectedVersion] = useState(currentProductVersion);
-
-    const handleStartNewEco = () => {
-        if (versions.length > 1) {
-            setView('SELECT_VERSION');
-        } else {
-            onCreateEco(currentProductVersion);
-        }
-    };
-
+    if (!isOpen) return null;
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md animate-fade-in">
-            <div className="bg-white rounded-3xl shadow-2xl w-full max-w-sm animate-slide-up overflow-hidden">
-                <div className="p-6 border-b border-slate-100 flex justify-between items-center">
-                    <h2 className="text-lg font-bold">
-                        {view === 'MAIN' ? 'Manage Decision' : view === 'LINK_ECO' ? 'Link to Open ECO' : 'Select Target Version'}
-                    </h2>
-                    <button onClick={onClose} className="p-1 hover:bg-slate-100 rounded-full"><X size={20}/></button>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
+            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6">
+                <h2 className="text-lg font-bold mb-4">Decision</h2>
+                <div className="space-y-2 mb-6">
+                    {Object.values(NgDecisionStatus).map(s => (
+                        <button key={s} onClick={() => onSetStatus(s)} className="w-full text-left p-2 border rounded hover:bg-slate-50">{s}</button>
+                    ))}
                 </div>
-                
-                {view === 'MAIN' ? (
-                    <div className="p-6 space-y-3">
-                        <button onClick={handleStartNewEco} className="w-full py-4 px-4 bg-intenza-600 text-white rounded-2xl flex items-center gap-4 hover:bg-intenza-700 transition-all group">
-                            <div className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center group-hover:scale-110 transition-transform"><Plus size={20}/></div>
-                            <div className="text-left">
-                                <div className="font-bold text-sm">Start New ECO</div>
-                                <div className="text-[10px] text-white/60">Create design change record</div>
-                            </div>
-                        </button>
-                        
-                        <button onClick={() => setView('LINK_ECO')} className="w-full py-4 px-4 bg-slate-50 border border-slate-200 text-slate-700 rounded-2xl flex items-center gap-4 hover:bg-slate-100 transition-all group">
-                            <div className="w-10 h-10 rounded-xl bg-slate-200 flex items-center justify-center group-hover:scale-110 transition-transform"><LinkIcon size={20}/></div>
-                            <div className="text-left">
-                                <div className="font-bold text-sm">Link Existing ECO</div>
-                                <div className="text-[10px] text-slate-400">Attach to current open task</div>
-                            </div>
-                        </button>
-
-                        <div className="grid grid-cols-1 gap-2 mt-4">
-                            {[NgDecisionStatus.PENDING, NgDecisionStatus.DISCUSSION, NgDecisionStatus.IGNORED].map(status => (
-                                <button key={status} onClick={() => onSetStatus(status)} className={`py-3 text-[10px] font-bold rounded-xl border border-slate-100 transition-all uppercase tracking-widest ${context.currentStatus === status ? 'bg-slate-900 text-white border-slate-800' : 'bg-slate-50 text-slate-500 hover:bg-white'}`}>{status}</button>
-                            ))}
-                        </div>
-                    </div>
-                ) : view === 'LINK_ECO' ? (
-                    <div className="p-6">
-                        <div className="space-y-2 max-h-64 overflow-y-auto pr-1 custom-scrollbar">
-                            {activeEcos.length > 0 ? activeEcos.map((eco: any) => (
-                                <button key={eco.id} onClick={() => onLinkEco(eco.id)} className={`w-full p-4 rounded-xl border transition-all text-left flex items-start gap-3 ${context.linkedEcoId === eco.id ? 'bg-emerald-50 border-emerald-200 ring-2 ring-emerald-500/10' : 'border-slate-100 hover:border-intenza-200 hover:bg-intenza-50/50'}`}>
-                                    <div className="flex-1">
-                                        <div className="text-xs font-bold text-intenza-600 mb-1">{eco.ecoNumber}</div>
-                                        <div className="text-[11px] font-medium text-slate-700 line-clamp-2">{eco.description.en}</div>
-                                    </div>
-                                    {context.linkedEcoId === eco.id && <Check size={16} className="text-emerald-500 mt-1" />}
-                                </button>
-                            )) : <div className="text-center py-8 text-slate-400 italic text-sm">No open ECOs found</div>}
-                        </div>
-                        <button onClick={() => setView('MAIN')} className="w-full mt-4 py-2 text-xs font-bold text-slate-400 hover:text-slate-600">Go Back</button>
-                    </div>
-                ) : (
-                    <div className="p-6 space-y-4">
-                        <div className="space-y-2">
-                            {versions.map((v: string) => (
-                                <button key={v} onClick={() => setSelectedVersion(v)} className={`w-full py-3 px-4 rounded-xl border text-sm font-bold transition-all text-left flex items-center justify-between ${selectedVersion === v ? 'bg-slate-900 text-white border-slate-800' : 'bg-slate-50 border-slate-100 hover:bg-white'}`}>
-                                    {v} {v === currentProductVersion && <span className="text-[10px] font-normal opacity-60">(Current)</span>}
-                                    {selectedVersion === v && <Check size={16} />}
-                                </button>
-                            ))}
-                        </div>
-                        <button onClick={() => onCreateEco(selectedVersion)} className="w-full py-3 bg-intenza-600 text-white font-bold rounded-xl shadow-lg hover:bg-intenza-700 transition-colors mt-2">Proceed</button>
-                        <button onClick={() => setView('MAIN')} className="w-full py-2 text-xs font-bold text-slate-400 hover:text-slate-600 text-center">Cancel</button>
-                    </div>
+                <div className="border-t pt-4">
+                    <h3 className="text-sm font-bold mb-2">Create ECO</h3>
+                    <select className="w-full p-2 border rounded mb-2" value={selectedVersion} onChange={e => setSelectedVersion(e.target.value)}>
+                        {versions.map((v: string) => <option key={v} value={v}>{v}</option>)}
+                    </select>
+                    <button onClick={() => onCreateEco(selectedVersion)} className="w-full p-2 bg-indigo-600 text-white rounded font-bold mb-4">Create New ECO</button>
+                </div>
+                {activeEcos.length > 0 && (
+                   <div className="border-t pt-4">
+                       <h3 className="text-sm font-bold mb-2">Link to Existing ECO</h3>
+                       <div className="space-y-1">
+                           {activeEcos.map((eco: any) => (
+                               <button key={eco.id} onClick={() => onLinkEco(eco.id)} className="w-full text-left p-2 text-xs border rounded hover:bg-slate-50">{eco.ecoNumber} - {eco.version}</button>
+                           ))}
+                       </div>
+                   </div>
                 )}
+                <button onClick={onClose} className="w-full mt-4 p-2 bg-slate-100 rounded font-bold">Close</button>
             </div>
         </div>
     );
 };
 
 const FeedbackModal = ({ isOpen, onClose, onSave, feedback, product }: any) => {
-    const [formData, setFormData] = useState<any>(feedback || { date: new Date().toISOString().split('T')[0], category: 'Experience', content: { en: '', zh: '' }, source: '' });
+    const [formData, setFormData] = useState({
+        date: feedback?.date || new Date().toISOString().split('T')[0],
+        category: feedback?.category || 'Experience',
+        content: feedback?.content?.en || '',
+        source: feedback?.source || ''
+    });
+
+    if (!isOpen) return null;
+
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
             <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6">
-                <h3 className="text-lg font-bold mb-4">{feedback ? 'Edit Feedback' : 'Add Feedback'}</h3>
+                <h2 className="text-xl font-bold mb-4">{feedback ? 'Edit Feedback' : 'New Feedback'}</h2>
                 <div className="space-y-4">
-                    <div><label className="block text-xs font-bold text-slate-500 uppercase mb-1">Source (Customer)</label><input type="text" value={formData.source} onChange={e => setFormData({...formData, source: e.target.value})} className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg"/></div>
-                    <div><label className="block text-xs font-bold text-slate-500 uppercase mb-1">Category</label>
-                        <select value={formData.category} onChange={e => setFormData({...formData, category: e.target.value})} className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg">
-                            <option value="Resistance profile">Resistance profile</option>
-                            <option value="Experience">Experience</option>
-                            <option value="Stroke">Stroke</option>
-                            <option value="Other Suggestion">Other Suggestion</option>
-                        </select>
-                    </div>
-                    <div><label className="block text-xs font-bold text-slate-500 uppercase mb-1">Content</label><textarea value={formData.content.en} onChange={e => setFormData({...formData, content: { en: e.target.value, zh: e.target.value }})} className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg" rows={3}/></div>
+                    <input type="date" className="w-full p-2 border rounded" value={formData.date} onChange={e => setFormData({...formData, date: e.target.value})} />
+                    <select className="w-full p-2 border rounded" value={formData.category} onChange={e => setFormData({...formData, category: e.target.value as ErgoProjectCategory})}>
+                        {['Resistance profile', 'Experience', 'Stroke', 'Other Suggestion'].map(c => <option key={c} value={c}>{c}</option>)}
+                    </select>
+                    <textarea placeholder="Content" rows={4} className="w-full p-2 border rounded" value={formData.content} onChange={e => setFormData({...formData, content: e.target.value})} />
+                    <input type="text" placeholder="Source" className="w-full p-2 border rounded" value={formData.source} onChange={e => setFormData({...formData, source: e.target.value})} />
                 </div>
-                <div className="flex gap-2 mt-6"><button onClick={onClose} className="flex-1 py-2 text-slate-500">Cancel</button><button onClick={() => onSave(formData, false)} className="flex-1 py-2 bg-slate-900 text-white rounded-lg">Save</button></div>
+                <div className="flex gap-2 mt-6">
+                    <button onClick={onClose} className="flex-1 p-2 bg-slate-100 rounded font-bold">Cancel</button>
+                    <button onClick={() => onSave({ ...formData, content: { en: formData.content, zh: formData.content } }, false)} className="flex-1 p-2 bg-slate-900 text-white rounded font-bold">Save</button>
+                </div>
             </div>
         </div>
     );
 };
 
 const FeedbackStatusDecisionModal = ({ isOpen, onClose, feedback, onUpdateStatus, onCreateEco, onLinkEco, activeEcos, versions, currentProductVersion }: any) => {
-    const [view, setView] = useState<'MAIN' | 'LINK_ECO' | 'SELECT_VERSION'>('MAIN');
     const [selectedVersion, setSelectedVersion] = useState(currentProductVersion);
-
-    const handleStartNewEco = () => {
-        if (versions.length > 1) {
-            setView('SELECT_VERSION');
-        } else {
-            onCreateEco(currentProductVersion);
-        }
-    };
-
+    if (!isOpen) return null;
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md animate-fade-in">
-            <div className="bg-white rounded-3xl shadow-2xl w-full max-w-sm animate-slide-up overflow-hidden text-center">
-                <div className="p-6 border-b border-slate-100 flex justify-between items-center">
-                    <h2 className="text-lg font-bold">
-                        {view === 'MAIN' ? 'Feedback Status' : view === 'LINK_ECO' ? 'Link to Open ECO' : 'Select Target Version'}
-                    </h2>
-                    <button onClick={onClose} className="p-1 hover:bg-slate-100 rounded-full"><X size={20}/></button>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
+            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6">
+                <h2 className="text-lg font-bold mb-4">Feedback Status</h2>
+                <div className="space-y-2 mb-6">
+                    {['PENDING', 'DISCUSSION', 'IGNORED'].map(s => (
+                        <button key={s} onClick={() => onUpdateStatus(feedback.id, s as any)} className="w-full text-left p-2 border rounded hover:bg-slate-50">{s}</button>
+                    ))}
                 </div>
-                
-                {view === 'MAIN' ? (
-                    <div className="p-6 space-y-3">
-                        <button onClick={handleStartNewEco} className="w-full py-4 px-4 bg-intenza-600 text-white rounded-2xl flex items-center gap-4 hover:bg-intenza-700 transition-all group text-left">
-                            <div className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center group-hover:scale-110 transition-transform"><Plus size={20}/></div>
-                            <div>
-                                <div className="font-bold text-sm">Start New ECO</div>
-                                <div className="text-[10px] text-white/60">Address this complaint via ECO</div>
-                            </div>
-                        </button>
-                        
-                        <button onClick={() => setView('LINK_ECO')} className="w-full py-4 px-4 bg-slate-50 border border-slate-200 text-slate-700 rounded-2xl flex items-center gap-4 hover:bg-slate-100 transition-all group text-left">
-                            <div className="w-10 h-10 rounded-xl bg-slate-200 flex items-center justify-center group-hover:scale-110 transition-transform"><LinkIcon size={20}/></div>
-                            <div>
-                                <div className="font-bold text-sm">Link Existing ECO</div>
-                                <div className="text-[10px] text-slate-400">Attach to existing design change</div>
-                            </div>
-                        </button>
-
-                        <div className="grid grid-cols-1 gap-2 mt-4 border-t border-slate-50 pt-4">
-                            {['PENDING', 'DISCUSSION', 'IGNORED'].map((status: any) => (
-                                <button 
-                                    key={status} 
-                                    onClick={() => onUpdateStatus(feedback.id, status)} 
-                                    className={`py-3 rounded-xl border text-xs font-bold transition-all uppercase tracking-widest ${feedback.status === status ? 'bg-slate-900 text-white border-slate-800 shadow-md' : 'bg-slate-50 text-slate-500 hover:bg-white hover:border-slate-200'}`}
-                                >
-                                    {status}
-                                </button>
-                            ))}
-                        </div>
-                    </div>
-                ) : view === 'LINK_ECO' ? (
-                    <div className="p-6">
-                        <div className="space-y-2 max-h-64 overflow-y-auto pr-1 custom-scrollbar">
-                            {activeEcos.length > 0 ? activeEcos.map((eco: any) => (
-                                <button key={eco.id} onClick={() => onLinkEco(eco.id)} className={`w-full p-4 rounded-xl border transition-all text-left flex items-start gap-3 ${feedback.linkedEcoId === eco.id ? 'bg-emerald-50 border-emerald-200 ring-2 ring-emerald-500/10' : 'border-slate-100 hover:border-intenza-200 hover:bg-intenza-50/50'}`}>
-                                    <div className="flex-1">
-                                        <div className="text-xs font-bold text-intenza-600 mb-1">{eco.ecoNumber}</div>
-                                        <div className="text-[11px] font-medium text-slate-700 line-clamp-2">{eco.description.en}</div>
-                                    </div>
-                                    {feedback.linkedEcoId === eco.id && <Check size={16} className="text-emerald-500 mt-1" />}
-                                </button>
-                            )) : <div className="text-center py-8 text-slate-400 italic text-sm">No open ECOs found</div>}
-                        </div>
-                        <button onClick={() => setView('MAIN')} className="w-full mt-4 py-2 text-xs font-bold text-slate-400 hover:text-slate-600 text-center">Go Back</button>
-                    </div>
-                ) : (
-                    <div className="p-6 space-y-4">
-                        <div className="space-y-2">
-                            {versions.map((v: string) => (
-                                <button key={v} onClick={() => setSelectedVersion(v)} className={`w-full py-3 px-4 rounded-xl border text-sm font-bold transition-all text-left flex items-center justify-between ${selectedVersion === v ? 'bg-slate-900 text-white border-slate-800' : 'bg-slate-50 border-slate-100 hover:bg-white'}`}>
-                                    {v} {v === currentProductVersion && <span className="text-[10px] font-normal opacity-60">(Current)</span>}
-                                    {selectedVersion === v && <Check size={16} />}
-                                </button>
-                            ))}
-                        </div>
-                        <button onClick={() => onCreateEco(selectedVersion)} className="w-full py-3 bg-intenza-600 text-white font-bold rounded-xl shadow-lg hover:bg-intenza-700 transition-colors mt-2">Proceed</button>
-                        <button onClick={() => setView('MAIN')} className="w-full py-2 text-xs font-bold text-slate-400 hover:text-slate-600 text-center">Cancel</button>
-                    </div>
-                )}
+                <div className="border-t pt-4">
+                    <h3 className="text-sm font-bold mb-2">Create ECO</h3>
+                    <select className="w-full p-2 border rounded mb-2" value={selectedVersion} onChange={e => setSelectedVersion(e.target.value)}>
+                        {versions.map((v: string) => <option key={v} value={v}>{v}</option>)}
+                    </select>
+                    <button onClick={() => onCreateEco(selectedVersion)} className="w-full p-2 bg-indigo-600 text-white rounded font-bold">Create ECO</button>
+                </div>
+                <button onClick={onClose} className="w-full mt-4 p-2 bg-slate-100 rounded font-bold">Close</button>
             </div>
         </div>
     );
