@@ -147,6 +147,9 @@ export interface ProductModel {
   durabilityTests: TestResult[];
   isWatched: boolean;
   customSortOrder: number;
+  // Status Light Properties
+  statusOverride?: 'RED' | 'BLUE' | 'GREEN' | 'AUTO';
+  statusLightSize?: 'SMALL' | 'NORMAL' | 'LARGE';
 }
 
 export interface ShipmentData {

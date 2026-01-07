@@ -1,7 +1,7 @@
 
 import React, { useState, useRef, useEffect, useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Search, ChevronRight, X, Upload, Pencil, Save, Star, Trash2, Image as ImageIcon, Loader2, ArrowUpDown, Calendar, Info } from 'lucide-react';
+import { Plus, Search, ChevronRight, X, Upload, Pencil, Save, Star, Trash2, Image as ImageIcon, Loader2, ArrowUpDown, Calendar, Info, Settings2 } from 'lucide-react';
 import { ProductModel, LocalizedString, EcoStatus } from '../types';
 import { LanguageContext } from '../App';
 import { api } from '../services/api';
@@ -28,7 +28,6 @@ export const Dashboard: React.FC<DashboardProps> = ({ products, seriesList, user
   
   // Tooltip State
   const [hoveredLightId, setHoveredLightId] = useState<string | null>(null);
-  // FIX: Using ReturnType<typeof setTimeout> instead of NodeJS.Timeout to avoid namespace errors in browser environment.
   const hoverTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Modal State
@@ -42,12 +41,16 @@ export const Dashboard: React.FC<DashboardProps> = ({ products, seriesList, user
     sku: '',
     version: 'v1.0',
     description: '',
-    imageUrl: ''
+    imageUrl: '',
+    statusOverride: 'AUTO' as 'RED' | 'BLUE' | 'GREEN' | 'AUTO',
+    statusLightSize: 'NORMAL' as 'SMALL' | 'NORMAL' | 'LARGE'
   });
   
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const isViewer = userRole === 'viewer';
+  const isAdmin = userRole === 'admin';
+  const isStandard = userRole === 'user';
   
   useEffect(() => {
     if (isModalOpen) {
@@ -58,7 +61,9 @@ export const Dashboard: React.FC<DashboardProps> = ({ products, seriesList, user
           sku: editingProduct.sku,
           version: editingProduct.currentVersion,
           description: t(editingProduct.description),
-          imageUrl: editingProduct.imageUrl
+          imageUrl: editingProduct.imageUrl,
+          statusOverride: editingProduct.statusOverride || 'AUTO',
+          statusLightSize: editingProduct.statusLightSize || 'NORMAL'
         });
       } else {
         setFormData({
@@ -67,7 +72,9 @@ export const Dashboard: React.FC<DashboardProps> = ({ products, seriesList, user
           sku: '',
           version: 'v1.0',
           description: '',
-          imageUrl: ''
+          imageUrl: '',
+          statusOverride: 'AUTO',
+          statusLightSize: 'NORMAL'
         });
       }
     }
@@ -141,6 +148,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ products, seriesList, user
         sku: formData.sku,
         imageUrl: formData.imageUrl || editingProduct.imageUrl,
         currentVersion: formData.version,
+        statusOverride: formData.statusOverride,
+        statusLightSize: formData.statusLightSize
       });
     } else {
       const newProductData = {
@@ -150,6 +159,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ products, seriesList, user
         imageUrl: formData.imageUrl,
         currentVersion: formData.version,
         description: { en: formData.description, zh: formData.description },
+        statusOverride: formData.statusOverride,
+        statusLightSize: formData.statusLightSize
       };
       await onAddProduct(newProductData as any);
     }
@@ -157,8 +168,13 @@ export const Dashboard: React.FC<DashboardProps> = ({ products, seriesList, user
     handleCloseModal();
   };
 
-  // Helper to determine product status color
   const getProductStatusColor = (p: ProductModel): 'red' | 'blue' | 'green' => {
+    if (p.statusOverride && p.statusOverride !== 'AUTO') {
+        if (p.statusOverride === 'RED') return 'red';
+        if (p.statusOverride === 'BLUE') return 'blue';
+        return 'green';
+    }
+
     const pendingEcos = p.designHistory.filter(h => h.status !== EcoStatus.IN_PRODUCTION && h.status !== EcoStatus.DESIGN_COMPLETE);
     if (pendingEcos.length === 0) return 'green';
     
@@ -187,7 +203,6 @@ export const Dashboard: React.FC<DashboardProps> = ({ products, seriesList, user
     setHoveredLightId(null);
   };
 
-  // 取得目前設定版本的量產日期資訊
   const getCurrentProductionInfo = (p: ProductModel) => {
     return (p.designHistory || []).find(
       h => h.version === p.currentVersion && 
@@ -265,6 +280,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ products, seriesList, user
           const productionInfo = getCurrentProductionInfo(p);
           const displayVersion = p.currentVersion;
           const statusColor = getProductStatusColor(p);
+          const lightSize = p.statusLightSize || 'NORMAL';
+          const sizeClass = lightSize === 'SMALL' ? 'w-3 h-3' : lightSize === 'LARGE' ? 'w-6 h-6' : 'w-4 h-4';
           
           return (
             <div 
@@ -273,45 +290,43 @@ export const Dashboard: React.FC<DashboardProps> = ({ products, seriesList, user
               onClick={() => navigate(`/product/${p.id}`)}
             >
               <div className="relative h-64 bg-slate-50 p-6 flex items-center justify-center overflow-hidden border-b border-slate-50">
-                {/* Traffic Light Indicator */}
                 <div 
                   className="absolute top-5 left-5 z-20"
                   onMouseEnter={() => handleMouseEnterLight(p.id)}
                   onMouseLeave={handleMouseLeaveLight}
                 >
-                  <div className={`w-4 h-4 rounded-full shadow-lg border-2 border-white animate-pulse-slow ${
+                  <div className={`${sizeClass} rounded-full shadow-lg border-2 border-white animate-pulse-slow ${
                     statusColor === 'red' ? 'bg-rose-500 shadow-rose-500/50' :
                     statusColor === 'blue' ? 'bg-blue-500 shadow-blue-500/50' :
                     'bg-emerald-500 shadow-emerald-500/50'
                   }`} />
                   
-                  {/* Status Tooltip */}
                   {hoveredLightId === p.id && (
                     <div className="absolute top-full left-0 mt-3 w-64 p-4 bg-slate-900 text-white rounded-2xl shadow-2xl z-[60] animate-fade-in border border-slate-700/50 backdrop-blur-md">
                       <div className="flex items-center gap-2 mb-3 border-b border-white/10 pb-2">
                         <Info size={14} className="text-slate-400" />
-                        <span className="text-[10px] font-black uppercase tracking-widest text-slate-300">Status Guide</span>
+                        <span className="text-[10px] font-black uppercase tracking-widest text-slate-300">{t({ en: 'Status Guide', zh: '燈號狀態說明' })}</span>
                       </div>
                       <div className="space-y-3">
                         <div className="flex items-start gap-3">
                            <div className="w-2.5 h-2.5 rounded-full bg-blue-500 mt-1 shadow-lg shadow-blue-500/40" />
                            <div className="flex-1">
-                              <div className="text-[11px] font-bold text-white leading-none">General ECO</div>
-                              <div className="text-[10px] text-slate-400 mt-1">一般設變中</div>
+                              <div className="text-[11px] font-bold text-white leading-none">{t({ en: 'General ECO', zh: '一般設變中' })}</div>
+                              <div className="text-[10px] text-slate-400 mt-1">{t({ en: 'ECO in progress', zh: '設計變更進行中' })}</div>
                            </div>
                         </div>
                         <div className="flex items-start gap-3">
                            <div className="w-2.5 h-2.5 rounded-full bg-rose-500 mt-1 shadow-lg shadow-rose-500/40" />
                            <div className="flex-1">
-                              <div className="text-[11px] font-bold text-white leading-none">Major ECO</div>
-                              <div className="text-[10px] text-slate-400 mt-1">安全、人因重大設變中</div>
+                              <div className="text-[11px] font-bold text-white leading-none">{t({ en: 'Major ECO', zh: '重大設變中' })}</div>
+                              <div className="text-[10px] text-slate-400 mt-1">{t({ en: 'Safety or Ergonomic changes', zh: '安全、人因重大設變中' })}</div>
                            </div>
                         </div>
                         <div className="flex items-start gap-3">
                            <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 mt-1 shadow-lg shadow-emerald-500/40" />
                            <div className="flex-1">
-                              <div className="text-[11px] font-bold text-white leading-none">Ready for Production</div>
-                              <div className="text-[10px] text-slate-400 mt-1">可量產狀態</div>
+                              <div className="text-[11px] font-bold text-white leading-none">{t({ en: 'Ready for Production', zh: '可量產' })}</div>
+                              <div className="text-[10px] text-slate-400 mt-1">{t({ en: 'No pending critical changes', zh: '目前無待處理重大設變' })}</div>
                            </div>
                         </div>
                       </div>
@@ -320,11 +335,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ products, seriesList, user
                 </div>
 
                 {p.imageUrl ? (
-                  <img 
-                    src={p.imageUrl} 
-                    alt={t(p.modelName)} 
-                    className="w-full h-full object-contain transition-transform duration-500 group-hover:scale-105" 
-                  />
+                  <img src={p.imageUrl} alt={t(p.modelName)} className="w-full h-full object-contain transition-transform duration-500 group-hover:scale-105" />
                 ) : (
                   <div className="w-full h-full flex flex-col items-center justify-center text-slate-300 bg-slate-100 rounded-2xl">
                     <ImageIcon size={64} className="opacity-10 mb-2" />
@@ -334,22 +345,13 @@ export const Dashboard: React.FC<DashboardProps> = ({ products, seriesList, user
                 
                 {!isViewer && (
                   <div className="absolute top-4 right-4 flex flex-col gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-10">
-                    <button 
-                      onClick={(e) => { e.stopPropagation(); onToggleWatch(p.id); }}
-                      className={`p-2.5 rounded-full transition-all shadow-lg border ${p.isWatched ? 'bg-amber-400 text-white border-amber-300' : 'bg-white/95 text-slate-400 border-slate-100 hover:text-amber-500'}`}
-                    >
+                    <button onClick={(e) => { e.stopPropagation(); onToggleWatch(p.id); }} className={`p-2.5 rounded-full transition-all shadow-lg border ${p.isWatched ? 'bg-amber-400 text-white border-amber-300' : 'bg-white/95 text-slate-400 border-slate-100 hover:text-amber-500'}`}>
                       <Star size={18} fill={p.isWatched ? 'currentColor' : 'none'} strokeWidth={2.5} />
                     </button>
-                    <button 
-                      onClick={(e) => { e.stopPropagation(); handleStartEdit(p); }}
-                      className="p-2.5 bg-white/95 backdrop-blur-sm rounded-full text-slate-400 border border-slate-100 hover:text-slate-900 transition-all shadow-lg"
-                    >
+                    <button onClick={(e) => { e.stopPropagation(); handleStartEdit(p); }} className="p-2.5 bg-white/95 backdrop-blur-sm rounded-full text-slate-400 border border-slate-100 hover:text-slate-900 transition-all shadow-lg">
                       <Pencil size={18} strokeWidth={2.5} />
                     </button>
-                    <button 
-                      onClick={(e) => { e.stopPropagation(); if(window.confirm('Delete product?')) onDeleteProduct(p.id); }}
-                      className="p-2.5 bg-white/95 backdrop-blur-sm rounded-full text-slate-400 border border-slate-100 hover:text-red-500 transition-all shadow-lg"
-                    >
+                    <button onClick={(e) => { e.stopPropagation(); if(window.confirm('Delete product?')) onDeleteProduct(p.id); }} className="p-2.5 bg-white/95 backdrop-blur-sm rounded-full text-slate-400 border border-slate-100 hover:text-red-500 transition-all shadow-lg">
                       <Trash2 size={18} strokeWidth={2.5} />
                     </button>
                   </div>
@@ -359,48 +361,24 @@ export const Dashboard: React.FC<DashboardProps> = ({ products, seriesList, user
               <div className="p-6 flex-1 flex flex-col">
                 <div className="flex flex-col gap-2 mb-4">
                   <div className="flex items-center gap-2 flex-wrap">
-                    <h3 className="text-xl font-black text-slate-900 group-hover:text-intenza-600 transition-colors leading-tight">
-                      {t(p.modelName)}
-                    </h3>
+                    <h3 className="text-xl font-black text-slate-900 group-hover:text-intenza-600 transition-colors leading-tight">{t(p.modelName)}</h3>
                     <div className="flex items-center gap-1.5">
-                      <span className="text-[11px] font-black bg-slate-900 text-white px-2.5 py-1 rounded-lg shadow-sm">
-                        {displayVersion}
-                      </span>
+                      <span className="text-[11px] font-black bg-slate-900 text-white px-2.5 py-1 rounded-lg shadow-sm">{displayVersion}</span>
                       {productionInfo && productionInfo.implementationDate && (
-                        <span className="text-[10px] font-bold text-slate-400 flex items-center gap-1 bg-slate-50 px-2 py-1 rounded-lg border border-slate-100">
-                          <Calendar size={10} /> {productionInfo.implementationDate}
-                        </span>
+                        <span className="text-[10px] font-bold text-slate-400 flex items-center gap-1 bg-slate-50 px-2 py-1 rounded-lg border border-slate-100"><Calendar size={10} /> {productionInfo.implementationDate}</span>
                       )}
                     </div>
                   </div>
                 </div>
-                
-                <p className="text-sm text-slate-500 line-clamp-2 mb-6 leading-relaxed flex-1 font-medium">
-                  {t(p.description)}
-                </p>
-
+                <p className="text-sm text-slate-500 line-clamp-2 mb-6 leading-relaxed flex-1 font-medium">{t(p.description)}</p>
                 <div className="pt-5 border-t-2 border-slate-50 flex items-center justify-between">
-                  <div className="flex flex-col">
-                    <span className="text-[10px] font-black text-slate-300 uppercase tracking-[0.2em] mb-1">SKU Identity</span>
-                    <span className="text-sm font-bold text-slate-800 font-mono tracking-tight">{p.sku}</span>
-                  </div>
-                  <div className="w-10 h-10 rounded-full bg-slate-50 flex items-center justify-center text-slate-300 group-hover:bg-intenza-500 group-hover:text-white transition-all shadow-inner group-hover:shadow-lg group-hover:shadow-intenza-500/30">
-                    <ChevronRight size={24} strokeWidth={3} />
-                  </div>
+                  <div className="flex flex-col"><span className="text-[10px] font-black text-slate-300 uppercase tracking-[0.2em] mb-1">SKU Identity</span><span className="text-sm font-bold text-slate-800 font-mono tracking-tight">{p.sku}</span></div>
+                  <div className="w-10 h-10 rounded-full bg-slate-50 flex items-center justify-center text-slate-300 group-hover:bg-intenza-500 group-hover:text-white transition-all shadow-inner group-hover:shadow-lg group-hover:shadow-intenza-500/30"><ChevronRight size={24} strokeWidth={3} /></div>
                 </div>
               </div>
             </div>
           );
         })}
-        {filteredProducts.length === 0 && (
-          <div className="col-span-full py-20 flex flex-col items-center justify-center text-slate-400 animate-fade-in">
-             <div className="w-20 h-20 bg-slate-100 rounded-full flex items-center justify-center mb-4">
-                <Search size={32} className="opacity-20" />
-             </div>
-             <p className="font-bold text-lg">No products found</p>
-             <p className="text-sm">Try adjusting your search or filters.</p>
-          </div>
-        )}
       </div>
 
       {isModalOpen && !isViewer && (
@@ -412,17 +390,12 @@ export const Dashboard: React.FC<DashboardProps> = ({ products, seriesList, user
             </div>
             
             <form onSubmit={handleSubmit} className="p-8 space-y-8 max-h-[75vh] overflow-y-auto custom-scrollbar">
-              <div 
-                onClick={() => fileInputRef.current?.click()}
-                className="relative h-56 bg-slate-50 rounded-3xl border-4 border-dashed border-slate-200 flex flex-col items-center justify-center cursor-pointer hover:border-slate-400 hover:bg-slate-100 transition-all group overflow-hidden shadow-inner"
-              >
+              <div onClick={() => fileInputRef.current?.click()} className="relative h-56 bg-slate-50 rounded-3xl border-4 border-dashed border-slate-200 flex flex-col items-center justify-center cursor-pointer hover:border-slate-400 hover:bg-slate-100 transition-all group overflow-hidden shadow-inner">
                 {formData.imageUrl ? (
                   <>
                     <img src={formData.imageUrl} alt="Preview" className="w-full h-full object-contain p-4" />
                     <div className="absolute inset-0 bg-slate-900/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity backdrop-blur-sm">
-                      <div className="bg-white text-slate-900 p-3 rounded-full shadow-2xl scale-75 group-hover:scale-100 transition-transform">
-                        <Upload size={24} strokeWidth={3} />
-                      </div>
+                      <div className="bg-white text-slate-900 p-3 rounded-full shadow-2xl scale-75 group-hover:scale-100 transition-transform"><Upload size={24} strokeWidth={3} /></div>
                     </div>
                   </>
                 ) : (
@@ -434,40 +407,78 @@ export const Dashboard: React.FC<DashboardProps> = ({ products, seriesList, user
                 <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleImageUpload} />
               </div>
 
+              {(isAdmin || isStandard) && (
+                <div className="bg-slate-50 p-6 rounded-3xl border-2 border-slate-100">
+                   <div className="flex items-center gap-2 mb-4 text-slate-900">
+                      <Settings2 size={18} />
+                      <h3 className="text-sm font-black uppercase tracking-widest">{t({ en: 'Status Light Settings', zh: '指示燈權限與設定' })}</h3>
+                   </div>
+                   <div className="space-y-6">
+                      <div>
+                         <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">{t({ en: 'Light Color / Mode', zh: '燈號顏色 / 模式選擇' })}</label>
+                         <div className="grid grid-cols-4 gap-2">
+                            {['AUTO', 'RED', 'BLUE', 'GREEN'].map(mode => (
+                               <button 
+                                 key={mode}
+                                 type="button"
+                                 onClick={() => setFormData({...formData, statusOverride: mode as any})}
+                                 className={`py-2 px-1 rounded-xl text-[10px] font-bold border-2 transition-all ${
+                                    formData.statusOverride === mode 
+                                    ? 'bg-slate-900 text-white border-slate-900' 
+                                    : 'bg-white text-slate-500 border-slate-100 hover:border-slate-300'
+                                 }`}
+                               >
+                                  {mode === 'AUTO' ? t({ en: 'Auto Calc', zh: '系統自動' }) : mode}
+                               </button>
+                            ))}
+                         </div>
+                      </div>
+
+                      {isAdmin && (
+                         <div className="animate-fade-in">
+                            <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">{t({ en: 'Light Size (Admin Only)', zh: '燈號大小 (僅管理者可調)' })}</label>
+                            <div className="flex gap-4">
+                               {['SMALL', 'NORMAL', 'LARGE'].map(sz => (
+                                  <button 
+                                    key={sz}
+                                    type="button"
+                                    onClick={() => setFormData({...formData, statusLightSize: sz as any})}
+                                    className={`flex-1 py-2 px-3 rounded-xl text-[10px] font-bold border-2 transition-all ${
+                                       formData.statusLightSize === sz 
+                                       ? 'bg-intenza-600 text-white border-intenza-600' 
+                                       : 'bg-white text-slate-500 border-slate-100 hover:border-slate-300'
+                                    }`}
+                                  >
+                                     {sz}
+                                  </button>
+                               ))}
+                            </div>
+                         </div>
+                      )}
+                   </div>
+                </div>
+              )}
+
               <div className="grid grid-cols-2 gap-8">
                 <div className="col-span-2">
                   <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-3">Model Name</label>
-                  <input required type="text" value={formData.modelName} onChange={(e) => setFormData({...formData, modelName: e.target.value})} className="w-full px-5 py-3.5 bg-slate-50 border-2 border-slate-100 rounded-2xl focus:border-slate-900 focus:bg-white outline-none transition-all font-bold" placeholder="e.g. 550Te2 Treadmill" />
+                  <input required type="text" value={formData.modelName} onChange={(e) => setFormData({...formData, modelName: e.target.value})} className="w-full px-5 py-3.5 bg-slate-50 border-2 border-slate-100 rounded-2xl focus:border-slate-900 focus:bg-white outline-none transition-all font-bold" />
                 </div>
-                
                 <div>
                   <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-3">SKU ID</label>
-                  <input required type="text" value={formData.sku} onChange={(e) => setFormData({...formData, sku: e.target.value})} className="w-full px-5 py-3.5 bg-slate-50 border-2 border-slate-100 rounded-2xl focus:border-slate-900 focus:bg-white outline-none transition-all font-bold font-mono" placeholder="TR-550-DL" />
+                  <input required type="text" value={formData.sku} onChange={(e) => setFormData({...formData, sku: e.target.value})} className="w-full px-5 py-3.5 bg-slate-50 border-2 border-slate-100 rounded-2xl focus:border-slate-900 focus:bg-white outline-none transition-all font-bold font-mono" />
                 </div>
-                
                 <div>
                   <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-3">Product Series</label>
-                  <select 
-                    value={t(formData.series)} 
-                    onChange={(e) => {
-                      const series = seriesList.find(s => t(s) === e.target.value);
-                      if (series) setFormData({...formData, series});
-                    }}
-                    className="w-full px-5 py-3.5 bg-slate-50 border-2 border-slate-100 rounded-2xl focus:border-slate-900 focus:bg-white outline-none transition-all font-bold"
-                  >
+                  <select value={t(formData.series)} onChange={(e) => { const series = seriesList.find(s => t(s) === e.target.value); if (series) setFormData({...formData, series}); }} className="w-full px-5 py-3.5 bg-slate-50 border-2 border-slate-100 rounded-2xl focus:border-slate-900 focus:bg-white outline-none transition-all font-bold">
                     {seriesList.map(s => <option key={t(s)} value={t(s)}>{t(s)}</option>)}
                   </select>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-3">Current Version</label>
-                  <input required type="text" value={formData.version} onChange={(e) => setFormData({...formData, version: e.target.value})} className="w-full px-5 py-3.5 bg-slate-50 border-2 border-slate-100 rounded-2xl focus:border-slate-900 focus:bg-white outline-none transition-all font-bold" placeholder="v1.0" />
                 </div>
               </div>
 
               <div>
                 <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-3">Product Description</label>
-                <textarea rows={4} value={formData.description} onChange={(e) => setFormData({...formData, description: e.target.value})} className="w-full px-5 py-3.5 bg-slate-50 border-2 border-slate-100 rounded-2xl focus:border-slate-900 focus:bg-white outline-none transition-all resize-none font-medium" placeholder="Describe the design target..." />
+                <textarea rows={4} value={formData.description} onChange={(e) => setFormData({...formData, description: e.target.value})} className="w-full px-5 py-3.5 bg-slate-50 border-2 border-slate-100 rounded-2xl focus:border-slate-900 focus:bg-white outline-none transition-all resize-none font-medium" />
               </div>
 
               <div className="flex gap-4 pt-6 sticky bottom-0 bg-white/80 backdrop-blur-md">
