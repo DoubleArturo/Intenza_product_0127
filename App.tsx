@@ -48,6 +48,7 @@ const App = () => {
   const [showAiInsights, setShowAiInsights] = useState(false); // 預設關閉 AI
   const [maxHistorySteps, setMaxHistorySteps] = useState(10);
   const [customLogoUrl, setCustomLogoUrl] = useState<string | undefined>(undefined);
+  const [globalStatusLightSize, setGlobalStatusLightSize] = useState<'SMALL' | 'NORMAL' | 'LARGE'>('NORMAL');
 
   const [syncStatus, setSyncStatus] = useState<'idle' | 'saving' | 'success' | 'error'>('idle');
   const [errorDetail, setErrorDetail] = useState<string>('');
@@ -64,7 +65,6 @@ const App = () => {
   const handleLogout = useCallback(() => {
     setIsLoggedIn(false);
     setCurrentUser(null);
-    // Note: customLogoUrl stays to keep branding on login screen
   }, []);
 
   const handleSyncToCloud = useCallback(async (isAutoSync = false) => {
@@ -74,7 +74,7 @@ const App = () => {
     setSyncStatus('saving');
     
     const state: AppState = {
-      products, seriesList, shipments, testers, users, language, showAiInsights, maxHistorySteps, customLogoUrl
+      products, seriesList, shipments, testers, users, language, showAiInsights, maxHistorySteps, customLogoUrl, globalStatusLightSize
     };
 
     try {
@@ -89,7 +89,7 @@ const App = () => {
       setErrorDetail(error.message || 'Connection Error');
       isSyncingRef.current = false;
     }
-  }, [products, seriesList, shipments, testers, users, language, showAiInsights, maxHistorySteps, customLogoUrl, isLoggedIn, currentUser]);
+  }, [products, seriesList, shipments, testers, users, language, showAiInsights, maxHistorySteps, customLogoUrl, globalStatusLightSize, isLoggedIn, currentUser]);
 
   const handleLoadFromCloud = useCallback(async () => {
     if (isSyncingRef.current) return;
@@ -107,6 +107,7 @@ const App = () => {
         if (cloudData.language) setLanguage(cloudData.language);
         if (cloudData.showAiInsights !== undefined) setShowAiInsights(cloudData.showAiInsights);
         if (cloudData.customLogoUrl) setCustomLogoUrl(cloudData.customLogoUrl);
+        if (cloudData.globalStatusLightSize) setGlobalStatusLightSize(cloudData.globalStatusLightSize);
         setSyncStatus('success');
       }
       initialLoadDone.current = true;
@@ -122,11 +123,9 @@ const App = () => {
   const handleResetShipments = useCallback(() => {
     if (currentUser?.role === 'viewer') return;
     setShipments([]);
-    // Immediately trigger a sync to cloud after clearing
     setTimeout(() => handleSyncToCloud(true), 100);
   }, [handleSyncToCloud, currentUser]);
 
-  // Keyboard shortcut Ctrl + S for Pushing to cloud
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
@@ -136,25 +135,22 @@ const App = () => {
         }
       }
     };
-
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isLoggedIn, handleSyncToCloud, currentUser]);
 
-  // 初始載入（無論登入與否，為了讀取 Logo）
   useEffect(() => {
     if (!initialLoadDone.current) {
       handleLoadFromCloud();
     }
   }, [handleLoadFromCloud]);
 
-  // 自動同步：僅在初始載入完成後，且資料發生變動時觸發
   useEffect(() => {
     if (isLoggedIn && initialLoadDone.current && currentUser?.role !== 'viewer') {
       const timer = setTimeout(() => handleSyncToCloud(true), 2000);
       return () => clearTimeout(timer);
     }
-  }, [users, seriesList, products, testers, shipments, customLogoUrl, isLoggedIn, handleSyncToCloud, currentUser]);
+  }, [users, seriesList, products, testers, shipments, customLogoUrl, globalStatusLightSize, isLoggedIn, handleSyncToCloud, currentUser]);
 
   return (
     <LanguageContext.Provider value={{ language, setLanguage, t }}>
@@ -183,6 +179,7 @@ const App = () => {
                   <Dashboard 
                     products={products} seriesList={seriesList} 
                     userRole={currentUser?.role}
+                    globalStatusLightSize={globalStatusLightSize}
                     onAddProduct={async (p) => setProducts([...products, { ...p, id: `p-${Date.now()}`, ergoProjects: [], customerFeedback: [], designHistory: [], ergoTests: [], durabilityTests: [], isWatched: false, customSortOrder: products.length, uniqueFeedbackTags: {} } as any])}
                     onUpdateProduct={async (p) => setProducts(products.map(old => old.id === p.id ? p : old))}
                     onToggleWatch={(id) => setProducts(products.map(p => p.id === id ? { ...p, isWatched: !p.isWatched } : p))}
@@ -213,7 +210,7 @@ const App = () => {
                           newList[idx] = { ...newList[idx], [language]: name };
                           setSeriesList(newList);
                       }}
-                      currentAppState={{ products, seriesList, shipments, testers, users, language, showAiInsights, maxHistorySteps, customLogoUrl }}
+                      currentAppState={{ products, seriesList, shipments, testers, users, language, showAiInsights, maxHistorySteps, customLogoUrl, globalStatusLightSize }}
                       onLoadProject={(state) => {
                           if (state.products) setProducts(state.products);
                           if (state.seriesList) setSeriesList(state.seriesList);
@@ -221,9 +218,11 @@ const App = () => {
                           if (state.testers) setTesters(state.testers);
                           if (state.users) setUsers(state.users);
                           if (state.customLogoUrl) setCustomLogoUrl(state.customLogoUrl);
+                          if (state.globalStatusLightSize) setGlobalStatusLightSize(state.globalStatusLightSize);
                       }}
                       onUpdateMaxHistory={setMaxHistorySteps} onToggleAiInsights={setShowAiInsights}
                       onUpdateLogo={setCustomLogoUrl}
+                      onUpdateStatusLightSize={setGlobalStatusLightSize}
                       onAddUser={(u) => setUsers([...users, { ...u, id: Date.now().toString() }])}
                       onUpdateUser={(u) => setUsers(users.map(old => old.id === u.id ? u : old))}
                       onDeleteUser={(id) => setUsers(users.filter(u => u.id !== id))}

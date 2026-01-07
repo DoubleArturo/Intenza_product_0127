@@ -184,6 +184,7 @@ export interface AppState {
   maxHistorySteps?: number;
   showAiInsights?: boolean;
   customLogoUrl?: string;
+  globalStatusLightSize?: 'SMALL' | 'NORMAL' | 'LARGE';
 }
 
 export interface Tester {

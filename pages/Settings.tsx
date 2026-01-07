@@ -1,5 +1,6 @@
+
 import React, { useState, useRef, useContext, useEffect, useMemo } from 'react';
-import { Plus, X, Save, Download, Upload, AlertTriangle, CheckCircle, Pencil, History, Sparkles, Shield, User, Trash2, Eye, EyeOff, Key, Database, HardDrive, Info, Cloud, LogOut, Loader2, Link as LinkIcon, Activity, Layers, Image as ImageIcon, RotateCcw } from 'lucide-react';
+import { Plus, X, Save, Download, Upload, AlertTriangle, CheckCircle, Pencil, History, Sparkles, Shield, User, Trash2, Eye, EyeOff, Key, Database, HardDrive, Info, Cloud, LogOut, Loader2, Link as LinkIcon, Activity, Layers, Image as ImageIcon, RotateCcw, Settings2 } from 'lucide-react';
 import { AppState, LocalizedString, UserAccount } from '../types';
 import { LanguageContext } from '../App';
 import { api } from '../services/api';
@@ -14,6 +15,7 @@ interface SettingsProps {
   onUpdateMaxHistory: (steps: number) => void;
   onToggleAiInsights: (enabled: boolean) => void;
   onUpdateLogo: (url: string | undefined) => void;
+  onUpdateStatusLightSize: (size: 'SMALL' | 'NORMAL' | 'LARGE') => void;
   onAddUser: (user: Omit<UserAccount, 'id'>) => void;
   onUpdateUser: (user: UserAccount) => void;
   onDeleteUser: (id: string) => void;
@@ -26,7 +28,7 @@ interface SettingsProps {
 const Settings: React.FC<SettingsProps> = ({ 
   seriesList, onAddSeries, onUpdateSeriesList, onRenameSeries, 
   currentAppState, onLoadProject, onUpdateMaxHistory, onToggleAiInsights,
-  onUpdateLogo, onAddUser, onUpdateUser, onDeleteUser, onSyncCloud, onLogout, syncStatus, onResetDashboard
+  onUpdateLogo, onUpdateStatusLightSize, onAddUser, onUpdateUser, onDeleteUser, onSyncCloud, onLogout, syncStatus, onResetDashboard
 }) => {
   const { t, language } = useContext(LanguageContext);
   const [newSeriesName, setNewSeriesName] = useState('');
@@ -37,7 +39,6 @@ const Settings: React.FC<SettingsProps> = ({
   const logoInputRef = useRef<HTMLInputElement>(null);
   const [notification, setNotification] = useState<{msg: string, type: 'success' | 'error'} | null>(null);
 
-  // --- 容量與體積監控邏輯 ---
   const storageStats = useMemo(() => {
     const rowCount = 
       (currentAppState.products?.length || 0) + 
@@ -221,7 +222,7 @@ const Settings: React.FC<SettingsProps> = ({
                     )}
                 </div>
                 <div className="flex-1 space-y-4">
-                    <p className="text-sm text-slate-500">上傳您的公司 Logo。此 Logo 將取代登入介面的預設圖示。由於 Sidebar 與 Settings 採用淺色背景，建議上傳具備對比度的標誌，系統已為預設預覽套用深色底色以利檢視「反白」標誌。</p>
+                    <p className="text-sm text-slate-500">上傳您的公司 Logo。此 Logo 將取代登入介面的預設圖示。建議上傳具備對比度的標誌。</p>
                     <div className="flex gap-3">
                         <button 
                             onClick={() => logoInputRef.current?.click()}
@@ -240,6 +241,36 @@ const Settings: React.FC<SettingsProps> = ({
                         )}
                         <input ref={logoInputRef} type="file" accept="image/*" className="hidden" onChange={handleLogoUpload} />
                     </div>
+                </div>
+             </div>
+          </section>
+
+          {/* Unified Global Status Light Config */}
+          <section className="bg-white rounded-2xl border border-slate-200 p-8 shadow-sm">
+             <div className="flex items-center gap-2 mb-6 text-slate-900">
+                <Settings2 className="text-intenza-600" size={20} />
+                <h2 className="text-xl font-bold">{t({ en: 'Global UI Configuration', zh: '系統全域 UI 配置' })}</h2>
+             </div>
+             <div className="space-y-6">
+                <div>
+                   <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-4">{t({ en: 'Status Light Size (Unified)', zh: '產品指示燈大小 (一次統一調整)' })}</label>
+                   <div className="flex gap-4">
+                      {['SMALL', 'NORMAL', 'LARGE'].map(sz => (
+                         <button 
+                           key={sz}
+                           type="button"
+                           onClick={() => onUpdateStatusLightSize(sz as any)}
+                           className={`flex-1 py-3 px-4 rounded-xl text-xs font-bold border-2 transition-all ${
+                              currentAppState.globalStatusLightSize === sz 
+                              ? 'bg-slate-900 text-white border-slate-900 shadow-lg' 
+                              : 'bg-white text-slate-500 border-slate-100 hover:border-slate-300'
+                           }`}
+                         >
+                            {sz}
+                         </button>
+                      ))}
+                   </div>
+                   <p className="text-[10px] text-slate-400 mt-4 italic">{t({ en: 'This setting applies to all product cards in the portfolio.', zh: '此設定將統一套用至產品組合中的所有產品卡片。' })}</p>
                 </div>
              </div>
           </section>
@@ -338,13 +369,13 @@ const Settings: React.FC<SettingsProps> = ({
                  <h2 className="text-xl font-bold">危險區域 (Danger Zone)</h2>
              </div>
              <div className="p-4 bg-red-50 rounded-xl border border-red-100 mb-6">
-                <p className="text-sm text-red-800 font-medium">數據維護操作：此區塊功能將永久刪除或更改核心數據，請謹慎執行。</p>
+                <p className="text-sm text-red-800 font-medium">數據維護操作：此區塊功能將永久刪除或更改核心數據，請謹謹執行。</p>
              </div>
              
              <div className="flex flex-col md:flex-row items-center justify-between gap-4 p-4 rounded-xl border border-slate-100 hover:bg-slate-50 transition-colors">
                 <div className="flex-1">
                     <h3 className="font-bold text-slate-900">重置產品儀表板數據</h3>
-                    <p className="text-xs text-slate-500 mt-1">清空所有導入的出貨記錄 (Shipment Data)。這將重置 Analytics 頁面中的所有圖表。</p>
+                    <p className="text-xs text-slate-500 mt-1">清空所有導入的出貨記錄 (Shipment Data)。</p>
                 </div>
                 <button 
                     onClick={handleResetShipments}

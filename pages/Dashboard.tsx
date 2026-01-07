@@ -10,6 +10,7 @@ interface DashboardProps {
   products: ProductModel[];
   seriesList: LocalizedString[];
   userRole?: 'admin' | 'user' | 'uploader' | 'viewer';
+  globalStatusLightSize: 'SMALL' | 'NORMAL' | 'LARGE';
   onAddProduct: (productData: Omit<ProductModel, 'id' | 'ergoProjects' | 'customerFeedback' | 'designHistory' | 'ergoTests' | 'durabilityTests'>) => Promise<void>;
   onUpdateProduct: (product: ProductModel) => Promise<void>;
   onToggleWatch: (id: string) => void;
@@ -19,7 +20,7 @@ interface DashboardProps {
 
 type SortType = 'NAME_ASC' | 'SKU_ASC' | 'SKU_DESC';
 
-export const Dashboard: React.FC<DashboardProps> = ({ products, seriesList, userRole, onAddProduct, onUpdateProduct, onToggleWatch, onDeleteProduct }) => {
+export const Dashboard: React.FC<DashboardProps> = ({ products, seriesList, userRole, globalStatusLightSize, onAddProduct, onUpdateProduct, onToggleWatch, onDeleteProduct }) => {
   const navigate = useNavigate();
   const { language, t } = useContext(LanguageContext);
   const [searchTerm, setSearchTerm] = useState('');
@@ -45,8 +46,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ products, seriesList, user
     version: 'v1.0',
     description: '',
     imageUrl: '',
-    statusOverride: 'AUTO' as 'RED' | 'BLUE' | 'GREEN' | 'AUTO',
-    statusLightSize: 'NORMAL' as 'SMALL' | 'NORMAL' | 'LARGE'
+    statusOverride: 'AUTO' as 'RED' | 'BLUE' | 'GREEN' | 'AUTO'
   });
   
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -67,8 +67,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ products, seriesList, user
           version: editingProduct.currentVersion,
           description: t(editingProduct.description),
           imageUrl: editingProduct.imageUrl,
-          statusOverride: editingProduct.statusOverride || 'AUTO',
-          statusLightSize: editingProduct.statusLightSize || 'NORMAL'
+          statusOverride: editingProduct.statusOverride || 'AUTO'
         });
       } else {
         setFormData({
@@ -78,8 +77,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ products, seriesList, user
           version: 'v1.0',
           description: '',
           imageUrl: '',
-          statusOverride: 'AUTO',
-          statusLightSize: 'NORMAL'
+          statusOverride: 'AUTO'
         });
       }
     }
@@ -153,8 +151,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ products, seriesList, user
         sku: formData.sku,
         imageUrl: formData.imageUrl || editingProduct.imageUrl,
         currentVersion: formData.version,
-        statusOverride: formData.statusOverride,
-        statusLightSize: formData.statusLightSize
+        statusOverride: formData.statusOverride
       });
     } else {
       const newProductData = {
@@ -164,8 +161,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ products, seriesList, user
         imageUrl: formData.imageUrl,
         currentVersion: formData.version,
         description: { en: formData.description, zh: formData.description },
-        statusOverride: formData.statusOverride,
-        statusLightSize: formData.statusLightSize
+        statusOverride: formData.statusOverride
       };
       await onAddProduct(newProductData as any);
     }
@@ -300,10 +296,9 @@ export const Dashboard: React.FC<DashboardProps> = ({ products, seriesList, user
           const productionInfo = getCurrentProductionInfo(p);
           const displayVersion = p.currentVersion;
           const statusColor = getProductStatusColor(p);
-          const lightSizeSetting = p.statusLightSize || 'NORMAL';
           
-          // Use specific dot size inside the large button container
-          const dotSizeClass = lightSizeSetting === 'SMALL' ? 'w-3 h-3' : lightSizeSetting === 'LARGE' ? 'w-6 h-6' : 'w-4 h-4';
+          // Use global size for dots
+          const dotSizeClass = globalStatusLightSize === 'SMALL' ? 'w-3 h-3' : globalStatusLightSize === 'LARGE' ? 'w-6 h-6' : 'w-4 h-4';
           
           return (
             <div 
@@ -311,7 +306,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ products, seriesList, user
               className="group bg-white rounded-[2rem] border-2 border-slate-100 shadow-sm hover:shadow-2xl hover:shadow-slate-200/60 hover:border-slate-200 transition-all duration-300 overflow-hidden flex flex-col cursor-pointer active:scale-[0.98]"
               onClick={() => navigate(`/product/${p.id}`)}
             >
-              <div className="relative h-64 bg-slate-50 p-6 flex items-center justify-center overflow-hidden border-b border-slate-50">
+              {/* Product Card Ratio updated to Portrait (aspect-[3/4]) */}
+              <div className="relative aspect-[3/4] bg-slate-50 p-6 flex items-center justify-center overflow-hidden border-b border-slate-50">
                 {p.imageUrl ? (
                   <img src={p.imageUrl} alt={t(p.modelName)} className="w-full h-full object-contain transition-transform duration-500 group-hover:scale-105" />
                 ) : (
@@ -352,7 +348,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ products, seriesList, user
                 <div className="pt-5 border-t-2 border-slate-50 flex items-center justify-between relative">
                   <div className="flex flex-col"><span className="text-[10px] font-black text-slate-300 uppercase tracking-[0.2em] mb-1">SKU Identity</span><span className="text-sm font-bold text-slate-800 font-mono tracking-tight">{p.sku}</span></div>
                   
-                  {/* Status Light replaces original Arrow Icon */}
+                  {/* Status Light replaces original Arrow Icon - Minimalist Look (No border) */}
                   <div className="relative">
                     <button 
                       onClick={(e) => handleStatusLightClick(e, p)}
@@ -366,7 +362,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ products, seriesList, user
                         'bg-emerald-50 hover:bg-emerald-100 shadow-emerald-200'
                       }`}
                     >
-                      <div className={`${dotSizeClass} rounded-full shadow-lg border-2 border-white animate-pulse-slow ${
+                      {/* Unified Status Light - No White Border */}
+                      <div className={`${dotSizeClass} rounded-full shadow-lg animate-pulse-slow ${
                         statusColor === 'red' ? 'bg-rose-500 shadow-rose-500/50' :
                         statusColor === 'blue' ? 'bg-blue-500 shadow-blue-500/50' :
                         'bg-emerald-500 shadow-emerald-500/50'
@@ -375,7 +372,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ products, seriesList, user
 
                     {/* Direct Selector Pop-up */}
                     {selectorProductId === p.id && (
-                        <div className="absolute bottom-full right-0 mb-4 bg-white border border-slate-200 shadow-2xl rounded-2xl p-2 z-[70] min-w-[120px] animate-slide-up flex flex-col gap-1">
+                        <div className="absolute bottom-full right-0 mb-4 bg-white border border-slate-200 shadow-2xl rounded-2xl p-2 z-[70] min-w-[140px] animate-slide-up flex flex-col gap-1">
                             <div className="text-[9px] font-black text-slate-400 uppercase tracking-widest px-3 py-1 border-b border-slate-50 mb-1">Change Status</div>
                             {(['AUTO', 'RED', 'BLUE', 'GREEN'] as const).map(mode => (
                                 <button 
@@ -473,11 +470,11 @@ export const Dashboard: React.FC<DashboardProps> = ({ products, seriesList, user
                 <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleImageUpload} />
               </div>
 
-              {(isAdmin || isStandard) && (
+              {canEditLight && (
                 <div className="bg-slate-50 p-6 rounded-3xl border-2 border-slate-100">
                    <div className="flex items-center gap-2 mb-4 text-slate-900">
                       <Settings2 size={18} />
-                      <h3 className="text-sm font-black uppercase tracking-widest">{t({ en: 'Status Light Settings', zh: '指示燈權限與設定' })}</h3>
+                      <h3 className="text-sm font-black uppercase tracking-widest">{t({ en: 'Light Status Overrides', zh: '指示燈手動覆蓋' })}</h3>
                    </div>
                    <div className="space-y-6">
                       <div>
@@ -499,28 +496,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ products, seriesList, user
                             ))}
                          </div>
                       </div>
-
-                      {isAdmin && (
-                         <div className="animate-fade-in">
-                            <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">{t({ en: 'Light Size (Admin Only)', zh: '燈號大小 (僅管理者可調)' })}</label>
-                            <div className="flex gap-4">
-                               {['SMALL', 'NORMAL', 'LARGE'].map(sz => (
-                                  <button 
-                                    key={sz}
-                                    type="button"
-                                    onClick={() => setFormData({...formData, statusLightSize: sz as any})}
-                                    className={`flex-1 py-2 px-3 rounded-xl text-[10px] font-bold border-2 transition-all ${
-                                       formData.statusLightSize === sz 
-                                       ? 'bg-intenza-600 text-white border-intenza-600' 
-                                       : 'bg-white text-slate-500 border-slate-100 hover:border-slate-300'
-                                    }`}
-                                  >
-                                     {sz}
-                                  </button>
-                               ))}
-                            </div>
-                         </div>
-                      )}
+                      <p className="text-[10px] text-slate-400 italic">{t({ en: 'Unified size controlled by global settings.', zh: '指示燈大小由管理者在系統設定中統一控制。' })}</p>
                    </div>
                 </div>
               )}
