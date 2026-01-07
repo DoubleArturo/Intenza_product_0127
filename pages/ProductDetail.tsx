@@ -1091,48 +1091,115 @@ const EcoModal = ({ isOpen, onClose, onSave, eco, productVersions, product }: an
         ecoNumber: '', date: new Date().toISOString().split('T')[0], version: product.currentVersion,
         description: { en: '', zh: '' }, affectedBatches: [], affectedCustomers: [], status: EcoStatus.EVALUATING, imageUrls: []
     });
+    const [isUploading, setIsUploading] = useState(false);
+    const fileInputRef = useRef<HTMLInputElement>(null);
 
     const handleSave = (e: React.FormEvent) => { e.preventDefault(); onSave(formData); };
 
+    const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const files = e.target.files;
+        if (!files || files.length === 0) return;
+        setIsUploading(true);
+        try {
+            // Fix: Explicitly cast each element to File to avoid TypeScript 'unknown' error when mapping from FileList
+            const urls = await Promise.all(Array.from(files).map(f => api.uploadImage(f as File)));
+            setFormData({ ...formData, imageUrls: [...(formData.imageUrls || []), ...urls] });
+        } catch (err) {
+            alert('上傳失敗');
+        } finally {
+            setIsUploading(false);
+            if (fileInputRef.current) fileInputRef.current.value = '';
+        }
+    };
+
+    const removeImage = (index: number) => {
+        const newUrls = [...formData.imageUrls];
+        newUrls.splice(index, 1);
+        setFormData({ ...formData, imageUrls: newUrls });
+    };
+
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
-            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-xl overflow-hidden">
-                <div className="p-6 border-b border-slate-100 flex justify-between items-center">
+            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-xl overflow-hidden flex flex-col max-h-[90vh]">
+                <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-white sticky top-0 z-10">
                     <h2 className="text-xl font-bold">{eco ? 'Edit ECO' : 'Add New ECO'}</h2>
                     <button onClick={onClose} className="p-2 hover:bg-slate-100 rounded-full"><X size={20}/></button>
                 </div>
-                <form onSubmit={handleSave} className="p-6 space-y-4">
+                <form onSubmit={handleSave} className="p-6 space-y-4 overflow-y-auto custom-scrollbar">
                     <div className="grid grid-cols-2 gap-4">
                         <div>
                             <label className="block text-xs font-bold text-slate-500 uppercase mb-1">ECO Number</label>
-                            <input type="text" value={formData.ecoNumber} onChange={e => setFormData({...formData, ecoNumber: e.target.value})} className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg"/>
+                            <input type="text" value={formData.ecoNumber} onChange={e => setFormData({...formData, ecoNumber: e.target.value})} className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-intenza-500/10 outline-none"/>
                         </div>
                         <div>
-                            <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Version</label>
-                            <select value={formData.version} onChange={e => setFormData({...formData, version: e.target.value})} className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg">
-                                {productVersions.map((v: string) => <option key={v} value={v}>{v}</option>)}
-                            </select>
+                            <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Version (Customizable)</label>
+                            <div className="relative">
+                                <input 
+                                    type="text" 
+                                    list="versions-datalist"
+                                    value={formData.version} 
+                                    onChange={e => setFormData({...formData, version: e.target.value})} 
+                                    className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-intenza-500/10 outline-none"
+                                    placeholder="Enter or select version"
+                                />
+                                <datalist id="versions-datalist">
+                                    {productVersions.map((v: string) => <option key={v} value={v} />)}
+                                </datalist>
+                            </div>
                         </div>
                     </div>
                     <div>
                         <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Description (EN)</label>
-                        <textarea value={formData.description.en} onChange={e => setFormData({...formData, description: {...formData.description, en: e.target.value}})} className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg" rows={3}/>
+                        <textarea value={formData.description.en} onChange={e => setFormData({...formData, description: {...formData.description, en: e.target.value}})} className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-intenza-500/10 outline-none" rows={3}/>
                     </div>
                     <div className="grid grid-cols-2 gap-4">
                         <div>
                             <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Status</label>
-                            <select value={formData.status} onChange={e => setFormData({...formData, status: e.target.value})} className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg">
+                            <select value={formData.status} onChange={e => setFormData({...formData, status: e.target.value})} className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-intenza-500/10 outline-none">
                                 {Object.values(EcoStatus).map(s => <option key={s} value={s}>{s}</option>)}
                             </select>
                         </div>
                         <div>
                             <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Date</label>
-                            <input type="date" value={formData.date} onChange={e => setFormData({...formData, date: e.target.value})} className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg"/>
+                            <input type="date" value={formData.date} onChange={e => setFormData({...formData, date: e.target.value})} className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-intenza-500/10 outline-none"/>
                         </div>
                     </div>
-                    <div className="flex gap-3 pt-4 border-t border-slate-100">
-                        <button type="button" onClick={onClose} className="flex-1 py-2 font-bold text-slate-500 hover:bg-slate-50 rounded-lg">Cancel</button>
-                        <button type="submit" className="flex-1 py-2 bg-slate-900 text-white font-bold rounded-lg hover:bg-slate-800 transition-all">Save Changes</button>
+
+                    <div className="pt-4 border-t border-slate-100">
+                        <label className="block text-xs font-bold text-slate-500 uppercase mb-3">Reference Media</label>
+                        <div className="grid grid-cols-4 gap-3 mb-4">
+                            {(formData.imageUrls || []).map((url: string, idx: number) => (
+                                <div key={idx} className="relative aspect-square bg-slate-100 rounded-lg overflow-hidden border border-slate-200 group/img">
+                                    {isVideo(url) ? (
+                                        <div className="w-full h-full flex items-center justify-center text-slate-400 bg-slate-50"><Video size={24}/></div>
+                                    ) : (
+                                        <img src={url} className="w-full h-full object-cover" />
+                                    )}
+                                    <button 
+                                        type="button"
+                                        onClick={() => removeImage(idx)}
+                                        className="absolute top-1 right-1 p-1 bg-white rounded-full shadow-md text-red-500 opacity-0 group-hover/img:opacity-100 transition-opacity"
+                                    >
+                                        <X size={12}/>
+                                    </button>
+                                </div>
+                            ))}
+                            <button 
+                                type="button"
+                                onClick={() => fileInputRef.current?.click()}
+                                disabled={isUploading}
+                                className="aspect-square border-2 border-dashed border-slate-200 rounded-lg flex flex-col items-center justify-center text-slate-400 hover:border-slate-400 hover:text-slate-600 transition-all bg-slate-50"
+                            >
+                                {isUploading ? <Loader2 size={20} className="animate-spin"/> : <Plus size={20}/>}
+                                <span className="text-[10px] font-bold uppercase mt-1">Upload</span>
+                            </button>
+                            <input ref={fileInputRef} type="file" multiple accept="image/*,video/*" className="hidden" onChange={handleUpload} />
+                        </div>
+                    </div>
+
+                    <div className="flex gap-3 pt-6 sticky bottom-0 bg-white border-t border-slate-100 -mx-6 -mb-6 p-6">
+                        <button type="button" onClick={onClose} className="flex-1 py-3 font-bold text-slate-500 hover:bg-slate-50 rounded-xl">Cancel</button>
+                        <button type="submit" className="flex-1 py-3 bg-slate-900 text-white font-bold rounded-xl hover:bg-slate-800 transition-all shadow-lg shadow-slate-900/10">Save ECO</button>
                     </div>
                 </form>
             </div>
