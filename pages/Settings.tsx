@@ -1,6 +1,6 @@
 
 import React, { useState, useRef, useContext, useEffect, useMemo } from 'react';
-import { Plus, X, Save, Download, Upload, AlertTriangle, CheckCircle, Pencil, History, Sparkles, Shield, User, Trash2, Eye, EyeOff, Key, Database, HardDrive, Info, Cloud, LogOut, Loader2, Link as LinkIcon, Activity, Layers, Image as ImageIcon, RotateCcw, Settings2, LayoutGrid, Maximize, Palette } from 'lucide-react';
+import { Plus, X, Save, Download, Upload, AlertTriangle, CheckCircle, Pencil, History, Sparkles, Shield, User, Trash2, Eye, EyeOff, Key, Database, HardDrive, Info, Cloud, LogOut, Loader2, Link as LinkIcon, Activity, Layers, Image as ImageIcon, RotateCcw, Settings2, LayoutGrid, Maximize, Palette, MousePointer2 } from 'lucide-react';
 import { AppState, LocalizedString, UserAccount } from '../types';
 import { LanguageContext } from '../App';
 import { api } from '../services/api';
@@ -19,6 +19,8 @@ interface SettingsProps {
   onUpdateDashboardColumns: (count: number) => void;
   onUpdateCardAspectRatio: (ratio: string) => void;
   onUpdateChartColorStyle: (style: 'COLORFUL' | 'MONOCHROME' | 'SLATE') => void;
+  onUpdateAnalyticsTooltipScale?: (scale: number) => void;
+  onUpdateAnalyticsTooltipPosition?: (pos: 'TOP_LEFT' | 'TOP_RIGHT' | 'BOTTOM_LEFT' | 'BOTTOM_RIGHT' | 'FOLLOW') => void;
   onAddUser: (user: Omit<UserAccount, 'id'>) => void;
   onUpdateUser: (user: UserAccount) => void;
   onDeleteUser: (id: string) => void;
@@ -31,7 +33,9 @@ interface SettingsProps {
 const Settings: React.FC<SettingsProps> = ({ 
   seriesList, onAddSeries, onUpdateSeriesList, onRenameSeries, 
   currentAppState, onLoadProject, onUpdateMaxHistory, onToggleAiInsights,
-  onUpdateLogo, onUpdateStatusLightSize, onUpdateDashboardColumns, onUpdateCardAspectRatio, onUpdateChartColorStyle, onAddUser, onUpdateUser, onDeleteUser, onSyncCloud, onLogout, syncStatus, onResetDashboard
+  onUpdateLogo, onUpdateStatusLightSize, onUpdateDashboardColumns, onUpdateCardAspectRatio, onUpdateChartColorStyle, 
+  onUpdateAnalyticsTooltipScale, onUpdateAnalyticsTooltipPosition,
+  onAddUser, onUpdateUser, onDeleteUser, onSyncCloud, onLogout, syncStatus, onResetDashboard
 }) => {
   const { t, language } = useContext(LanguageContext);
   const [newSeriesName, setNewSeriesName] = useState('');
@@ -166,6 +170,14 @@ const Settings: React.FC<SettingsProps> = ({
     { label: t({ en: 'Cinematic (16:9)', zh: '寬螢幕 (16:9)' }), value: '16/9' },
   ];
 
+  const tooltipPositions = [
+    { label: 'TOP-L', value: 'TOP_LEFT' },
+    { label: 'TOP-R', value: 'TOP_RIGHT' },
+    { label: 'BTM-L', value: 'BOTTOM_LEFT' },
+    { label: 'BTM-R', value: 'BOTTOM_RIGHT' },
+    { label: 'FOLLOW', value: 'FOLLOW' },
+  ];
+
   return (
     <div className="p-8 max-w-5xl mx-auto animate-fade-in space-y-8">
       <header className="border-b border-slate-100 pb-6 flex justify-between items-end">
@@ -250,7 +262,6 @@ const Settings: React.FC<SettingsProps> = ({
                    </div>
                 </div>
 
-                {/* NEW CHART COLOR STYLE SETTING */}
                 <div>
                    <label className="flex items-center gap-2 text-xs font-black text-slate-400 uppercase tracking-widest mb-4"><Palette size={14} />{t({ en: 'Dashboard Chart Theme', zh: '儀表板圖表顏色風格' })}</label>
                    <div className="flex gap-3">
@@ -265,11 +276,34 @@ const Settings: React.FC<SettingsProps> = ({
                              : 'bg-white text-slate-500 border-slate-100 hover:border-slate-300'
                            }`}
                          >
-                           {style === 'COLORFUL' ? t({en: 'Colorful', zh: '多彩'}) : style === 'MONOCHROME' ? t({en: 'Monochrome', zh: '同色系'}) : t({en: 'Others (Slate)', zh: '其他 (深灰)'})}
+                           {style === 'COLORFUL' ? t({en: 'Colorful', zh: '多彩(可自訂多主色)'}) : style === 'MONOCHROME' ? t({en: 'Monochrome', zh: '同色系(可自訂主色系)'}) : t({en: 'Slate', zh: '多主色系(可自訂多主色)'})}
                          </button>
                       ))}
                    </div>
-                   <p className="text-[10px] text-slate-400 mt-4 italic">{t({ en: 'Changes the visual palette of all charts in the dashboard.', zh: '變更儀表板中所有圖表的視覺色調。' })}</p>
+                </div>
+
+                <div className="pt-6 border-t border-slate-100 space-y-6">
+                   <div className="flex items-center gap-2 text-slate-900">
+                      <MousePointer2 className="text-intenza-600" size={18} />
+                      <h3 className="text-sm font-black uppercase tracking-widest">Analytics Tooltip Settings</h3>
+                   </div>
+                   <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                      <div>
+                         <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Tooltip Scale Factor</label>
+                         <div className="flex items-center gap-4">
+                            <input type="range" min="1" max="4" step="0.5" value={currentAppState.analyticsTooltipScale || 2} onChange={(e) => onUpdateAnalyticsTooltipScale?.(Number(e.target.value))} className="flex-1 accent-slate-900" />
+                            <span className="text-xs font-black font-mono bg-slate-100 px-3 py-1 rounded-lg">{(currentAppState.analyticsTooltipScale || 2).toFixed(1)}x</span>
+                         </div>
+                      </div>
+                      <div>
+                         <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Tooltip Position</label>
+                         <div className="grid grid-cols-5 gap-1">
+                            {tooltipPositions.map(pos => (
+                               <button key={pos.value} type="button" onClick={() => onUpdateAnalyticsTooltipPosition?.(pos.value as any)} className={`py-2 text-[8px] font-bold border transition-all rounded-lg ${currentAppState.analyticsTooltipPosition === pos.value ? 'bg-slate-900 text-white border-slate-900' : 'bg-white text-slate-500 border-slate-100 hover:border-slate-200'}`}>{pos.label}</button>
+                            ))}
+                         </div>
+                      </div>
+                   </div>
                 </div>
              </div>
           </section>

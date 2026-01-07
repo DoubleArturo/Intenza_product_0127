@@ -188,6 +188,8 @@ export interface AppState {
   dashboardColumns?: number;
   cardAspectRatio?: string;
   chartColorStyle?: 'COLORFUL' | 'MONOCHROME' | 'SLATE';
+  analyticsTooltipScale?: number;
+  analyticsTooltipPosition?: 'TOP_LEFT' | 'TOP_RIGHT' | 'BOTTOM_LEFT' | 'BOTTOM_RIGHT' | 'FOLLOW';
 }
 
 export interface Tester {

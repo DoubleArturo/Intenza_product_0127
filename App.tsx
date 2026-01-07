@@ -45,13 +45,15 @@ const App = () => {
   const [shipments, setShipments] = useState<ShipmentData[]>(MOCK_SHIPMENTS);
   const [testers, setTesters] = useState<Tester[]>(MOCK_TESTERS);
   const [users, setUsers] = useState<UserAccount[]>([]);
-  const [showAiInsights, setShowAiInsights] = useState(false); // 預設關閉 AI
+  const [showAiInsights, setShowAiInsights] = useState(false); 
   const [maxHistorySteps, setMaxHistorySteps] = useState(10);
   const [customLogoUrl, setCustomLogoUrl] = useState<string | undefined>(undefined);
   const [globalStatusLightSize, setGlobalStatusLightSize] = useState<'SMALL' | 'NORMAL' | 'LARGE'>('NORMAL');
   const [dashboardColumns, setDashboardColumns] = useState<number>(4);
   const [cardAspectRatio, setCardAspectRatio] = useState<string>('3/4');
   const [chartColorStyle, setChartColorStyle] = useState<'COLORFUL' | 'MONOCHROME' | 'SLATE'>('COLORFUL');
+  const [analyticsTooltipScale, setAnalyticsTooltipScale] = useState<number>(2); // Default to 2x as requested
+  const [analyticsTooltipPosition, setAnalyticsTooltipPosition] = useState<'TOP_LEFT' | 'TOP_RIGHT' | 'BOTTOM_LEFT' | 'BOTTOM_RIGHT' | 'FOLLOW'>('TOP_LEFT');
 
   const [syncStatus, setSyncStatus] = useState<'idle' | 'saving' | 'success' | 'error'>('idle');
   const [errorDetail, setErrorDetail] = useState<string>('');
@@ -77,7 +79,7 @@ const App = () => {
     setSyncStatus('saving');
     
     const state: AppState = {
-      products, seriesList, shipments, testers, users, language, showAiInsights, maxHistorySteps, customLogoUrl, globalStatusLightSize, dashboardColumns, cardAspectRatio, chartColorStyle
+      products, seriesList, shipments, testers, users, language, showAiInsights, maxHistorySteps, customLogoUrl, globalStatusLightSize, dashboardColumns, cardAspectRatio, chartColorStyle, analyticsTooltipScale, analyticsTooltipPosition
     };
 
     try {
@@ -92,7 +94,7 @@ const App = () => {
       setErrorDetail(error.message || 'Connection Error');
       isSyncingRef.current = false;
     }
-  }, [products, seriesList, shipments, testers, users, language, showAiInsights, maxHistorySteps, customLogoUrl, globalStatusLightSize, dashboardColumns, cardAspectRatio, chartColorStyle, isLoggedIn, currentUser]);
+  }, [products, seriesList, shipments, testers, users, language, showAiInsights, maxHistorySteps, customLogoUrl, globalStatusLightSize, dashboardColumns, cardAspectRatio, chartColorStyle, analyticsTooltipScale, analyticsTooltipPosition, isLoggedIn, currentUser]);
 
   const handleLoadFromCloud = useCallback(async () => {
     if (isSyncingRef.current) return;
@@ -114,6 +116,8 @@ const App = () => {
         if (cloudData.dashboardColumns) setDashboardColumns(cloudData.dashboardColumns);
         if (cloudData.cardAspectRatio) setCardAspectRatio(cloudData.cardAspectRatio);
         if (cloudData.chartColorStyle) setChartColorStyle(cloudData.chartColorStyle);
+        if (cloudData.analyticsTooltipScale !== undefined) setAnalyticsTooltipScale(cloudData.analyticsTooltipScale);
+        if (cloudData.analyticsTooltipPosition) setAnalyticsTooltipPosition(cloudData.analyticsTooltipPosition);
         setSyncStatus('success');
       }
       initialLoadDone.current = true;
@@ -156,7 +160,7 @@ const App = () => {
       const timer = setTimeout(() => handleSyncToCloud(true), 2000);
       return () => clearTimeout(timer);
     }
-  }, [users, seriesList, products, testers, shipments, customLogoUrl, globalStatusLightSize, dashboardColumns, cardAspectRatio, chartColorStyle, isLoggedIn, handleSyncToCloud, currentUser]);
+  }, [users, seriesList, products, testers, shipments, customLogoUrl, globalStatusLightSize, dashboardColumns, cardAspectRatio, chartColorStyle, analyticsTooltipScale, analyticsTooltipPosition, isLoggedIn, handleSyncToCloud, currentUser]);
 
   return (
     <LanguageContext.Provider value={{ language, setLanguage, t }}>
@@ -207,7 +211,10 @@ const App = () => {
                   <ProductDetail products={products} shipments={shipments} testers={testers} userRole={currentUser?.role} onUpdateProduct={async (p) => setProducts(products.map(old => old.id === p.id ? p : old))} showAiInsights={showAiInsights} />
                 } />
                 <Route path="/analytics" element={
-                  <Analytics products={products} shipments={shipments} testers={testers} onImportData={(data) => setShipments([...shipments, ...data])} onBatchAddProducts={(newPs) => setProducts([...products, ...newPs])} showAiInsights={showAiInsights} userRole={currentUser?.role} chartColorStyle={chartColorStyle} />
+                  <Analytics 
+                    products={products} shipments={shipments} testers={testers} onImportData={(data) => setShipments([...shipments, ...data])} onBatchAddProducts={(newPs) => setProducts([...products, ...newPs])} showAiInsights={showAiInsights} userRole={currentUser?.role} chartColorStyle={chartColorStyle} 
+                    tooltipScale={analyticsTooltipScale} tooltipPosition={analyticsTooltipPosition}
+                  />
                 } />
                 <Route path="/settings" element={
                   currentUser?.role === 'admin' ? (
@@ -218,7 +225,7 @@ const App = () => {
                           newList[idx] = { ...newList[idx], [language]: name };
                           setSeriesList(newList);
                       }}
-                      currentAppState={{ products, seriesList, shipments, testers, users, language, showAiInsights, maxHistorySteps, customLogoUrl, globalStatusLightSize, dashboardColumns, cardAspectRatio, chartColorStyle }}
+                      currentAppState={{ products, seriesList, shipments, testers, users, language, showAiInsights, maxHistorySteps, customLogoUrl, globalStatusLightSize, dashboardColumns, cardAspectRatio, chartColorStyle, analyticsTooltipScale, analyticsTooltipPosition }}
                       onLoadProject={(state) => {
                           if (state.products) setProducts(state.products);
                           if (state.seriesList) setSeriesList(state.seriesList);
@@ -230,6 +237,8 @@ const App = () => {
                           if (state.dashboardColumns) setDashboardColumns(state.dashboardColumns);
                           if (state.cardAspectRatio) setCardAspectRatio(state.cardAspectRatio);
                           if (state.chartColorStyle) setChartColorStyle(state.chartColorStyle);
+                          if (state.analyticsTooltipScale !== undefined) setAnalyticsTooltipScale(state.analyticsTooltipScale);
+                          if (state.analyticsTooltipPosition) setAnalyticsTooltipPosition(state.analyticsTooltipPosition);
                       }}
                       onUpdateMaxHistory={setMaxHistorySteps} onToggleAiInsights={setShowAiInsights}
                       onUpdateLogo={setCustomLogoUrl}
@@ -237,6 +246,8 @@ const App = () => {
                       onUpdateDashboardColumns={setDashboardColumns}
                       onUpdateCardAspectRatio={setCardAspectRatio}
                       onUpdateChartColorStyle={setChartColorStyle}
+                      onUpdateAnalyticsTooltipScale={setAnalyticsTooltipScale}
+                      onUpdateAnalyticsTooltipPosition={setAnalyticsTooltipPosition}
                       onAddUser={(u) => setUsers([...users, { ...u, id: Date.now().toString() }])}
                       onUpdateUser={(u) => setUsers(users.map(old => old.id === u.id ? u : old))}
                       onDeleteUser={(id) => setUsers(users.filter(u => u.id !== id))}

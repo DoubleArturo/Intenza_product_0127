@@ -40,13 +40,16 @@ interface AnalyticsProps {
   showAiInsights: boolean;
   userRole?: 'admin' | 'user' | 'uploader';
   chartColorStyle?: 'COLORFUL' | 'MONOCHROME' | 'SLATE';
+  tooltipScale?: number;
+  tooltipPosition?: 'TOP_LEFT' | 'TOP_RIGHT' | 'BOTTOM_LEFT' | 'BOTTOM_RIGHT' | 'FOLLOW';
 }
 
 type DimensionFilter = 'DATA_DRILL' | 'BUYER' | 'COLOR';
 type ViewMode = 'SHIPMENTS' | 'ERGONOMICS' | 'DURABILITY';
 
 const Analytics: React.FC<AnalyticsProps> = ({ 
-  products, shipments, onImportData, onBatchAddProducts, showAiInsights, userRole, chartColorStyle = 'COLORFUL' 
+  products, shipments, onImportData, onBatchAddProducts, showAiInsights, userRole, chartColorStyle = 'COLORFUL',
+  tooltipScale = 2, tooltipPosition = 'TOP_LEFT'
 }) => {
   const { language, t } = useContext(LanguageContext);
   const navigate = useNavigate();
@@ -99,7 +102,8 @@ const Analytics: React.FC<AnalyticsProps> = ({
         case 1: return 'SERIES';
         case 2: return 'SKU';
         case 3: return 'VERSION';
-        default: return 'VERSION';
+        case 4: return 'COLOR';
+        default: return 'COLOR';
       }
     }
     if (dimension === 'COLOR') {
@@ -181,7 +185,9 @@ const Analytics: React.FC<AnalyticsProps> = ({
   const totalQuantity = useMemo(() => chartData.reduce((acc, curr) => acc + curr.value, 0), [chartData]);
 
   const handleDrill = (entry: any) => {
-    if (currentLevel === 'BUYER' || (drillPath.length >= 4 && dimension === 'DATA_DRILL')) return;
+    if (currentLevel === 'BUYER' && dimension !== 'BUYER') return;
+    if (dimension === 'BUYER' && drillPath.length >= 5) return;
+    if (dimension === 'DATA_DRILL' && drillPath.length >= 4) return;
     setDrillPath([...drillPath, { level: currentLevel, label: entry.name, filterVal: entry.name }]);
   };
 
@@ -257,20 +263,38 @@ const Analytics: React.FC<AnalyticsProps> = ({
     if (active && payload && payload.length) {
       const data = payload[0].payload;
       return (
-        <div className="bg-white p-4 border border-slate-200 shadow-2xl rounded-2xl min-w-[200px] z-[100]">
+        <div 
+          className="bg-white p-4 border border-slate-200 shadow-2xl rounded-2xl z-[100]"
+          style={{ 
+            transform: `scale(${tooltipScale})`, 
+            transformOrigin: 'top left',
+            minWidth: '180px'
+          }}
+        >
           {data.imageUrl && (
-            <img src={data.imageUrl} className="w-full h-28 object-contain rounded-lg mb-3 bg-slate-50 border border-slate-100 p-2" alt={data.name} />
+            <img src={data.imageUrl} className="w-full h-24 object-contain rounded-lg mb-3 bg-slate-50 border border-slate-100 p-2" alt={data.name} />
           )}
-          <p className="font-black text-slate-900 text-sm mb-1 uppercase tracking-tight">{data.name}</p>
-          {data.fullName && <p className="text-[10px] font-bold text-slate-400 mb-2 uppercase">{data.fullName}</p>}
-          <div className="flex items-center justify-between border-t border-slate-100 pt-3 mt-1">
-            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Qty Count</span>
-            <span className="text-intenza-600 font-black text-base">{data.value.toLocaleString()}</span>
+          <p className="font-black text-slate-900 text-[10px] mb-0.5 uppercase tracking-tight leading-none">{data.name}</p>
+          {data.fullName && <p className="text-[7px] font-bold text-slate-400 mb-2 uppercase leading-none">{data.fullName}</p>}
+          <div className="flex items-center justify-between border-t border-slate-100 pt-2 mt-1">
+            <span className="text-[7px] font-black text-slate-400 uppercase tracking-widest">Units</span>
+            <span className="text-intenza-600 font-black text-xs">{data.value.toLocaleString()}</span>
           </div>
         </div>
       );
     }
     return null;
+  };
+
+  const getTooltipPos = () => {
+    if (tooltipPosition === 'FOLLOW') return undefined;
+    const coords: Record<string, { x: number, y: number }> = {
+        'TOP_LEFT': { x: 20, y: 20 },
+        'TOP_RIGHT': { x: 450, y: 20 },
+        'BOTTOM_LEFT': { x: 20, y: 350 },
+        'BOTTOM_RIGHT': { x: 450, y: 350 },
+    };
+    return coords[tooltipPosition];
   };
 
   const CustomXAxisTick = (props: any) => {
@@ -358,14 +382,10 @@ const Analytics: React.FC<AnalyticsProps> = ({
               </div>
             </div>
 
-            <div className="flex items-center gap-4">
-              <div className="flex bg-slate-100 p-1 rounded-xl shadow-inner mr-4">
-                <button onClick={() => setViewMode('SHIPMENTS')} className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-black transition-all ${viewMode === 'SHIPMENTS' ? 'bg-white shadow-md text-intenza-600' : 'text-slate-400'}`}><BarIcon size={14}/> SHIPMENTS</button>
-                <button onClick={() => setViewMode('ERGONOMICS')} className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-black transition-all ${viewMode === 'ERGONOMICS' ? 'bg-white shadow-md text-indigo-600' : 'text-slate-400'}`}><ShieldCheck size={14}/> ERGO</button>
-                <button onClick={() => setViewMode('DURABILITY')} className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-black transition-all ${viewMode === 'DURABILITY' ? 'bg-white shadow-md text-emerald-600' : 'text-slate-400'}`}><Zap size={14}/> DURABILITY</button>
-              </div>
+            {/* HEADER BUTTONS SWAPPED AS REQUESTED */}
+            <div className="flex items-center gap-6">
               {viewMode === 'SHIPMENTS' && (
-                <>
+                <div className="flex items-center gap-4">
                   <div className="flex bg-slate-100 p-1 rounded-xl shadow-inner">
                     <button onClick={() => handleResetDrill('DATA_DRILL')} className={`px-4 py-2 rounded-lg text-xs font-black transition-all ${dimension === 'DATA_DRILL' ? 'bg-white shadow-md text-slate-900' : 'text-slate-400'}`}>BY METRIC</button>
                     <button onClick={() => handleResetDrill('BUYER')} className={`px-4 py-2 rounded-lg text-xs font-black transition-all ${dimension === 'BUYER' ? 'bg-white shadow-md text-slate-900' : 'text-slate-400'}`}>BY BUYER</button>
@@ -375,8 +395,13 @@ const Analytics: React.FC<AnalyticsProps> = ({
                     <button onClick={() => setChartType('PIE')} className={`p-2 rounded-lg transition-all ${chartType === 'PIE' ? 'bg-white shadow-md text-slate-900' : 'text-slate-400'}`}><PieIcon size={18}/></button>
                     <button onClick={() => setChartType('BAR')} className={`p-2 rounded-lg transition-all ${chartType === 'BAR' ? 'bg-white shadow-md text-slate-900' : 'text-slate-400'}`}><BarIcon size={18}/></button>
                   </div>
-                </>
+                </div>
               )}
+              <div className="flex bg-slate-100 p-1 rounded-xl shadow-inner">
+                <button onClick={() => setViewMode('SHIPMENTS')} className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-black transition-all ${viewMode === 'SHIPMENTS' ? 'bg-white shadow-md text-intenza-600' : 'text-slate-400'}`}><BarIcon size={14}/> S</button>
+                <button onClick={() => setViewMode('ERGONOMICS')} className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-black transition-all ${viewMode === 'ERGONOMICS' ? 'bg-white shadow-md text-indigo-600' : 'text-slate-400'}`}><ShieldCheck size={14}/> ERGO</button>
+                <button onClick={() => setViewMode('DURABILITY')} className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-black transition-all ${viewMode === 'DURABILITY' ? 'bg-white shadow-md text-emerald-600' : 'text-slate-400'}`}><Zap size={14}/> DURABILITY</button>
+              </div>
             </div>
           </div>
 
@@ -406,8 +431,7 @@ const Analytics: React.FC<AnalyticsProps> = ({
                             }}
                           />
                         </Pie>
-                        {/* FIXED POSITION TOOLTIP: top-right to avoid covering chart */}
-                        <Tooltip content={<CustomTooltip />} position={{ x: 20, y: 20 }} />
+                        <Tooltip content={<CustomTooltip />} position={getTooltipPos()} />
                         <Legend verticalAlign="bottom" height={40} iconType="circle" wrapperStyle={{ paddingTop: '20px', fontWeight: 'bold', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.1em' }} />
                       </PieChart>
                     ) : (
@@ -415,12 +439,11 @@ const Analytics: React.FC<AnalyticsProps> = ({
                         <CartesianGrid strokeDasharray="6 6" vertical={false} stroke="#f1f5f9" />
                         <XAxis dataKey="name" axisLine={false} tickLine={false} interval={0} height={100} tick={<CustomXAxisTick />} />
                         <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: '#cbd5e1', fontWeight: 'bold' }} />
-                        <Tooltip content={<CustomTooltip />} cursor={{ fill: '#f8fafc' }} />
+                        <Tooltip content={<CustomTooltip />} cursor={{ fill: '#f8fafc' }} position={getTooltipPos()} />
                         <Bar dataKey="value" radius={[12, 12, 0, 0]} onClick={handleDrill} cursor="pointer" barSize={50}>
                           {chartData.map((entry, i) => (
                             <Cell key={`cell-${i}`} fill={currentLevel === 'COLOR' ? (COLOR_MAP[entry.name] || activePalette[i % activePalette.length]) : activePalette[i % activePalette.length]} className="hover:brightness-95 transition-all" />
                           ))}
-                          {/* BAR QUANTITY LABELS AT TOP */}
                           <LabelList dataKey="value" position="top" style={{ fontSize: '11px', fontWeight: '900', fill: '#64748b' }} offset={10} formatter={(v: number) => v.toLocaleString()} />
                         </Bar>
                       </BarChart>
@@ -536,7 +559,7 @@ const Analytics: React.FC<AnalyticsProps> = ({
                             <Cell key={`cell-${index}`} fill={COLOR_MAP[entry.name] || activePalette[index % activePalette.length]} />
                           ))}
                         </Pie>
-                        <Tooltip />
+                        <Tooltip content={<CustomTooltip />} />
                       </PieChart>
                     </ResponsiveContainer>
                   </div>
