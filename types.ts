@@ -185,6 +185,7 @@ export interface AppState {
   showAiInsights?: boolean;
   customLogoUrl?: string;
   globalStatusLightSize?: 'SMALL' | 'NORMAL' | 'LARGE';
+  dashboardColumns?: number;
 }
 
 export interface Tester {

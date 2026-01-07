@@ -11,6 +11,7 @@ interface DashboardProps {
   seriesList: LocalizedString[];
   userRole?: 'admin' | 'user' | 'uploader' | 'viewer';
   globalStatusLightSize: 'SMALL' | 'NORMAL' | 'LARGE';
+  dashboardColumns: number;
   onAddProduct: (productData: Omit<ProductModel, 'id' | 'ergoProjects' | 'customerFeedback' | 'designHistory' | 'ergoTests' | 'durabilityTests'>) => Promise<void>;
   onUpdateProduct: (product: ProductModel) => Promise<void>;
   onToggleWatch: (id: string) => void;
@@ -20,7 +21,19 @@ interface DashboardProps {
 
 type SortType = 'NAME_ASC' | 'SKU_ASC' | 'SKU_DESC';
 
-export const Dashboard: React.FC<DashboardProps> = ({ products, seriesList, userRole, globalStatusLightSize, onAddProduct, onUpdateProduct, onToggleWatch, onDeleteProduct }) => {
+// Map for Tailwind grid-cols classes for dynamic layout
+const gridColsClassMap: Record<number, string> = {
+  2: 'xl:grid-cols-2',
+  3: 'xl:grid-cols-3',
+  4: 'xl:grid-cols-4',
+  5: 'xl:grid-cols-5',
+  6: 'xl:grid-cols-6',
+};
+
+export const Dashboard: React.FC<DashboardProps> = ({ 
+  products, seriesList, userRole, globalStatusLightSize, dashboardColumns, 
+  onAddProduct, onUpdateProduct, onToggleWatch, onDeleteProduct 
+}) => {
   const navigate = useNavigate();
   const { language, t } = useContext(LanguageContext);
   const [searchTerm, setSearchTerm] = useState('');
@@ -291,13 +304,13 @@ export const Dashboard: React.FC<DashboardProps> = ({ products, seriesList, user
         </div>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
+      {/* Grid container with dynamic column count from settings */}
+      <div className={`grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 ${gridColsClassMap[dashboardColumns] || 'xl:grid-cols-4'} gap-8`}>
         {filteredProducts.map((p) => {
           const productionInfo = getCurrentProductionInfo(p);
           const displayVersion = p.currentVersion;
           const statusColor = getProductStatusColor(p);
           
-          // Use global size for dots
           const dotSizeClass = globalStatusLightSize === 'SMALL' ? 'w-3 h-3' : globalStatusLightSize === 'LARGE' ? 'w-6 h-6' : 'w-4 h-4';
           
           return (
@@ -306,7 +319,6 @@ export const Dashboard: React.FC<DashboardProps> = ({ products, seriesList, user
               className="group bg-white rounded-[2rem] border-2 border-slate-100 shadow-sm hover:shadow-2xl hover:shadow-slate-200/60 hover:border-slate-200 transition-all duration-300 overflow-hidden flex flex-col cursor-pointer active:scale-[0.98]"
               onClick={() => navigate(`/product/${p.id}`)}
             >
-              {/* Product Card Ratio updated to Portrait (aspect-[3/4]) */}
               <div className="relative aspect-[3/4] bg-slate-50 p-6 flex items-center justify-center overflow-hidden border-b border-slate-50">
                 {p.imageUrl ? (
                   <img src={p.imageUrl} alt={t(p.modelName)} className="w-full h-full object-contain transition-transform duration-500 group-hover:scale-105" />
@@ -348,7 +360,6 @@ export const Dashboard: React.FC<DashboardProps> = ({ products, seriesList, user
                 <div className="pt-5 border-t-2 border-slate-50 flex items-center justify-between relative">
                   <div className="flex flex-col"><span className="text-[10px] font-black text-slate-300 uppercase tracking-[0.2em] mb-1">SKU Identity</span><span className="text-sm font-bold text-slate-800 font-mono tracking-tight">{p.sku}</span></div>
                   
-                  {/* Status Light replaces original Arrow Icon - Minimalist Look (No border) */}
                   <div className="relative">
                     <button 
                       onClick={(e) => handleStatusLightClick(e, p)}
@@ -362,7 +373,6 @@ export const Dashboard: React.FC<DashboardProps> = ({ products, seriesList, user
                         'bg-emerald-50 hover:bg-emerald-100 shadow-emerald-200'
                       }`}
                     >
-                      {/* Unified Status Light - No White Border */}
                       <div className={`${dotSizeClass} rounded-full shadow-lg animate-pulse-slow ${
                         statusColor === 'red' ? 'bg-rose-500 shadow-rose-500/50' :
                         statusColor === 'blue' ? 'bg-blue-500 shadow-blue-500/50' :
@@ -370,7 +380,6 @@ export const Dashboard: React.FC<DashboardProps> = ({ products, seriesList, user
                       }`} />
                     </button>
 
-                    {/* Direct Selector Pop-up */}
                     {selectorProductId === p.id && (
                         <div className="absolute bottom-full right-0 mb-4 bg-white border border-slate-200 shadow-2xl rounded-2xl p-2 z-[70] min-w-[140px] animate-slide-up flex flex-col gap-1">
                             <div className="text-[9px] font-black text-slate-400 uppercase tracking-widest px-3 py-1 border-b border-slate-50 mb-1">Change Status</div>
@@ -404,7 +413,6 @@ export const Dashboard: React.FC<DashboardProps> = ({ products, seriesList, user
                         </div>
                     )}
 
-                    {/* Status Tooltip (Hover) */}
                     {hoveredLightId === p.id && selectorProductId !== p.id && (
                         <div className="absolute bottom-full right-0 mb-4 w-64 p-4 bg-slate-900 text-white rounded-2xl shadow-2xl z-[60] animate-fade-in border border-slate-700/50 backdrop-blur-md">
                         <div className="flex items-center gap-2 mb-3 border-b border-white/10 pb-2">
@@ -496,7 +504,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ products, seriesList, user
                             ))}
                          </div>
                       </div>
-                      <p className="text-[10px] text-slate-400 italic">{t({ en: 'Unified size controlled by global settings.', zh: '指示燈大小由管理者在系統設定中統一控制。' })}</p>
+                      <p className="text-[10px] text-slate-400 italic">{t({ en: 'Unified size and grid layout controlled by global settings.', zh: '指示燈大小與卡片排列數量由管理者在系統設定中統一控制。' })}</p>
                    </div>
                 </div>
               )}

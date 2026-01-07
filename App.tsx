@@ -49,6 +49,7 @@ const App = () => {
   const [maxHistorySteps, setMaxHistorySteps] = useState(10);
   const [customLogoUrl, setCustomLogoUrl] = useState<string | undefined>(undefined);
   const [globalStatusLightSize, setGlobalStatusLightSize] = useState<'SMALL' | 'NORMAL' | 'LARGE'>('NORMAL');
+  const [dashboardColumns, setDashboardColumns] = useState<number>(4);
 
   const [syncStatus, setSyncStatus] = useState<'idle' | 'saving' | 'success' | 'error'>('idle');
   const [errorDetail, setErrorDetail] = useState<string>('');
@@ -74,7 +75,7 @@ const App = () => {
     setSyncStatus('saving');
     
     const state: AppState = {
-      products, seriesList, shipments, testers, users, language, showAiInsights, maxHistorySteps, customLogoUrl, globalStatusLightSize
+      products, seriesList, shipments, testers, users, language, showAiInsights, maxHistorySteps, customLogoUrl, globalStatusLightSize, dashboardColumns
     };
 
     try {
@@ -89,7 +90,7 @@ const App = () => {
       setErrorDetail(error.message || 'Connection Error');
       isSyncingRef.current = false;
     }
-  }, [products, seriesList, shipments, testers, users, language, showAiInsights, maxHistorySteps, customLogoUrl, globalStatusLightSize, isLoggedIn, currentUser]);
+  }, [products, seriesList, shipments, testers, users, language, showAiInsights, maxHistorySteps, customLogoUrl, globalStatusLightSize, dashboardColumns, isLoggedIn, currentUser]);
 
   const handleLoadFromCloud = useCallback(async () => {
     if (isSyncingRef.current) return;
@@ -108,6 +109,7 @@ const App = () => {
         if (cloudData.showAiInsights !== undefined) setShowAiInsights(cloudData.showAiInsights);
         if (cloudData.customLogoUrl) setCustomLogoUrl(cloudData.customLogoUrl);
         if (cloudData.globalStatusLightSize) setGlobalStatusLightSize(cloudData.globalStatusLightSize);
+        if (cloudData.dashboardColumns) setDashboardColumns(cloudData.dashboardColumns);
         setSyncStatus('success');
       }
       initialLoadDone.current = true;
@@ -150,7 +152,7 @@ const App = () => {
       const timer = setTimeout(() => handleSyncToCloud(true), 2000);
       return () => clearTimeout(timer);
     }
-  }, [users, seriesList, products, testers, shipments, customLogoUrl, globalStatusLightSize, isLoggedIn, handleSyncToCloud, currentUser]);
+  }, [users, seriesList, products, testers, shipments, customLogoUrl, globalStatusLightSize, dashboardColumns, isLoggedIn, handleSyncToCloud, currentUser]);
 
   return (
     <LanguageContext.Provider value={{ language, setLanguage, t }}>
@@ -180,6 +182,7 @@ const App = () => {
                     products={products} seriesList={seriesList} 
                     userRole={currentUser?.role}
                     globalStatusLightSize={globalStatusLightSize}
+                    dashboardColumns={dashboardColumns}
                     onAddProduct={async (p) => setProducts([...products, { ...p, id: `p-${Date.now()}`, ergoProjects: [], customerFeedback: [], designHistory: [], ergoTests: [], durabilityTests: [], isWatched: false, customSortOrder: products.length, uniqueFeedbackTags: {} } as any])}
                     onUpdateProduct={async (p) => setProducts(products.map(old => old.id === p.id ? p : old))}
                     onToggleWatch={(id) => setProducts(products.map(p => p.id === id ? { ...p, isWatched: !p.isWatched } : p))}
@@ -210,7 +213,7 @@ const App = () => {
                           newList[idx] = { ...newList[idx], [language]: name };
                           setSeriesList(newList);
                       }}
-                      currentAppState={{ products, seriesList, shipments, testers, users, language, showAiInsights, maxHistorySteps, customLogoUrl, globalStatusLightSize }}
+                      currentAppState={{ products, seriesList, shipments, testers, users, language, showAiInsights, maxHistorySteps, customLogoUrl, globalStatusLightSize, dashboardColumns }}
                       onLoadProject={(state) => {
                           if (state.products) setProducts(state.products);
                           if (state.seriesList) setSeriesList(state.seriesList);
@@ -219,10 +222,12 @@ const App = () => {
                           if (state.users) setUsers(state.users);
                           if (state.customLogoUrl) setCustomLogoUrl(state.customLogoUrl);
                           if (state.globalStatusLightSize) setGlobalStatusLightSize(state.globalStatusLightSize);
+                          if (state.dashboardColumns) setDashboardColumns(state.dashboardColumns);
                       }}
                       onUpdateMaxHistory={setMaxHistorySteps} onToggleAiInsights={setShowAiInsights}
                       onUpdateLogo={setCustomLogoUrl}
                       onUpdateStatusLightSize={setGlobalStatusLightSize}
+                      onUpdateDashboardColumns={setDashboardColumns}
                       onAddUser={(u) => setUsers([...users, { ...u, id: Date.now().toString() }])}
                       onUpdateUser={(u) => setUsers(users.map(old => old.id === u.id ? u : old))}
                       onDeleteUser={(id) => setUsers(users.filter(u => u.id !== id))}

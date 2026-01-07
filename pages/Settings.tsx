@@ -1,6 +1,6 @@
 
 import React, { useState, useRef, useContext, useEffect, useMemo } from 'react';
-import { Plus, X, Save, Download, Upload, AlertTriangle, CheckCircle, Pencil, History, Sparkles, Shield, User, Trash2, Eye, EyeOff, Key, Database, HardDrive, Info, Cloud, LogOut, Loader2, Link as LinkIcon, Activity, Layers, Image as ImageIcon, RotateCcw, Settings2 } from 'lucide-react';
+import { Plus, X, Save, Download, Upload, AlertTriangle, CheckCircle, Pencil, History, Sparkles, Shield, User, Trash2, Eye, EyeOff, Key, Database, HardDrive, Info, Cloud, LogOut, Loader2, Link as LinkIcon, Activity, Layers, Image as ImageIcon, RotateCcw, Settings2, LayoutGrid } from 'lucide-react';
 import { AppState, LocalizedString, UserAccount } from '../types';
 import { LanguageContext } from '../App';
 import { api } from '../services/api';
@@ -16,6 +16,7 @@ interface SettingsProps {
   onToggleAiInsights: (enabled: boolean) => void;
   onUpdateLogo: (url: string | undefined) => void;
   onUpdateStatusLightSize: (size: 'SMALL' | 'NORMAL' | 'LARGE') => void;
+  onUpdateDashboardColumns: (count: number) => void;
   onAddUser: (user: Omit<UserAccount, 'id'>) => void;
   onUpdateUser: (user: UserAccount) => void;
   onDeleteUser: (id: string) => void;
@@ -28,7 +29,7 @@ interface SettingsProps {
 const Settings: React.FC<SettingsProps> = ({ 
   seriesList, onAddSeries, onUpdateSeriesList, onRenameSeries, 
   currentAppState, onLoadProject, onUpdateMaxHistory, onToggleAiInsights,
-  onUpdateLogo, onUpdateStatusLightSize, onAddUser, onUpdateUser, onDeleteUser, onSyncCloud, onLogout, syncStatus, onResetDashboard
+  onUpdateLogo, onUpdateStatusLightSize, onUpdateDashboardColumns, onAddUser, onUpdateUser, onDeleteUser, onSyncCloud, onLogout, syncStatus, onResetDashboard
 }) => {
   const { t, language } = useContext(LanguageContext);
   const [newSeriesName, setNewSeriesName] = useState('');
@@ -245,13 +246,14 @@ const Settings: React.FC<SettingsProps> = ({
              </div>
           </section>
 
-          {/* Unified Global Status Light Config */}
+          {/* Unified Global UI Config */}
           <section className="bg-white rounded-2xl border border-slate-200 p-8 shadow-sm">
              <div className="flex items-center gap-2 mb-6 text-slate-900">
                 <Settings2 className="text-intenza-600" size={20} />
                 <h2 className="text-xl font-bold">{t({ en: 'Global UI Configuration', zh: '系統全域 UI 配置' })}</h2>
              </div>
-             <div className="space-y-6">
+             <div className="space-y-10">
+                {/* Status Light Size */}
                 <div>
                    <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-4">{t({ en: 'Status Light Size (Unified)', zh: '產品指示燈大小 (一次統一調整)' })}</label>
                    <div className="flex gap-4">
@@ -270,7 +272,31 @@ const Settings: React.FC<SettingsProps> = ({
                          </button>
                       ))}
                    </div>
-                   <p className="text-[10px] text-slate-400 mt-4 italic">{t({ en: 'This setting applies to all product cards in the portfolio.', zh: '此設定將統一套用至產品組合中的所有產品卡片。' })}</p>
+                </div>
+
+                {/* Dashboard Columns */}
+                <div>
+                   <label className="flex items-center gap-2 text-xs font-black text-slate-400 uppercase tracking-widest mb-4">
+                      <LayoutGrid size={14} />
+                      {t({ en: 'Dashboard Max Columns', zh: '產品卡片呈現數量 (畫面最大化時)' })}
+                   </label>
+                   <div className="flex gap-2">
+                      {[2, 3, 4, 5, 6].map(count => (
+                         <button 
+                           key={count}
+                           type="button"
+                           onClick={() => onUpdateDashboardColumns(count)}
+                           className={`flex-1 py-3 px-4 rounded-xl text-xs font-bold border-2 transition-all ${
+                              (currentAppState.dashboardColumns || 4) === count 
+                              ? 'bg-intenza-600 text-white border-intenza-600 shadow-lg' 
+                              : 'bg-white text-slate-500 border-slate-100 hover:border-slate-300'
+                           }`}
+                         >
+                            {count} {t({ en: 'Cols', zh: '欄' })}
+                         </button>
+                      ))}
+                   </div>
+                   <p className="text-[10px] text-slate-400 mt-4 italic">{t({ en: 'Defines how many product cards are shown per row on large screens.', zh: '定義大螢幕下每列顯示的產品卡片數量。' })}</p>
                 </div>
              </div>
           </section>
