@@ -895,20 +895,41 @@ const ErgoSection = ({ product, testers, onUpdateProduct, highlightedFeedback }:
   };
 
   const handleLinkEcoToCustomerFeedback = (feedbackId: string, ecoId: string) => {
+      const currentFeedback = product.customerFeedback.find(f => f.id === feedbackId);
+      const isUnlinking = currentFeedback?.linkedEcoId === ecoId;
+
+      const newLinkedId = isUnlinking ? undefined : ecoId;
+      const newStatus = isUnlinking ? 'PENDING' : 'DISCUSSION';
+
       onUpdateProduct({
           ...product,
-          customerFeedback: product.customerFeedback.map(f => f.id === feedbackId ? { ...f, status: 'DISCUSSION', linkedEcoId: ecoId } : f)
+          customerFeedback: product.customerFeedback.map(f => f.id === feedbackId ? { ...f, status: newStatus as any, linkedEcoId: newLinkedId } : f)
       });
-      setFeedbackStatusModal({ isOpen: false, feedback: null });
+      
+      // Update modal state to refresh UI visually without closing
+      if (feedbackStatusModal.feedback) {
+        setFeedbackStatusModal({
+          ...feedbackStatusModal,
+          feedback: { ...feedbackStatusModal.feedback, linkedEcoId: newLinkedId, status: newStatus as any }
+        });
+      }
   };
 
   const handleLinkExistingEco = (projectId: string, category: ErgoProjectCategory, taskId: string, testerId: string, ecoId: string) => {
+      const isUnlinking = statusModalState.context?.linkedEcoId === ecoId;
       const updatedDesignHistory = product.designHistory.map(eco => {
           if (eco.id === ecoId) {
               const currentSources = eco.sourceFeedbacks || [];
-              const newSource = { projectId, category, taskId, testerId };
-              const exists = currentSources.some(s => s.projectId === projectId && s.taskId === taskId && s.testerId === testerId);
-              if (!exists) return { ...eco, sourceFeedbacks: [...currentSources, newSource] };
+              if (isUnlinking) {
+                  return { 
+                    ...eco, 
+                    sourceFeedbacks: currentSources.filter(s => !(s.projectId === projectId && s.taskId === taskId && s.testerId === testerId))
+                  };
+              } else {
+                  const newSource = { projectId, category, taskId, testerId };
+                  const exists = currentSources.some(s => s.projectId === projectId && s.taskId === taskId && s.testerId === testerId);
+                  if (!exists) return { ...eco, sourceFeedbacks: [...currentSources, newSource] };
+              }
           }
           return eco;
       });
@@ -916,7 +937,16 @@ const ErgoSection = ({ product, testers, onUpdateProduct, highlightedFeedback }:
           if (p.id === projectId) {
               const updatedTasks = p.tasks[category].map(t => {
                   if (t.id === taskId) {
-                      const updatedNgReasons = t.ngReasons.map(ng => ng.testerId === testerId ? { ...ng, linkedEcoId: ecoId, decisionStatus: NgDecisionStatus.NEEDS_IMPROVEMENT } : ng);
+                      const updatedNgReasons = t.ngReasons.map(ng => {
+                        if (ng.testerId === testerId) {
+                            return { 
+                                ...ng, 
+                                linkedEcoId: isUnlinking ? undefined : ecoId, 
+                                decisionStatus: isUnlinking ? NgDecisionStatus.PENDING : NgDecisionStatus.NEEDS_IMPROVEMENT 
+                            };
+                        }
+                        return ng;
+                      });
                       return { ...t, ngReasons: updatedNgReasons };
                   }
                   return t;
@@ -926,7 +956,18 @@ const ErgoSection = ({ product, testers, onUpdateProduct, highlightedFeedback }:
           return p;
       });
       onUpdateProduct({ ...product, designHistory: updatedDesignHistory, ergoProjects: updatedProjects });
-      setStatusModalState({ isOpen: false, context: null });
+      
+      // Update modal state to refresh UI visually without closing
+      if (statusModalState.context) {
+          setStatusModalState({
+            ...statusModalState,
+            context: { 
+                ...statusModalState.context, 
+                linkedEcoId: isUnlinking ? undefined : ecoId,
+                currentStatus: isUnlinking ? NgDecisionStatus.PENDING : NgDecisionStatus.NEEDS_IMPROVEMENT
+            }
+          });
+      }
   };
 
   const handleSetNgDecision = (projectId: string, category: ErgoProjectCategory, taskId: string, testerId: string, decision: NgDecisionStatus) => {
