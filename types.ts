@@ -187,6 +187,7 @@ export interface AppState {
   globalStatusLightSize?: 'SMALL' | 'NORMAL' | 'LARGE';
   dashboardColumns?: number;
   cardAspectRatio?: string;
+  chartColorStyle?: 'COLORFUL' | 'MONOCHROME' | 'SLATE';
 }
 
 export interface Tester {

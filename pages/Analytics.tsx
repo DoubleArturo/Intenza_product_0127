@@ -1,7 +1,8 @@
+
 import React, { useState, useMemo, useRef, useContext, useEffect } from 'react';
 import { 
   PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer, 
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, Label
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Label, LabelList
 } from 'recharts';
 import { 
   ArrowLeft, PieChart as PieIcon, BarChart as BarIcon, Search, FileSpreadsheet, 
@@ -15,7 +16,11 @@ import * as XLSX from 'xlsx';
 import { LanguageContext } from '../App';
 import { useNavigate, useLocation } from 'react-router-dom';
 
-const COLORS = ['#0f172a', '#e3261b', '#94a3b8', '#fbbf24', '#f63e32', '#475569', '#3b82f6', '#10b981', '#8b5cf6', '#d946ef', '#06b6d4'];
+const COLOR_PALETTES = {
+  COLORFUL: ['#0f172a', '#e3261b', '#94a3b8', '#fbbf24', '#f63e32', '#475569', '#3b82f6', '#10b981', '#8b5cf6', '#d946ef', '#06b6d4'],
+  MONOCHROME: ['#450a0a', '#7f1d1d', '#991b1b', '#b91c1c', '#dc2626', '#ef4444', '#f87171', '#fca5a5', '#fecaca'],
+  SLATE: ['#020617', '#0f172a', '#1e293b', '#334155', '#475569', '#64748b', '#94a3b8', '#cbd5e1', '#e2e8f0']
+};
 
 const COLOR_MAP: Record<string, string> = {
   'Brown': '#78350f',
@@ -34,12 +39,15 @@ interface AnalyticsProps {
   onBatchAddProducts: (products: any[]) => void;
   showAiInsights: boolean;
   userRole?: 'admin' | 'user' | 'uploader';
+  chartColorStyle?: 'COLORFUL' | 'MONOCHROME' | 'SLATE';
 }
 
 type DimensionFilter = 'DATA_DRILL' | 'BUYER' | 'COLOR';
 type ViewMode = 'SHIPMENTS' | 'ERGONOMICS' | 'DURABILITY';
 
-const Analytics: React.FC<AnalyticsProps> = ({ products, shipments, onImportData, onBatchAddProducts, showAiInsights, userRole }) => {
+const Analytics: React.FC<AnalyticsProps> = ({ 
+  products, shipments, onImportData, onBatchAddProducts, showAiInsights, userRole, chartColorStyle = 'COLORFUL' 
+}) => {
   const { language, t } = useContext(LanguageContext);
   const navigate = useNavigate();
   const location = useLocation();
@@ -51,6 +59,7 @@ const Analytics: React.FC<AnalyticsProps> = ({ products, shipments, onImportData
   const [traceSearchQuery, setTraceSearchQuery] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  const activePalette = COLOR_PALETTES[chartColorStyle] || COLOR_PALETTES.COLORFUL;
   const canImport = userRole === 'admin' || userRole === 'uploader';
 
   /**
@@ -71,8 +80,6 @@ const Analytics: React.FC<AnalyticsProps> = ({ products, shipments, onImportData
       if (shipment) {
         setViewMode('SHIPMENTS');
         setDimension('DATA_DRILL');
-        // Drill down through CATEGORY -> SERIES -> SKU -> VERSION
-        // Landing at depth 4, which isLevel: BUYER
         setDrillPath([
             { level: 'CATEGORY', label: shipment.category, filterVal: shipment.category },
             { level: 'SERIES', label: shipment.series, filterVal: shipment.series },
@@ -80,17 +87,12 @@ const Analytics: React.FC<AnalyticsProps> = ({ products, shipments, onImportData
             { level: 'VERSION', label: version, filterVal: formatVersion(version) }
         ]);
       }
-      // Clear location state after handling to prevent loops or persistent filters
       navigate(location.pathname, { replace: true, state: {} });
     }
   }, [location.state, shipments, navigate, location.pathname]);
 
-  /**
-   * Enhanced Drill-Down Logic
-   */
   const currentLevel = useMemo(() => {
     const depth = drillPath.length;
-    
     if (dimension === 'BUYER') {
       switch (depth) {
         case 0: return 'BUYER';
@@ -100,7 +102,6 @@ const Analytics: React.FC<AnalyticsProps> = ({ products, shipments, onImportData
         default: return 'VERSION';
       }
     }
-
     if (dimension === 'COLOR') {
       switch (depth) {
         case 0: return 'COLOR';
@@ -110,8 +111,6 @@ const Analytics: React.FC<AnalyticsProps> = ({ products, shipments, onImportData
         default: return 'VERSION';
       }
     }
-    
-    // Normal drill sequence: CAT -> SERIES -> SKU -> VERSION -> BUYER
     switch (depth) {
       case 0: return 'CATEGORY';
       case 1: return 'SERIES';
@@ -145,11 +144,11 @@ const Analytics: React.FC<AnalyticsProps> = ({ products, shipments, onImportData
     return data;
   }, [shipments, drillPath]);
 
-  // Derive filtered products based on the selection path
+  // FIX: derive filteredProducts from active SKUs in the current filteredShipments.
   const filteredProducts = useMemo(() => {
-    const visibleSkus = new Set(filteredShipments.map(s => s.sku));
+    const activeSkus = new Set(filteredShipments.map(s => s.sku));
     if (drillPath.length === 0) return products;
-    return products.filter(p => visibleSkus.has(p.sku));
+    return products.filter(p => activeSkus.has(p.sku));
   }, [products, filteredShipments, drillPath]);
 
   const chartData = useMemo(() => {
@@ -167,17 +166,9 @@ const Analytics: React.FC<AnalyticsProps> = ({ products, shipments, onImportData
         case 'COLOR': key = getEntryColor(item.description); break;
         default: key = item.category;
       }
-
       aggregated[key] = (aggregated[key] || 0) + item.quantity;
-      
       const prod = products.find(p => p.sku === (currentLevel === 'SKU' ? key : item.sku));
-      if (prod) {
-        meta[key] = {
-          sku: prod.sku,
-          imageUrl: prod.imageUrl,
-          fullName: t(prod.modelName)
-        };
-      }
+      if (prod) meta[key] = { sku: prod.sku, imageUrl: prod.imageUrl, fullName: t(prod.modelName) };
     });
 
     return Object.keys(aggregated).map(key => ({
@@ -235,7 +226,6 @@ const Analytics: React.FC<AnalyticsProps> = ({ products, shipments, onImportData
         const wb = XLSX.read(data, { type: 'array' });
         const ws = wb.Sheets[wb.SheetNames[0]];
         const jsonData = XLSX.utils.sheet_to_json(ws);
-        
         const newShipments: ShipmentData[] = jsonData.map((row: any, i) => ({
           id: `imp-${Date.now()}-${i}`,
           modelId: 'imported',
@@ -254,7 +244,6 @@ const Analytics: React.FC<AnalyticsProps> = ({ products, shipments, onImportData
           series: row['Series'] || 'General',
           country: row['Country'] || row['Region'] || 'Global'
         }));
-
         onImportData(newShipments);
         alert(`Successfully imported ${newShipments.length} records.`);
       } catch (err) {
@@ -268,7 +257,7 @@ const Analytics: React.FC<AnalyticsProps> = ({ products, shipments, onImportData
     if (active && payload && payload.length) {
       const data = payload[0].payload;
       return (
-        <div className="bg-white p-4 border border-slate-200 shadow-2xl rounded-2xl min-w-[200px]">
+        <div className="bg-white p-4 border border-slate-200 shadow-2xl rounded-2xl min-w-[200px] z-[100]">
           {data.imageUrl && (
             <img src={data.imageUrl} className="w-full h-28 object-contain rounded-lg mb-3 bg-slate-50 border border-slate-100 p-2" alt={data.name} />
           )}
@@ -288,86 +277,40 @@ const Analytics: React.FC<AnalyticsProps> = ({ products, shipments, onImportData
     const { x, y, payload } = props;
     const dataItem = chartData.find(d => d.name === payload.value);
     const showImage = currentLevel === 'SKU' || currentLevel === 'VERSION';
-    
     return (
       <g transform={`translate(${x},${y})`}>
-        <text 
-          x={0} 
-          y={0} 
-          dy={showImage ? 70 : 16} 
-          textAnchor="middle" 
-          fill="#64748b" 
-          fontSize={10} 
-          fontWeight="900"
-          className="uppercase tracking-tighter"
-        >
+        <text x={0} y={0} dy={showImage ? 70 : 16} textAnchor="middle" fill="#64748b" fontSize={10} fontWeight="900" className="uppercase tracking-tighter">
           {payload.value.length > 15 ? payload.value.substring(0, 12) + '...' : payload.value}
         </text>
         {showImage && dataItem?.imageUrl && (
           <g transform="translate(-25, 10)">
-            <defs>
-              <clipPath id={`clip-${payload.value}`}>
-                <rect width="50" height="50" rx="12" ry="12" />
-              </clipPath>
-            </defs>
+            <defs><clipPath id={`clip-${payload.value}`}><rect width="50" height="50" rx="12" ry="12" /></clipPath></defs>
             <rect width="50" height="50" rx="12" ry="12" fill="#fff" stroke="#f1f5f9" strokeWidth="2" className="shadow-sm" />
-            <image
-              width="44"
-              height="44"
-              x="3"
-              y="3"
-              href={dataItem.imageUrl}
-              preserveAspectRatio="xMidYMid meet"
-              clipPath={`url(#clip-${payload.value})`}
-            />
+            <image width="44" height="44" x="3" y="3" href={dataItem.imageUrl} preserveAspectRatio="xMidYMid meet" clipPath={`url(#clip-${payload.value})`} />
           </g>
         )}
       </g>
     );
   };
 
-  // Custom Segment Label for Pie Chart with Images
   const renderCustomizedPieLabel = (props: any) => {
     const { cx, cy, midAngle, innerRadius, outerRadius, name, imageUrl } = props;
     const showImage = (currentLevel === 'SKU' || currentLevel === 'VERSION') && imageUrl;
-    
     const RADIAN = Math.PI / 180;
     const radius = outerRadius + (showImage ? 40 : 25);
     const x = cx + radius * Math.cos(-midAngle * RADIAN);
     const y = cy + radius * Math.sin(-midAngle * RADIAN);
     const textAnchor = x > cx ? 'start' : 'end';
-
     return (
       <g>
-        <text 
-          x={x} 
-          y={showImage ? y - 12 : y} 
-          fill="#0f172a" 
-          textAnchor={textAnchor} 
-          dominantBaseline="central" 
-          fontSize={9} 
-          fontWeight="900" 
-          className="uppercase tracking-tighter"
-        >
+        <text x={x} y={showImage ? y - 12 : y} fill="#0f172a" textAnchor={textAnchor} dominantBaseline="central" fontSize={9} fontWeight="900" className="uppercase tracking-tighter">
           {name.length > 12 ? name.substring(0, 10) + '..' : name}
         </text>
         {showImage && (
           <g transform={`translate(${textAnchor === 'start' ? x : x - 30}, ${y - 5})`}>
-            <defs>
-              <clipPath id={`pie-clip-${name}`}>
-                <rect width="30" height="30" rx="8" ry="8" />
-              </clipPath>
-            </defs>
+            <defs><clipPath id={`pie-clip-${name}`}><rect width="30" height="30" rx="8" ry="8" /></clipPath></defs>
             <rect width="30" height="30" rx="8" ry="8" fill="#fff" stroke="#f1f5f9" strokeWidth="1" className="shadow-sm" />
-            <image
-              width="26"
-              height="26"
-              x="2"
-              y="2"
-              href={imageUrl}
-              preserveAspectRatio="xMidYMid meet"
-              clipPath={`url(#pie-clip-${name})`}
-            />
+            <image width="26" height="26" x="2" y="2" href={imageUrl} preserveAspectRatio="xMidYMid meet" clipPath={`url(#pie-clip-${name})`} />
           </g>
         )}
       </g>
@@ -393,7 +336,6 @@ const Analytics: React.FC<AnalyticsProps> = ({ products, shipments, onImportData
 
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
         <div className="lg:col-span-3 space-y-8">
-          {/* Controls & Breadcrumbs */}
           <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm flex flex-wrap items-center justify-between gap-6">
             <div className="flex items-center gap-4">
               {drillPath.length > 0 && (
@@ -417,28 +359,11 @@ const Analytics: React.FC<AnalyticsProps> = ({ products, shipments, onImportData
             </div>
 
             <div className="flex items-center gap-4">
-              {/* Main View Mode Tabs */}
               <div className="flex bg-slate-100 p-1 rounded-xl shadow-inner mr-4">
-                <button 
-                  onClick={() => setViewMode('SHIPMENTS')} 
-                  className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-black transition-all ${viewMode === 'SHIPMENTS' ? 'bg-white shadow-md text-intenza-600' : 'text-slate-400'}`}
-                >
-                  <BarIcon size={14}/> SHIPMENTS
-                </button>
-                <button 
-                  onClick={() => setViewMode('ERGONOMICS')} 
-                  className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-black transition-all ${viewMode === 'ERGONOMICS' ? 'bg-white shadow-md text-indigo-600' : 'text-slate-400'}`}
-                >
-                  <ShieldCheck size={14}/> ERGO
-                </button>
-                <button 
-                  onClick={() => setViewMode('DURABILITY')} 
-                  className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-black transition-all ${viewMode === 'DURABILITY' ? 'bg-white shadow-md text-emerald-600' : 'text-slate-400'}`}
-                >
-                  <Zap size={14}/> DURABILITY
-                </button>
+                <button onClick={() => setViewMode('SHIPMENTS')} className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-black transition-all ${viewMode === 'SHIPMENTS' ? 'bg-white shadow-md text-intenza-600' : 'text-slate-400'}`}><BarIcon size={14}/> SHIPMENTS</button>
+                <button onClick={() => setViewMode('ERGONOMICS')} className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-black transition-all ${viewMode === 'ERGONOMICS' ? 'bg-white shadow-md text-indigo-600' : 'text-slate-400'}`}><ShieldCheck size={14}/> ERGO</button>
+                <button onClick={() => setViewMode('DURABILITY')} className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-black transition-all ${viewMode === 'DURABILITY' ? 'bg-white shadow-md text-emerald-600' : 'text-slate-400'}`}><Zap size={14}/> DURABILITY</button>
               </div>
-
               {viewMode === 'SHIPMENTS' && (
                 <>
                   <div className="flex bg-slate-100 p-1 rounded-xl shadow-inner">
@@ -455,42 +380,22 @@ const Analytics: React.FC<AnalyticsProps> = ({ products, shipments, onImportData
             </div>
           </div>
 
-          {/* Main Content Area */}
           <div className="bg-white rounded-[2.5rem] p-10 border border-slate-100 shadow-sm min-h-[550px] flex flex-col relative overflow-hidden">
-            
             {viewMode === 'SHIPMENTS' && (
               <>
-                <div className="absolute top-10 right-10 flex flex-col items-end">
+                <div className="absolute top-10 right-10 flex flex-col items-end z-30">
                    <span className="text-[10px] font-black text-slate-300 uppercase tracking-widest">Active Metric</span>
                    <span className="text-xs font-black text-intenza-600 uppercase tracking-tight">Units Shipped</span>
                 </div>
-                
                 <div className="flex-1 mt-6 animate-fade-in">
                   <ResponsiveContainer width="100%" height={500}>
                     {chartType === 'PIE' ? (
                       <PieChart margin={{ top: 40, bottom: 40, left: 40, right: 40 }}>
-                        <Pie 
-                          data={chartData} 
-                          cx="50%" cy="50%" 
-                          innerRadius="55%" outerRadius="75%" 
-                          dataKey="value" 
-                          onClick={handleDrill}
-                          cursor="pointer"
-                          stroke="#fff"
-                          strokeWidth={4}
-                          paddingAngle={2}
-                          label={renderCustomizedPieLabel}
-                          labelLine={{ stroke: '#cbd5e1', strokeWidth: 1 }}
-                        >
+                        <Pie data={chartData} cx="50%" cy="50%" innerRadius="55%" outerRadius="75%" dataKey="value" onClick={handleDrill} cursor="pointer" stroke="#fff" strokeWidth={4} paddingAngle={2} label={renderCustomizedPieLabel} labelLine={{ stroke: '#cbd5e1', strokeWidth: 1 }}>
                           {chartData.map((entry, i) => (
-                            <Cell 
-                              key={`cell-${i}`} 
-                              fill={currentLevel === 'COLOR' ? (COLOR_MAP[entry.name] || COLORS[i % COLORS.length]) : COLORS[i % COLORS.length]} 
-                              className="hover:opacity-80 transition-opacity" 
-                            />
+                            <Cell key={`cell-${i}`} fill={currentLevel === 'COLOR' ? (COLOR_MAP[entry.name] || activePalette[i % activePalette.length]) : activePalette[i % activePalette.length]} className="hover:opacity-80 transition-opacity" />
                           ))}
-                          <Label 
-                            content={({ viewBox }: any) => {
+                          <Label content={({ viewBox }: any) => {
                               const { cx, cy } = viewBox;
                               return (
                                 <text x={cx} y={cy} textAnchor="middle" dominantBaseline="central">
@@ -501,36 +406,22 @@ const Analytics: React.FC<AnalyticsProps> = ({ products, shipments, onImportData
                             }}
                           />
                         </Pie>
-                        <Tooltip content={<CustomTooltip />} />
+                        {/* FIXED POSITION TOOLTIP: top-right to avoid covering chart */}
+                        <Tooltip content={<CustomTooltip />} position={{ x: 20, y: 20 }} />
                         <Legend verticalAlign="bottom" height={40} iconType="circle" wrapperStyle={{ paddingTop: '20px', fontWeight: 'bold', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.1em' }} />
                       </PieChart>
                     ) : (
-                      <BarChart data={chartData} margin={{ top: 20, right: 30, left: 20, bottom: 90 }}>
+                      <BarChart data={chartData} margin={{ top: 40, right: 30, left: 20, bottom: 90 }}>
                         <CartesianGrid strokeDasharray="6 6" vertical={false} stroke="#f1f5f9" />
-                        <XAxis 
-                          dataKey="name" 
-                          axisLine={false} 
-                          tickLine={false} 
-                          interval={0}
-                          height={100}
-                          tick={<CustomXAxisTick />}
-                        />
+                        <XAxis dataKey="name" axisLine={false} tickLine={false} interval={0} height={100} tick={<CustomXAxisTick />} />
                         <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: '#cbd5e1', fontWeight: 'bold' }} />
                         <Tooltip content={<CustomTooltip />} cursor={{ fill: '#f8fafc' }} />
-                        <Bar 
-                          dataKey="value" 
-                          radius={[12, 12, 0, 0]} 
-                          onClick={handleDrill} 
-                          cursor="pointer"
-                          barSize={50}
-                        >
+                        <Bar dataKey="value" radius={[12, 12, 0, 0]} onClick={handleDrill} cursor="pointer" barSize={50}>
                           {chartData.map((entry, i) => (
-                            <Cell 
-                              key={`cell-${i}`} 
-                              fill={currentLevel === 'COLOR' ? (COLOR_MAP[entry.name] || COLORS[i % COLORS.length]) : COLORS[i % COLORS.length]} 
-                              className="hover:brightness-95 transition-all" 
-                            />
+                            <Cell key={`cell-${i}`} fill={currentLevel === 'COLOR' ? (COLOR_MAP[entry.name] || activePalette[i % activePalette.length]) : activePalette[i % activePalette.length]} className="hover:brightness-95 transition-all" />
                           ))}
+                          {/* BAR QUANTITY LABELS AT TOP */}
+                          <LabelList dataKey="value" position="top" style={{ fontSize: '11px', fontWeight: '900', fill: '#64748b' }} offset={10} formatter={(v: number) => v.toLocaleString()} />
                         </Bar>
                       </BarChart>
                     )}
@@ -538,7 +429,6 @@ const Analytics: React.FC<AnalyticsProps> = ({ products, shipments, onImportData
                 </div>
               </>
             )}
-
             {viewMode === 'ERGONOMICS' && (
               <div className="flex-1 animate-fade-in">
                 <div className="mb-10 flex items-center justify-between">
@@ -548,23 +438,19 @@ const Analytics: React.FC<AnalyticsProps> = ({ products, shipments, onImportData
                   </div>
                   <ShieldCheck className="text-indigo-600 opacity-20" size={48} />
                 </div>
-                
                 <div className="space-y-4">
                   {filteredProducts.map(p => {
                     const totalTasks = (p.ergoProjects || []).reduce((acc: number, proj) => {
                       const taskLists = Object.values(proj.tasks || {}) as any[][];
                       return acc + taskLists.reduce((taskAcc: number, taskList) => taskAcc + taskList.length, 0);
                     }, 0);
-                    
                     const passedTasks = (p.ergoProjects || []).reduce((acc: number, proj) => {
                       const taskLists = Object.values(proj.tasks || {}) as any[][];
                       return acc + taskLists.reduce((taskAcc: number, taskList) => {
                         return taskAcc + taskList.filter(t => t.ngReasons.length === 0 && t.passTesterIds.length > 0).length;
                       }, 0);
                     }, 0);
-
                     const progress = totalTasks > 0 ? (passedTasks / totalTasks) * 100 : 0;
-
                     return (
                       <div key={p.id} onClick={() => navigate(`/product/${p.id}`, { state: { activeTab: 'ERGO' }})} className="group p-6 bg-slate-50 hover:bg-white border-2 border-transparent hover:border-indigo-100 rounded-3xl transition-all cursor-pointer flex items-center gap-6">
                         <div className="w-16 h-16 bg-white rounded-2xl border border-slate-100 overflow-hidden flex-shrink-0">
@@ -589,23 +475,15 @@ const Analytics: React.FC<AnalyticsProps> = ({ products, shipments, onImportData
                           </div>
                         </div>
                         <div className="w-32 grid grid-cols-2 gap-2 text-center">
-                          <div className="bg-white rounded-xl p-2 border border-slate-100">
-                             <div className="text-[9px] font-black text-emerald-500 uppercase">Pass</div>
-                             <div className="text-base font-black text-slate-900">{passedTasks}</div>
-                          </div>
-                          <div className="bg-white rounded-xl p-2 border border-slate-100">
-                             <div className="text-[9px] font-black text-rose-500 uppercase">NG</div>
-                             <div className="text-base font-black text-slate-900">{totalTasks - passedTasks}</div>
-                          </div>
+                          <div className="bg-white rounded-xl p-2 border border-slate-100"><div className="text-[9px] font-black text-emerald-500 uppercase">Pass</div><div className="text-base font-black text-slate-900">{passedTasks}</div></div>
+                          <div className="bg-white rounded-xl p-2 border border-slate-100"><div className="text-[9px] font-black text-rose-500 uppercase">NG</div><div className="text-base font-black text-slate-900">{totalTasks - passedTasks}</div></div>
                         </div>
                       </div>
                     );
                   })}
-                  {filteredProducts.length === 0 && <div className="py-20 text-center text-slate-300 font-bold uppercase tracking-widest">No evaluation projects found</div>}
                 </div>
               </div>
             )}
-
             {viewMode === 'DURABILITY' && (
               <div className="flex-1 animate-fade-in">
                 <div className="mb-10 flex items-center justify-between">
@@ -615,60 +493,31 @@ const Analytics: React.FC<AnalyticsProps> = ({ products, shipments, onImportData
                   </div>
                   <Zap className="text-emerald-500 opacity-20" size={48} />
                 </div>
-                
                 <div className="space-y-12">
                    {filteredProducts.filter(p => (p.durabilityTests || []).length > 0).map(p => (
                       <div key={p.id} className="space-y-6">
                         <div className="flex items-center gap-4 border-b border-slate-100 pb-4">
-                           <div className="w-16 h-16 bg-white rounded-2xl border border-slate-100 overflow-hidden flex-shrink-0 shadow-sm">
-                              {p.imageUrl ? <img src={p.imageUrl} className="w-full h-full object-contain p-1" /> : <div className="w-full h-full flex items-center justify-center text-slate-200 bg-slate-50"><ImageIcon size={20}/></div>}
-                           </div>
-                           <div>
-                              <h4 className="text-lg font-black text-slate-900 uppercase tracking-tight">{t(p.modelName)}</h4>
-                              <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">{p.sku}</span>
-                           </div>
+                           <div className="w-16 h-16 bg-white rounded-2xl border border-slate-100 overflow-hidden flex-shrink-0 shadow-sm">{p.imageUrl ? <img src={p.imageUrl} className="w-full h-full object-contain p-1" /> : <div className="w-full h-full flex items-center justify-center text-slate-200 bg-slate-50"><ImageIcon size={20}/></div>}</div>
+                           <div><h4 className="text-lg font-black text-slate-900 uppercase tracking-tight">{t(p.modelName)}</h4><span className="text-xs font-bold text-slate-400 uppercase tracking-widest">{p.sku}</span></div>
                         </div>
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                           {/* SORTED BY UPDATED DATE (NEWEST FIRST) */}
-                           {[...(p.durabilityTests || [])]
-                             .sort((a, b) => new Date(b.updatedDate || 0).getTime() - new Date(a.updatedDate || 0).getTime())
-                             .map((test, idx) => (
+                           {[...(p.durabilityTests || [])].sort((a, b) => new Date(b.updatedDate || 0).getTime() - new Date(a.updatedDate || 0).getTime()).map((test, idx) => (
                               <div key={idx} onClick={() => navigate(`/product/${p.id}`, { state: { activeTab: 'LIFE' }})} className="group bg-slate-50 hover:bg-white p-4 rounded-2xl border-2 border-transparent hover:border-emerald-100 transition-all cursor-pointer shadow-sm">
                                  <div className="flex justify-between items-start mb-3">
                                     <div className="flex-1 min-w-0">
-                                       <div className="flex items-center gap-1.5 mb-1">
-                                          <span className="text-[8px] font-black text-emerald-600 uppercase tracking-widest bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-100 whitespace-nowrap">{test.category}</span>
-                                          {test.version && <span className="text-[8px] font-bold text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200 whitespace-nowrap">{test.version}</span>}
-                                       </div>
+                                       <div className="flex items-center gap-1.5 mb-1"><span className="text-[8px] font-black text-emerald-600 uppercase tracking-widest bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-100 whitespace-nowrap">{test.category}</span>{test.version && <span className="text-[8px] font-bold text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200 whitespace-nowrap">{test.version}</span>}</div>
                                        <h4 className="font-black text-slate-800 uppercase text-[11px] tracking-tight truncate" title={t(test.testName)}>{t(test.testName)}</h4>
                                     </div>
-                                    {/* MINIMIZED NG/FAIL STATUS */}
-                                    <div className={`px-2 py-0.5 rounded-md text-[8px] font-black uppercase tracking-widest border transition-colors ${
-                                      test.status === TestStatus.PASS ? 'bg-emerald-500 text-white border-emerald-400' :
-                                      test.status === TestStatus.FAIL ? 'bg-white text-rose-500 border-rose-200 shadow-sm' : // MINIMIZED NG: White bg, rose text
-                                      'bg-slate-100 text-slate-500 border-slate-200'
-                                    }`}>{test.status}</div>
+                                    <div className={`px-2 py-0.5 rounded-md text-[8px] font-black uppercase tracking-widest border transition-colors ${test.status === TestStatus.PASS ? 'bg-emerald-500 text-white border-emerald-400' : test.status === TestStatus.FAIL ? 'bg-white text-rose-500 border-rose-200 shadow-sm' : 'bg-slate-100 text-slate-500 border-slate-200'}`}>{test.status}</div>
                                  </div>
-                                 
-                                 <div className="flex items-center justify-between mb-1.5">
-                                    <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Progress</span>
-                                    <span className="text-[11px] font-black text-slate-900">{test.score}%</span>
-                                 </div>
-                                 <div className="w-full h-2 bg-slate-200 rounded-full overflow-hidden shadow-inner mb-3">
-                                    <div className={`h-full transition-all duration-1000 ${test.status === TestStatus.PASS ? 'bg-emerald-500' : test.status === TestStatus.FAIL ? 'bg-rose-400' : 'bg-blue-400'}`} style={{ width: `${test.score}%` }}></div>
-                                 </div>
-                                 <div className="flex items-center justify-between text-[8px] font-bold text-slate-300 uppercase tracking-widest border-t border-slate-100 pt-2">
-                                    <div className="flex items-center gap-1"><Clock size={9}/> {test.updatedDate}</div>
-                                    <ArrowRight size={10} className="group-hover:translate-x-0.5 transition-transform" />
-                                 </div>
+                                 <div className="flex items-center justify-between mb-1.5"><span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Progress</span><span className="text-[11px] font-black text-slate-900">{test.score}%</span></div>
+                                 <div className="w-full h-2 bg-slate-200 rounded-full overflow-hidden shadow-inner mb-3"><div className={`h-full transition-all duration-1000 ${test.status === TestStatus.PASS ? 'bg-emerald-500' : test.status === TestStatus.FAIL ? 'bg-rose-400' : 'bg-blue-400'}`} style={{ width: `${test.score}%` }}></div></div>
+                                 <div className="flex items-center justify-between text-[8px] font-bold text-slate-300 uppercase tracking-widest border-t border-slate-100 pt-2"><div className="flex items-center gap-1"><Clock size={9}/> {test.updatedDate}</div><ArrowRight size={10} className="group-hover:translate-x-0.5 transition-transform" /></div>
                               </div>
                            ))}
                         </div>
                       </div>
                    ))}
-                   {filteredProducts.every(p => (p.durabilityTests || []).length === 0) && (
-                     <div className="py-20 text-center text-slate-300 font-bold uppercase tracking-widest">No durability tests found</div>
-                   )}
                 </div>
               </div>
             )}
@@ -676,27 +525,15 @@ const Analytics: React.FC<AnalyticsProps> = ({ products, shipments, onImportData
 
           {viewMode === 'SHIPMENTS' && (
             <div className="grid grid-cols-1 gap-8 animate-fade-in">
-              {/* Color Analysis Section */}
               <div className="bg-white rounded-[2.5rem] p-8 border border-slate-100 shadow-sm flex flex-col">
-                <div className="flex items-center gap-3 mb-8">
-                  <div className="p-2 bg-slate-900 rounded-lg text-white">
-                    <Palette size={20} />
-                  </div>
-                  <h3 className="font-black text-xl text-slate-900 tracking-tight">Finishing Distribution</h3>
-                </div>
+                <div className="flex items-center gap-3 mb-8"><div className="p-2 bg-slate-900 rounded-lg text-white"><Palette size={20} /></div><h3 className="font-black text-xl text-slate-900 tracking-tight">Finishing Distribution</h3></div>
                 <div className="flex-1 grid grid-cols-1 xl:grid-cols-2 gap-6">
                   <div className="h-[250px]">
                     <ResponsiveContainer width="100%" height="100%">
                       <PieChart>
-                        <Pie
-                          data={colorData}
-                          innerRadius={50}
-                          outerRadius={85}
-                          dataKey="value"
-                          paddingAngle={5}
-                        >
+                        <Pie data={colorData} innerRadius={50} outerRadius={85} dataKey="value" paddingAngle={5}>
                           {colorData.map((entry, index) => (
-                            <Cell key={`cell-${index}`} fill={COLOR_MAP[entry.name] || COLORS[index % COLORS.length]} />
+                            <Cell key={`cell-${index}`} fill={COLOR_MAP[entry.name] || activePalette[index % activePalette.length]} />
                           ))}
                         </Pie>
                         <Tooltip />
@@ -718,30 +555,17 @@ const Analytics: React.FC<AnalyticsProps> = ({ products, shipments, onImportData
           )}
         </div>
 
-        {/* Sidebar Analytics */}
         <div className="space-y-6">
           <div className="bg-white p-8 rounded-[2rem] border border-slate-200 shadow-sm flex flex-col h-full max-h-[700px]">
-            <h3 className="font-black text-xl text-slate-900 mb-6 flex items-center gap-3">
-              <ClipboardList size={22} className="text-intenza-600" /> Trace Records
-            </h3>
+            <h3 className="font-black text-xl text-slate-900 mb-6 flex items-center gap-3"><ClipboardList size={22} className="text-intenza-600" /> Trace Records</h3>
             <div className="relative mb-6">
               <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-              <input 
-                type="text" 
-                placeholder="Serial, PI or Buyer..." 
-                value={traceSearchQuery}
-                onChange={(e) => setTraceSearchQuery(e.target.value)}
-                className="w-full pl-12 pr-4 py-4 bg-slate-50 border-2 border-slate-50 rounded-2xl text-sm font-bold focus:border-slate-900 focus:bg-white outline-none transition-all shadow-inner"
-              />
+              <input type="text" placeholder="Serial, PI or Buyer..." value={traceSearchQuery} onChange={(e) => setTraceSearchQuery(e.target.value)} className="w-full pl-12 pr-4 py-4 bg-slate-50 border-2 border-slate-50 rounded-2xl text-sm font-bold focus:border-slate-900 focus:bg-white outline-none transition-all shadow-inner" />
             </div>
-            
             <div className="space-y-4 overflow-y-auto flex-1 pr-2 custom-scrollbar">
               {traceResults.map(r => (
                 <div key={r.id} className="p-4 bg-white border-2 border-slate-50 rounded-2xl hover:border-slate-200 transition-all cursor-default">
-                  <div className="flex justify-between items-start mb-3">
-                    <span className="text-[10px] font-black bg-slate-900 text-white px-2 py-1 rounded-md tracking-wider">SN: {r.sn}</span>
-                    <span className="text-[9px] text-slate-400 font-black font-mono">{r.shipDate}</span>
-                  </div>
+                  <div className="flex justify-between items-start mb-3"><span className="text-[10px] font-black bg-slate-900 text-white px-2 py-1 rounded-md tracking-wider">SN: {r.sn}</span><span className="text-[9px] text-slate-400 font-black font-mono">{r.shipDate}</span></div>
                   <div className="space-y-3">
                     <div className="text-xs font-black text-slate-800 line-clamp-1 uppercase">{r.description}</div>
                     <div className="grid grid-cols-2 gap-x-3 gap-y-2 text-[10px] text-slate-500 border-t border-slate-50 pt-3">
@@ -755,36 +579,14 @@ const Analytics: React.FC<AnalyticsProps> = ({ products, shipments, onImportData
               ))}
             </div>
           </div>
-
-          {showAiInsights && (
-            <GeminiInsight 
-              context={`Quality Analytics Review. Active View: ${viewMode}. Filtered Products: ${filteredProducts.length}. Drill Path: ${drillPath.map(p=>`${p.level}:${p.label}`).join(', ')}.`} 
-              data={{ shipments: filteredShipments, products: filteredProducts }} 
-            />
-          )}
-
+          {showAiInsights && <GeminiInsight context={`Quality Analytics Review. Active View: ${viewMode}. Filtered Products: ${filteredProducts.length}. Drill Path: ${drillPath.map(p=>`${p.level}:${p.label}`).join(', ')}.`} data={{ shipments: filteredShipments, products: filteredProducts }} />}
           <div className="bg-slate-900 text-white p-10 rounded-[2.5rem] shadow-2xl shadow-slate-900/30 relative overflow-hidden group">
              <div className="absolute -top-10 -right-10 w-40 h-40 bg-white/5 rounded-full blur-3xl transition-transform group-hover:scale-150"></div>
              <h4 className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-500 mb-6">Live Status</h4>
              <div className="space-y-6">
-               <div>
-                  <div className="text-xs font-bold text-slate-400 mb-2 uppercase tracking-widest">Active Total</div>
-                  <div className="text-5xl font-black tracking-tighter">{totalQuantity.toLocaleString()}</div>
-               </div>
-               <div className="flex justify-between items-center pt-6 border-t border-white/10">
-                  <div className="flex items-center gap-3">
-                     <div className="p-1.5 bg-white/10 rounded-lg"><Box size={16} className="text-intenza-500" /></div>
-                     <span className="text-xs font-bold uppercase tracking-wider">SKUs in View</span>
-                  </div>
-                  <span className="text-base font-black font-mono">{new Set(filteredShipments.map(s=>s.sku)).size}</span>
-               </div>
-               <div className="flex justify-between items-center">
-                  <div className="flex items-center gap-3">
-                     <div className="p-1.5 bg-white/10 rounded-lg"><User size={16} className="text-blue-400" /></div>
-                     <span className="text-xs font-bold uppercase tracking-wider">Buyers in View</span>
-                  </div>
-                  <span className="text-base font-black font-mono">{new Set(filteredShipments.map(s=>s.buyer)).size}</span>
-               </div>
+               <div><div className="text-xs font-bold text-slate-400 mb-2 uppercase tracking-widest">Active Total</div><div className="text-5xl font-black tracking-tighter">{totalQuantity.toLocaleString()}</div></div>
+               <div className="flex justify-between items-center pt-6 border-t border-white/10"><div className="flex items-center gap-3"><div className="p-1.5 bg-white/10 rounded-lg"><Box size={16} className="text-intenza-500" /></div><span className="text-xs font-bold uppercase tracking-wider">SKUs in View</span></div><span className="text-base font-black font-mono">{new Set(filteredShipments.map(s=>s.sku)).size}</span></div>
+               <div className="flex justify-between items-center"><div className="flex items-center gap-3"><div className="p-1.5 bg-white/10 rounded-lg"><User size={16} className="text-blue-400" /></div><span className="text-xs font-bold uppercase tracking-wider">Buyers in View</span></div><span className="text-base font-black font-mono">{new Set(filteredShipments.map(s=>s.buyer)).size}</span></div>
              </div>
           </div>
         </div>

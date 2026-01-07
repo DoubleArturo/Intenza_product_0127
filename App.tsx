@@ -51,6 +51,7 @@ const App = () => {
   const [globalStatusLightSize, setGlobalStatusLightSize] = useState<'SMALL' | 'NORMAL' | 'LARGE'>('NORMAL');
   const [dashboardColumns, setDashboardColumns] = useState<number>(4);
   const [cardAspectRatio, setCardAspectRatio] = useState<string>('3/4');
+  const [chartColorStyle, setChartColorStyle] = useState<'COLORFUL' | 'MONOCHROME' | 'SLATE'>('COLORFUL');
 
   const [syncStatus, setSyncStatus] = useState<'idle' | 'saving' | 'success' | 'error'>('idle');
   const [errorDetail, setErrorDetail] = useState<string>('');
@@ -76,7 +77,7 @@ const App = () => {
     setSyncStatus('saving');
     
     const state: AppState = {
-      products, seriesList, shipments, testers, users, language, showAiInsights, maxHistorySteps, customLogoUrl, globalStatusLightSize, dashboardColumns, cardAspectRatio
+      products, seriesList, shipments, testers, users, language, showAiInsights, maxHistorySteps, customLogoUrl, globalStatusLightSize, dashboardColumns, cardAspectRatio, chartColorStyle
     };
 
     try {
@@ -91,7 +92,7 @@ const App = () => {
       setErrorDetail(error.message || 'Connection Error');
       isSyncingRef.current = false;
     }
-  }, [products, seriesList, shipments, testers, users, language, showAiInsights, maxHistorySteps, customLogoUrl, globalStatusLightSize, dashboardColumns, cardAspectRatio, isLoggedIn, currentUser]);
+  }, [products, seriesList, shipments, testers, users, language, showAiInsights, maxHistorySteps, customLogoUrl, globalStatusLightSize, dashboardColumns, cardAspectRatio, chartColorStyle, isLoggedIn, currentUser]);
 
   const handleLoadFromCloud = useCallback(async () => {
     if (isSyncingRef.current) return;
@@ -112,6 +113,7 @@ const App = () => {
         if (cloudData.globalStatusLightSize) setGlobalStatusLightSize(cloudData.globalStatusLightSize);
         if (cloudData.dashboardColumns) setDashboardColumns(cloudData.dashboardColumns);
         if (cloudData.cardAspectRatio) setCardAspectRatio(cloudData.cardAspectRatio);
+        if (cloudData.chartColorStyle) setChartColorStyle(cloudData.chartColorStyle);
         setSyncStatus('success');
       }
       initialLoadDone.current = true;
@@ -154,7 +156,7 @@ const App = () => {
       const timer = setTimeout(() => handleSyncToCloud(true), 2000);
       return () => clearTimeout(timer);
     }
-  }, [users, seriesList, products, testers, shipments, customLogoUrl, globalStatusLightSize, dashboardColumns, cardAspectRatio, isLoggedIn, handleSyncToCloud, currentUser]);
+  }, [users, seriesList, products, testers, shipments, customLogoUrl, globalStatusLightSize, dashboardColumns, cardAspectRatio, chartColorStyle, isLoggedIn, handleSyncToCloud, currentUser]);
 
   return (
     <LanguageContext.Provider value={{ language, setLanguage, t }}>
@@ -205,7 +207,7 @@ const App = () => {
                   <ProductDetail products={products} shipments={shipments} testers={testers} userRole={currentUser?.role} onUpdateProduct={async (p) => setProducts(products.map(old => old.id === p.id ? p : old))} showAiInsights={showAiInsights} />
                 } />
                 <Route path="/analytics" element={
-                  <Analytics products={products} shipments={shipments} testers={testers} onImportData={(data) => setShipments([...shipments, ...data])} onBatchAddProducts={(newPs) => setProducts([...products, ...newPs])} showAiInsights={showAiInsights} userRole={currentUser?.role} />
+                  <Analytics products={products} shipments={shipments} testers={testers} onImportData={(data) => setShipments([...shipments, ...data])} onBatchAddProducts={(newPs) => setProducts([...products, ...newPs])} showAiInsights={showAiInsights} userRole={currentUser?.role} chartColorStyle={chartColorStyle} />
                 } />
                 <Route path="/settings" element={
                   currentUser?.role === 'admin' ? (
@@ -216,7 +218,7 @@ const App = () => {
                           newList[idx] = { ...newList[idx], [language]: name };
                           setSeriesList(newList);
                       }}
-                      currentAppState={{ products, seriesList, shipments, testers, users, language, showAiInsights, maxHistorySteps, customLogoUrl, globalStatusLightSize, dashboardColumns, cardAspectRatio }}
+                      currentAppState={{ products, seriesList, shipments, testers, users, language, showAiInsights, maxHistorySteps, customLogoUrl, globalStatusLightSize, dashboardColumns, cardAspectRatio, chartColorStyle }}
                       onLoadProject={(state) => {
                           if (state.products) setProducts(state.products);
                           if (state.seriesList) setSeriesList(state.seriesList);
@@ -227,12 +229,14 @@ const App = () => {
                           if (state.globalStatusLightSize) setGlobalStatusLightSize(state.globalStatusLightSize);
                           if (state.dashboardColumns) setDashboardColumns(state.dashboardColumns);
                           if (state.cardAspectRatio) setCardAspectRatio(state.cardAspectRatio);
+                          if (state.chartColorStyle) setChartColorStyle(state.chartColorStyle);
                       }}
                       onUpdateMaxHistory={setMaxHistorySteps} onToggleAiInsights={setShowAiInsights}
                       onUpdateLogo={setCustomLogoUrl}
                       onUpdateStatusLightSize={setGlobalStatusLightSize}
                       onUpdateDashboardColumns={setDashboardColumns}
                       onUpdateCardAspectRatio={setCardAspectRatio}
+                      onUpdateChartColorStyle={setChartColorStyle}
                       onAddUser={(u) => setUsers([...users, { ...u, id: Date.now().toString() }])}
                       onUpdateUser={(u) => setUsers(users.map(old => old.id === u.id ? u : old))}
                       onDeleteUser={(id) => setUsers(users.filter(u => u.id !== id))}
