@@ -16,12 +16,6 @@ import * as XLSX from 'xlsx';
 import { LanguageContext } from '../App';
 import { useNavigate, useLocation } from 'react-router-dom';
 
-const COLOR_PALETTES = {
-  COLORFUL: ['#0f172a', '#e3261b', '#94a3b8', '#fbbf24', '#f63e32', '#475569', '#3b82f6', '#10b981', '#8b5cf6', '#d946ef', '#06b6d4'],
-  MONOCHROME: ['#450a0a', '#7f1d1d', '#991b1b', '#b91c1c', '#dc2626', '#ef4444', '#f87171', '#fca5a5', '#fecaca'],
-  SLATE: ['#020617', '#0f172a', '#1e293b', '#334155', '#475569', '#64748b', '#94a3b8', '#cbd5e1', '#e2e8f0']
-};
-
 const COLOR_MAP: Record<string, string> = {
   'Brown': '#78350f',
   'Black': '#020617',
@@ -39,14 +33,23 @@ interface AnalyticsProps {
   onBatchAddProducts: (products: any[]) => void;
   showAiInsights: boolean;
   userRole?: 'admin' | 'user' | 'uploader';
-  chartColorStyle?: 'COLORFUL' | 'MONOCHROME' | 'SLATE';
+  
+  // Advanced configs
+  chartThemeStyle?: 'COLORFUL_CUSTOM' | 'MONOCHROME_CUSTOM' | 'MULTI_SYSTEM';
+  customPaletteColors?: string[];
+  pieTooltipScale?: number;
+  pieTooltipPosition?: 'TOP_RIGHT' | 'TOP_LEFT' | 'BOTTOM_RIGHT' | 'BOTTOM_LEFT';
 }
 
 type DimensionFilter = 'DATA_DRILL' | 'BUYER' | 'COLOR';
 type ViewMode = 'SHIPMENTS' | 'ERGONOMICS' | 'DURABILITY';
 
 const Analytics: React.FC<AnalyticsProps> = ({ 
-  products, shipments, onImportData, onBatchAddProducts, showAiInsights, userRole, chartColorStyle = 'COLORFUL' 
+  products, shipments, onImportData, onBatchAddProducts, showAiInsights, userRole,
+  chartThemeStyle = 'COLORFUL_CUSTOM', 
+  customPaletteColors = ['#0f172a', '#e3261b', '#94a3b8', '#fbbf24', '#3b82f6'],
+  pieTooltipScale = 2.0,
+  pieTooltipPosition = 'TOP_RIGHT'
 }) => {
   const { language, t } = useContext(LanguageContext);
   const navigate = useNavigate();
@@ -59,8 +62,22 @@ const Analytics: React.FC<AnalyticsProps> = ({
   const [traceSearchQuery, setTraceSearchQuery] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const activePalette = COLOR_PALETTES[chartColorStyle] || COLOR_PALETTES.COLORFUL;
   const canImport = userRole === 'admin' || userRole === 'uploader';
+
+  // Dynamic Palette Generation
+  const activePalette = useMemo(() => {
+    if (chartThemeStyle === 'MONOCHROME_CUSTOM') {
+      const base = customPaletteColors[0] || '#e3261b';
+      // Simple logic to generate monochromatic variants by adding transparency or lightness
+      return [base, `${base}CC`, `${base}99`, `${base}77`, `${base}55`, `${base}33`];
+    }
+    if (chartThemeStyle === 'MULTI_SYSTEM') {
+      // Use the first few as "systems" and expand
+      return customPaletteColors;
+    }
+    // Default Colorful Custom
+    return customPaletteColors.length > 0 ? customPaletteColors : ['#0f172a', '#e3261b', '#94a3b8', '#fbbf24', '#3b82f6'];
+  }, [chartThemeStyle, customPaletteColors]);
 
   /**
    * Helper to format version string
@@ -70,9 +87,6 @@ const Analytics: React.FC<AnalyticsProps> = ({
     return `V${clean}`;
   };
 
-  /**
-   * Handle incoming autoDrill state from Product Detail
-   */
   useEffect(() => {
     if (location.state?.autoDrill) {
       const { sku, version } = location.state.autoDrill;
@@ -144,7 +158,6 @@ const Analytics: React.FC<AnalyticsProps> = ({
     return data;
   }, [shipments, drillPath]);
 
-  // FIX: derive filteredProducts from active SKUs in the current filteredShipments.
   const filteredProducts = useMemo(() => {
     const activeSkus = new Set(filteredShipments.map(s => s.sku));
     if (drillPath.length === 0) return products;
@@ -257,7 +270,10 @@ const Analytics: React.FC<AnalyticsProps> = ({
     if (active && payload && payload.length) {
       const data = payload[0].payload;
       return (
-        <div className="bg-white p-4 border border-slate-200 shadow-2xl rounded-2xl min-w-[200px] z-[100]">
+        <div 
+          className="bg-white p-4 border border-slate-200 shadow-2xl rounded-2xl min-w-[200px] z-[100] transition-transform origin-top-left"
+          style={{ transform: `scale(${pieTooltipScale})` }}
+        >
           {data.imageUrl && (
             <img src={data.imageUrl} className="w-full h-28 object-contain rounded-lg mb-3 bg-slate-50 border border-slate-100 p-2" alt={data.name} />
           )}
@@ -315,6 +331,17 @@ const Analytics: React.FC<AnalyticsProps> = ({
         )}
       </g>
     );
+  };
+
+  // Convert tooltip position enum to coordinates
+  const getTooltipPosition = () => {
+    switch (pieTooltipPosition) {
+      case 'TOP_LEFT': return { x: 20, y: 20 };
+      case 'BOTTOM_RIGHT': return { x: 400, y: 350 };
+      case 'BOTTOM_LEFT': return { x: 20, y: 350 };
+      case 'TOP_RIGHT':
+      default: return { x: 500, y: 20 };
+    }
   };
 
   return (
@@ -406,8 +433,8 @@ const Analytics: React.FC<AnalyticsProps> = ({
                             }}
                           />
                         </Pie>
-                        {/* FIXED POSITION TOOLTIP: top-right to avoid covering chart */}
-                        <Tooltip content={<CustomTooltip />} position={{ x: 20, y: 20 }} />
+                        {/* FIXED POSITION & SCALED TOOLTIP */}
+                        <Tooltip content={<CustomTooltip />} position={getTooltipPosition()} />
                         <Legend verticalAlign="bottom" height={40} iconType="circle" wrapperStyle={{ paddingTop: '20px', fontWeight: 'bold', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.1em' }} />
                       </PieChart>
                     ) : (
@@ -420,7 +447,6 @@ const Analytics: React.FC<AnalyticsProps> = ({
                           {chartData.map((entry, i) => (
                             <Cell key={`cell-${i}`} fill={currentLevel === 'COLOR' ? (COLOR_MAP[entry.name] || activePalette[i % activePalette.length]) : activePalette[i % activePalette.length]} className="hover:brightness-95 transition-all" />
                           ))}
-                          {/* BAR QUANTITY LABELS AT TOP */}
                           <LabelList dataKey="value" position="top" style={{ fontSize: '11px', fontWeight: '900', fill: '#64748b' }} offset={10} formatter={(v: number) => v.toLocaleString()} />
                         </Bar>
                       </BarChart>

@@ -45,13 +45,19 @@ const App = () => {
   const [shipments, setShipments] = useState<ShipmentData[]>(MOCK_SHIPMENTS);
   const [testers, setTesters] = useState<Tester[]>(MOCK_TESTERS);
   const [users, setUsers] = useState<UserAccount[]>([]);
-  const [showAiInsights, setShowAiInsights] = useState(false); // 預設關閉 AI
+  const [showAiInsights, setShowAiInsights] = useState(false); 
   const [maxHistorySteps, setMaxHistorySteps] = useState(10);
   const [customLogoUrl, setCustomLogoUrl] = useState<string | undefined>(undefined);
   const [globalStatusLightSize, setGlobalStatusLightSize] = useState<'SMALL' | 'NORMAL' | 'LARGE'>('NORMAL');
   const [dashboardColumns, setDashboardColumns] = useState<number>(4);
   const [cardAspectRatio, setCardAspectRatio] = useState<string>('3/4');
   const [chartColorStyle, setChartColorStyle] = useState<'COLORFUL' | 'MONOCHROME' | 'SLATE'>('COLORFUL');
+
+  // Advanced Visualization Config
+  const [chartThemeStyle, setChartThemeStyle] = useState<'COLORFUL_CUSTOM' | 'MONOCHROME_CUSTOM' | 'MULTI_SYSTEM'>('COLORFUL_CUSTOM');
+  const [customPaletteColors, setCustomPaletteColors] = useState<string[]>(['#0f172a', '#e3261b', '#94a3b8', '#fbbf24', '#3b82f6']);
+  const [pieTooltipScale, setPieTooltipScale] = useState<number>(2.0);
+  const [pieTooltipPosition, setPieTooltipPosition] = useState<'TOP_RIGHT' | 'TOP_LEFT' | 'BOTTOM_RIGHT' | 'BOTTOM_LEFT'>('TOP_RIGHT');
 
   const [syncStatus, setSyncStatus] = useState<'idle' | 'saving' | 'success' | 'error'>('idle');
   const [errorDetail, setErrorDetail] = useState<string>('');
@@ -77,7 +83,8 @@ const App = () => {
     setSyncStatus('saving');
     
     const state: AppState = {
-      products, seriesList, shipments, testers, users, language, showAiInsights, maxHistorySteps, customLogoUrl, globalStatusLightSize, dashboardColumns, cardAspectRatio, chartColorStyle
+      products, seriesList, shipments, testers, users, language, showAiInsights, maxHistorySteps, customLogoUrl, globalStatusLightSize, dashboardColumns, cardAspectRatio, chartColorStyle,
+      chartThemeStyle, customPaletteColors, pieTooltipScale, pieTooltipPosition
     };
 
     try {
@@ -92,7 +99,7 @@ const App = () => {
       setErrorDetail(error.message || 'Connection Error');
       isSyncingRef.current = false;
     }
-  }, [products, seriesList, shipments, testers, users, language, showAiInsights, maxHistorySteps, customLogoUrl, globalStatusLightSize, dashboardColumns, cardAspectRatio, chartColorStyle, isLoggedIn, currentUser]);
+  }, [products, seriesList, shipments, testers, users, language, showAiInsights, maxHistorySteps, customLogoUrl, globalStatusLightSize, dashboardColumns, cardAspectRatio, chartColorStyle, chartThemeStyle, customPaletteColors, pieTooltipScale, pieTooltipPosition, isLoggedIn, currentUser]);
 
   const handleLoadFromCloud = useCallback(async () => {
     if (isSyncingRef.current) return;
@@ -114,6 +121,13 @@ const App = () => {
         if (cloudData.dashboardColumns) setDashboardColumns(cloudData.dashboardColumns);
         if (cloudData.cardAspectRatio) setCardAspectRatio(cloudData.cardAspectRatio);
         if (cloudData.chartColorStyle) setChartColorStyle(cloudData.chartColorStyle);
+        
+        // Load advanced configs
+        if (cloudData.chartThemeStyle) setChartThemeStyle(cloudData.chartThemeStyle);
+        if (cloudData.customPaletteColors) setCustomPaletteColors(cloudData.customPaletteColors);
+        if (cloudData.pieTooltipScale) setPieTooltipScale(cloudData.pieTooltipScale);
+        if (cloudData.pieTooltipPosition) setPieTooltipPosition(cloudData.pieTooltipPosition);
+        
         setSyncStatus('success');
       }
       initialLoadDone.current = true;
@@ -156,7 +170,7 @@ const App = () => {
       const timer = setTimeout(() => handleSyncToCloud(true), 2000);
       return () => clearTimeout(timer);
     }
-  }, [users, seriesList, products, testers, shipments, customLogoUrl, globalStatusLightSize, dashboardColumns, cardAspectRatio, chartColorStyle, isLoggedIn, handleSyncToCloud, currentUser]);
+  }, [users, seriesList, products, testers, shipments, customLogoUrl, globalStatusLightSize, dashboardColumns, cardAspectRatio, chartColorStyle, chartThemeStyle, customPaletteColors, pieTooltipScale, pieTooltipPosition, isLoggedIn, handleSyncToCloud, currentUser]);
 
   return (
     <LanguageContext.Provider value={{ language, setLanguage, t }}>
@@ -207,7 +221,17 @@ const App = () => {
                   <ProductDetail products={products} shipments={shipments} testers={testers} userRole={currentUser?.role} onUpdateProduct={async (p) => setProducts(products.map(old => old.id === p.id ? p : old))} showAiInsights={showAiInsights} />
                 } />
                 <Route path="/analytics" element={
-                  <Analytics products={products} shipments={shipments} testers={testers} onImportData={(data) => setShipments([...shipments, ...data])} onBatchAddProducts={(newPs) => setProducts([...products, ...newPs])} showAiInsights={showAiInsights} userRole={currentUser?.role} chartColorStyle={chartColorStyle} />
+                  <Analytics 
+                    products={products} shipments={shipments} testers={testers} 
+                    onImportData={(data) => setShipments([...shipments, ...data])} 
+                    onBatchAddProducts={(newPs) => setProducts([...products, ...newPs])} 
+                    showAiInsights={showAiInsights} userRole={currentUser?.role}
+                    // Advanced configs passed here
+                    chartThemeStyle={chartThemeStyle}
+                    customPaletteColors={customPaletteColors}
+                    pieTooltipScale={pieTooltipScale}
+                    pieTooltipPosition={pieTooltipPosition}
+                  />
                 } />
                 <Route path="/settings" element={
                   currentUser?.role === 'admin' ? (
@@ -218,7 +242,7 @@ const App = () => {
                           newList[idx] = { ...newList[idx], [language]: name };
                           setSeriesList(newList);
                       }}
-                      currentAppState={{ products, seriesList, shipments, testers, users, language, showAiInsights, maxHistorySteps, customLogoUrl, globalStatusLightSize, dashboardColumns, cardAspectRatio, chartColorStyle }}
+                      currentAppState={{ products, seriesList, shipments, testers, users, language, showAiInsights, maxHistorySteps, customLogoUrl, globalStatusLightSize, dashboardColumns, cardAspectRatio, chartColorStyle, chartThemeStyle, customPaletteColors, pieTooltipScale, pieTooltipPosition }}
                       onLoadProject={(state) => {
                           if (state.products) setProducts(state.products);
                           if (state.seriesList) setSeriesList(state.seriesList);
@@ -229,14 +253,20 @@ const App = () => {
                           if (state.globalStatusLightSize) setGlobalStatusLightSize(state.globalStatusLightSize);
                           if (state.dashboardColumns) setDashboardColumns(state.dashboardColumns);
                           if (state.cardAspectRatio) setCardAspectRatio(state.cardAspectRatio);
-                          if (state.chartColorStyle) setChartColorStyle(state.chartColorStyle);
+                          if (state.chartThemeStyle) setChartThemeStyle(state.chartThemeStyle);
+                          if (state.customPaletteColors) setCustomPaletteColors(state.customPaletteColors);
+                          if (state.pieTooltipScale) setPieTooltipScale(state.pieTooltipScale);
+                          if (state.pieTooltipPosition) setPieTooltipPosition(state.pieTooltipPosition);
                       }}
                       onUpdateMaxHistory={setMaxHistorySteps} onToggleAiInsights={setShowAiInsights}
                       onUpdateLogo={setCustomLogoUrl}
                       onUpdateStatusLightSize={setGlobalStatusLightSize}
                       onUpdateDashboardColumns={setDashboardColumns}
                       onUpdateCardAspectRatio={setCardAspectRatio}
-                      onUpdateChartColorStyle={setChartColorStyle}
+                      onUpdateChartThemeStyle={setChartThemeStyle}
+                      onUpdateCustomPaletteColors={setCustomPaletteColors}
+                      onUpdatePieTooltipScale={setPieTooltipScale}
+                      onUpdatePieTooltipPosition={setPieTooltipPosition}
                       onAddUser={(u) => setUsers([...users, { ...u, id: Date.now().toString() }])}
                       onUpdateUser={(u) => setUsers(users.map(old => old.id === u.id ? u : old))}
                       onDeleteUser={(id) => setUsers(users.filter(u => u.id !== id))}
