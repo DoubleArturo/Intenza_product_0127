@@ -187,13 +187,7 @@ export interface AppState {
   globalStatusLightSize?: 'SMALL' | 'NORMAL' | 'LARGE';
   dashboardColumns?: number;
   cardAspectRatio?: string;
-  chartColorStyle?: 'COLORFUL' | 'MONOCHROME' | 'SLATE'; // Legacy selection
-  
-  // Advanced Dashboard Config
-  chartThemeStyle?: 'COLORFUL_CUSTOM' | 'MONOCHROME_CUSTOM' | 'MULTI_SYSTEM';
-  customPaletteColors?: string[]; // Array of hex strings
-  pieTooltipScale?: number; // 1 to 3
-  pieTooltipPosition?: 'TOP_RIGHT' | 'TOP_LEFT' | 'BOTTOM_RIGHT' | 'BOTTOM_LEFT';
+  chartColorStyle?: 'COLORFUL' | 'MONOCHROME' | 'SLATE';
 }
 
 export interface Tester {
