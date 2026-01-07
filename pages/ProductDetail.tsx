@@ -1,3 +1,4 @@
+
 import React, { useState, useMemo, useEffect, useContext, useRef } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { ArrowLeft, GitCommit, UserCheck, Activity, AlertTriangle, CheckCircle, Clock, Calendar, Layers, Users, Plus, X, Pencil, Trash2, Upload, MessageSquare, ChevronsRight, ChevronsLeft, Tag, FileText, User, Database, Mars, Venus, Link as LinkIcon, Search, ClipboardList, ListPlus, Check, ChevronDown, RefreshCw, HelpCircle, BarChart3, AlertCircle, PlayCircle, Loader2, StickyNote, Lightbulb, Paperclip, Video, Image as ImageIcon, Save, Star, Info, Ship } from 'lucide-react';
@@ -111,7 +112,6 @@ const ProductDetail: React.FC<ProductDetailProps> = ({ products, shipments = [],
       let updatedDesignHistory;
       let newCurrentVersion = product.currentVersion;
 
-      // Ensure that if this ECO marks a version as production, the master currentVersion is updated
       if (ecoData.status === EcoStatus.IN_PRODUCTION) {
           newCurrentVersion = ecoData.version;
       }
@@ -222,7 +222,7 @@ const ProductDetail: React.FC<ProductDetailProps> = ({ products, shipments = [],
                  onDeleteEco={handleDeleteEco} 
                  onDeleteVersion={handleDeleteVersion} 
                  onSetCurrentVersion={handleSetCurrentVersion}
-                 onNoShipment={(version) => {
+                 onNoShipment={(version: string) => {
                     setSelectedVersionForModal(version);
                     setIsNoShipmentModalOpen(true);
                  }}
@@ -290,9 +290,7 @@ const ProductDetail: React.FC<ProductDetailProps> = ({ products, shipments = [],
   );
 };
 
-export default ProductDetail;
-
-// --- Sub-components & Modals ---
+// --- Sub-components & Help components ---
 
 const TabButton = ({ active, onClick, icon, label }: any) => (
   <button onClick={onClick} className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-all ${active ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-200/50'}`}>
@@ -378,17 +376,6 @@ const LifeSection = ({ product, onAddTest, onEditTest, onDeleteTest }: any) => {
             </div>
             <p className="text-xs text-slate-500 line-clamp-2">{t(test.details)}</p>
             
-            {/* Hover Details Overlay */}
-            {test.details && (
-              <div className="absolute inset-0 z-10 bg-white/95 backdrop-blur-sm p-5 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity flex flex-col pointer-events-none">
-                <div className="flex items-center gap-2 mb-2 pb-2 border-b border-slate-100">
-                  <Info size={14} className="text-intenza-600"/>
-                  <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Notes / Details</span>
-                </div>
-                <p className="text-xs text-slate-700 leading-relaxed overflow-y-auto custom-scrollbar">{t(test.details)}</p>
-              </div>
-            )}
-
             <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity z-20">
                 <button onClick={() => onEditTest(test)} className="p-1.5 bg-white border border-slate-100 rounded-md text-slate-500 hover:text-slate-900 hover:shadow-sm transition-all pointer-events-auto"><Pencil size={12} /></button>
                 <button onClick={() => onDeleteTest(test.id)} className="p-1.5 bg-white border border-slate-100 rounded-md text-red-500 hover:text-red-700 hover:shadow-sm transition-all pointer-events-auto"><Trash2 size={12} /></button>
@@ -476,7 +463,6 @@ const ProjectCard = ({ project, testers, product, onOpenAddTask, onEditTaskName,
                                                             <p className="text-[10px] text-slate-600 line-clamp-2 min-h-[1.5rem] italic">"{ngReason?.reason ? t(ngReason.reason) : 'No description'}"</p>
                                                             <div className="flex items-center justify-between pt-2 border-t border-slate-50">
                                                                 <button 
-                                                                    // Fix: changed 'testerId' to 'tid' to match the loop variable
                                                                     onClick={() => onEditNgReason(cat, task.id, tid)}
                                                                     className="text-[9px] font-bold text-intenza-600 hover:underline"
                                                                 >
@@ -505,7 +491,7 @@ const ProjectCard = ({ project, testers, product, onOpenAddTask, onEditTaskName,
     );
 };
 
-// Customer Feedback Card for sidebar
+// Customer Feedback Card
 const CustomerFeedbackCard = ({ feedback, onStatusClick, onEdit, onDelete }: any) => {
     const { t } = useContext(LanguageContext);
     return (
@@ -555,7 +541,6 @@ const DesignSection = ({ product, shipments, onAddEco, onEditEco, onDeleteEco, o
   }
 
   const handleJumpToAnalytics = () => {
-    // Check if any shipments exist for this SKU AND this Version
     const formattedSelectedVersion = formatVersion(selectedVersion);
     const hasShipments = shipments.some(s => 
         s.sku === product.sku && formatVersion(s.version) === formattedSelectedVersion
@@ -602,7 +587,6 @@ const DesignSection = ({ product, shipments, onAddEco, onEditEco, onDeleteEco, o
                         {selectedVersion === product.currentVersion ? 'Current Production' : 'Archived Version'}
                         </span>
                     </h3>
-                    {/* New Market Insight Jump Icon */}
                     <button 
                         onClick={handleJumpToAnalytics}
                         className="p-1.5 bg-slate-100 text-slate-500 hover:text-intenza-600 hover:bg-intenza-50 rounded-lg transition-all shadow-sm border border-slate-200"
@@ -641,7 +625,6 @@ const DesignSection = ({ product, shipments, onAddEco, onEditEco, onDeleteEco, o
                      <div className="flex flex-col md:flex-row gap-6">
                         <div className="md:w-48 flex-shrink-0">
                            <div className="flex items-center gap-3 mb-2">
-                              {/* SMART DISPLAY: ECO PRIORITY OVER ECR */}
                               <span className="font-mono text-sm font-bold text-intenza-600 bg-intenza-50 px-2 py-1 rounded border border-intenza-100">
                                 {change.ecoNumber || change.ecrNumber || 'N/A'}
                               </span>
@@ -676,23 +659,6 @@ const DesignSection = ({ product, shipments, onAddEco, onEditEco, onDeleteEco, o
                                        )}
                                     </div>
                                  ))}
-                              </div>
-                           )}
-                           {/* Updated Info Block: Only showing affected customers/batches if they exist, but fields are removed from modal */}
-                           {(change.affectedBatches.length > 0 || change.affectedCustomers.length > 0) && (
-                              <div className="bg-slate-50 rounded-xl p-4 border border-slate-100 grid grid-cols-1 sm:grid-cols-2 gap-4 transition-colors group-hover:border-slate-200">
-                                 {change.affectedBatches.length > 0 && (
-                                   <div>
-                                      <div className="flex items-center gap-2 text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2"><Layers size={14} /> Affected Batches</div>
-                                      <div className="flex flex-wrap gap-2">{change.affectedBatches.map((b) => (<span key={b} className="text-xs bg-white border border-slate-200 px-1.5 py-0.5 rounded-md text-slate-700 font-mono shadow-sm">{b}</span>))}</div>
-                                   </div>
-                                 )}
-                                 {change.affectedCustomers.length > 0 && (
-                                   <div>
-                                      <div className="flex items-center gap-2 text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2"><Users size={14} /> Impacted Customers</div>
-                                      <p className="text-sm text-slate-600 leading-relaxed">{change.affectedCustomers.join(', ')}</p>
-                                   </div>
-                                 )}
                               </div>
                            )}
                            {change.sourceFeedbacks && change.sourceFeedbacks.length > 0 && (
@@ -977,8 +943,7 @@ const ErgoSection = ({ product, testers, onUpdateProduct, highlightedFeedback }:
     <div className="relative animate-fade-in">
       <div className={`transition-all duration-500 ease-in-out ${isFeedbackPanelOpen ? 'pr-[40%]' : 'pr-14'}`}>
         <div className="flex items-center justify-between mb-6">
-          {product.ergoProjects.length === 0 && <h2 className="text-2xl font-bold text-intenza-600">Human Factors Evaluation Projects</h2>}
-          <div className={product.ergoProjects.length > 0 ? "w-full flex justify-end" : ""}>
+          <div className="w-full flex justify-end">
              <button 
                 onClick={() => { setEditingProject(null); setStartEvaluationModalOpen(true); }}
                 className="flex items-center gap-2 text-sm bg-slate-900 text-white px-4 py-2 rounded-lg font-medium hover:bg-slate-800 transition-colors shadow-sm">
@@ -1025,23 +990,27 @@ const ErgoSection = ({ product, testers, onUpdateProduct, highlightedFeedback }:
                     <button onClick={() => setFeedbackModalState({ isOpen: true, feedback: null })} className="text-xs font-medium bg-intenza-600 text-white px-3 py-1.5 rounded-md hover:bg-intenza-700 flex items-center gap-1 shadow-lg shadow-intenza-900/10"><Plus size={12}/>Add</button>
                 </div>
                 <div className="p-6 overflow-y-auto flex-1 space-y-6">
-                    {(['Resistance profile', 'Experience', 'Stroke', 'Other Suggestion'] as ErgoProjectCategory[]).map(cat => (
-                        <div key={cat}>
-                             <h4 className="font-semibold text-xs text-slate-400 mb-3 uppercase tracking-wider pl-1 border-l-2 border-slate-300">{language === 'en' ? cat : categoryTranslations[cat]}</h4>
-                             <div className="space-y-3">
-                                {(product.customerFeedback || []).filter(f => f.category === cat).map(fb => (
-                                    <CustomerFeedbackCard 
-                                        key={fb.id}
-                                        feedback={fb}
-                                        category={cat}
-                                        onStatusClick={() => setFeedbackStatusModal({ isOpen: true, feedback: fb })}
-                                        onEdit={() => setFeedbackModalState({ isOpen: true, feedback: fb })}
-                                        onDelete={() => handleDeleteFeedback(fb.id)}
-                                    />
-                                ))}
-                             </div>
-                        </div>
-                    ))}
+                    {(['Resistance profile', 'Experience', 'Stroke', 'Other Suggestion'] as ErgoProjectCategory[]).map(cat => {
+                        const catFeedback = (product.customerFeedback || []).filter(f => f.category === cat);
+                        if (catFeedback.length === 0) return null;
+                        return (
+                            <div key={cat}>
+                                 <h4 className="font-semibold text-xs text-slate-400 mb-3 uppercase tracking-wider pl-1 border-l-2 border-slate-300">{language === 'en' ? cat : categoryTranslations[cat]}</h4>
+                                 <div className="space-y-3">
+                                    {catFeedback.map(fb => (
+                                        <CustomerFeedbackCard 
+                                            key={fb.id}
+                                            feedback={fb}
+                                            category={cat}
+                                            onStatusClick={() => setFeedbackStatusModal({ isOpen: true, feedback: fb })}
+                                            onEdit={() => setFeedbackModalState({ isOpen: true, feedback: fb })}
+                                            onDelete={() => handleDeleteFeedback(fb.id)}
+                                        />
+                                    ))}
+                                 </div>
+                            </div>
+                        );
+                    })}
                     {(product.customerFeedback || []).length === 0 && <div className="text-center py-12 text-slate-400">No customer feedback.</div>}
                 </div>
             </div>
@@ -1050,402 +1019,125 @@ const ErgoSection = ({ product, testers, onUpdateProduct, highlightedFeedback }:
       </div>
       
       {isStartEvaluationModalOpen && <StartEvaluationModal isOpen={isStartEvaluationModalOpen} onClose={() => { setStartEvaluationModalOpen(false); setEditingProject(null); }} onStartProject={editingProject ? handleEditProject : handleStartProject} allTesters={testers} project={editingProject} />}
-
-      {addTaskModalState.isOpen && addTaskModalState.context && 
-          <AddTaskModal 
-              isOpen={addTaskModalState.isOpen}
-              onClose={() => setAddTaskModalState({ isOpen: false, context: null })}
-              onSave={handleSaveTask}
-          />
-      }
-
-      {editTaskModalState.isOpen && editTaskModalState.context &&
-          <EditTaskNameModal
-            isOpen={editTaskModalState.isOpen}
-            onClose={() => setEditTaskModalState({ isOpen: false, context: null })}
-            currentName={editTaskModalState.context.currentName}
-            onSave={(newName) => handleUpdateTaskName(editTaskModalState.context!.projectId, editTaskModalState.context!.category, editTaskModalState.context!.taskId, newName)}
-          />
-      }
-
-      {taskResultModalState.isOpen && taskResultModalState.context && 
-        <SetTaskResultsModal 
-            isOpen={taskResultModalState.isOpen} 
-            onClose={() => setTaskResultModalState({ isOpen: false, context: null })}
-            onSave={(passIds) => handleUpdateTaskResults(taskResultModalState.context!.projectId, taskResultModalState.context!.category, taskResultModalState.context!.taskId, passIds)}
-            context={taskResultModalState.context}
-            project={product.ergoProjects.find(p => p.id === taskResultModalState.context!.projectId)!}
-            testers={testers}
-        />
-      }
-      
-      {ngReasonModalState.isOpen && ngReasonModalState.context &&
-        <SetPassNgModal 
-            isOpen={ngReasonModalState.isOpen}
-            onClose={() => setNgReasonModalState({ isOpen: false, context: null })}
-            onSet={handleSetNgReason}
-            context={ngReasonModalState.context}
-            project={product.ergoProjects.find(p => p.id === ngReasonModalState.context!.projectId)!}
-            existingReason={product.ergoProjects.find(p => p.id === ngReasonModalState.context!.projectId)?.tasks[ngReasonModalState.context!.category].find(t => t.id === ngReasonModalState.context!.taskId)?.ngReasons.find(ng => ng.testerId === ngReasonModalState.context!.testerId)}
-        />
-      }
-
-      {statusModalState.isOpen && statusModalState.context &&
-          <StatusDecisionModal 
-             isOpen={statusModalState.isOpen}
-             onClose={() => setStatusModalState({ isOpen: false, context: null })}
-             context={statusModalState.context}
-             onSetStatus={(status) => handleSetNgDecision(statusModalState.context!.projectId, statusModalState.context!.category, statusModalState.context!.taskId, statusModalState.context!.testerId, status)}
-             onLinkEco={(ecoId) => handleLinkExistingEco(statusModalState.context!.projectId, statusModalState.context!.category, statusModalState.context!.taskId, statusModalState.context!.testerId, ecoId)}
-             onCreateEco={() => handleCreateEcoFromFeedback(statusModalState.context!.projectId, statusModalState.context!.category, statusModalState.context!.taskId, statusModalState.context!.testerId)}
-             activeEcos={activeEcosList}
-          />
-      }
-
+      {addTaskModalState.isOpen && addTaskModalState.context && <AddTaskModal isOpen={addTaskModalState.isOpen} onClose={() => setAddTaskModalState({ isOpen: false, context: null })} onSave={handleSaveTask} />}
+      {editTaskModalState.isOpen && editTaskModalState.context && <EditTaskNameModal isOpen={editTaskModalState.isOpen} onClose={() => setEditTaskModalState({ isOpen: false, context: null })} currentName={editTaskModalState.context.currentName} onSave={(newName) => handleUpdateTaskName(editTaskModalState.context!.projectId, editTaskModalState.context!.category, editTaskModalState.context!.taskId, newName)} />}
+      {taskResultModalState.isOpen && taskResultModalState.context && <SetTaskResultsModal isOpen={taskResultModalState.isOpen} onClose={() => setTaskResultModalState({ isOpen: false, context: null })} onSave={(passIds) => handleUpdateTaskResults(taskResultModalState.context!.projectId, taskResultModalState.context!.category, taskResultModalState.context!.taskId, passIds)} context={taskResultModalState.context} project={product.ergoProjects.find(p => p.id === taskResultModalState.context!.projectId)!} testers={testers} />}
+      {ngReasonModalState.isOpen && ngReasonModalState.context && <SetPassNgModal isOpen={ngReasonModalState.isOpen} onClose={() => setNgReasonModalState({ isOpen: false, context: null })} onSet={handleSetNgReason} context={ngReasonModalState.context} project={product.ergoProjects.find(p => p.id === ngReasonModalState.context!.projectId)!} existingReason={product.ergoProjects.find(p => p.id === ngReasonModalState.context!.projectId)?.tasks[ngReasonModalState.context!.category].find(t => t.id === ngReasonModalState.context!.taskId)?.ngReasons.find(ng => ng.testerId === ngReasonModalState.context!.testerId)} />}
+      {statusModalState.isOpen && statusModalState.context && <StatusDecisionModal isOpen={statusModalState.isOpen} onClose={() => setStatusModalState({ isOpen: false, context: null })} context={statusModalState.context} onSetStatus={(status) => handleSetNgDecision(statusModalState.context!.projectId, statusModalState.context!.category, statusModalState.context!.taskId, statusModalState.context!.testerId, status)} onLinkEco={(ecoId) => handleLinkExistingEco(statusModalState.context!.projectId, statusModalState.context!.category, statusModalState.context!.taskId, statusModalState.context!.testerId, ecoId)} onCreateEco={() => handleCreateEcoFromFeedback(statusModalState.context!.projectId, statusModalState.context!.category, statusModalState.context!.taskId, statusModalState.context!.testerId)} activeEcos={activeEcosList} />}
       {feedbackModalState.isOpen && <FeedbackModal isOpen={feedbackModalState.isOpen} onClose={() => setFeedbackModalState({ isOpen: false, feedback: null })} onSave={handleSaveFeedback} feedback={feedbackModalState.feedback} product={product} />}
-
-      {feedbackStatusModal.isOpen && feedbackStatusModal.feedback && (
-          <FeedbackStatusDecisionModal 
-              isOpen={feedbackStatusModal.isOpen}
-              onClose={() => setFeedbackStatusModal({ isOpen: false, feedback: null })}
-              feedback={feedbackStatusModal.feedback}
-              onUpdateStatus={handleUpdateFeedbackStatus}
-          />
-      )}
-
+      {feedbackStatusModal.isOpen && feedbackStatusModal.feedback && <FeedbackStatusDecisionModal isOpen={feedbackStatusModal.isOpen} onClose={() => setFeedbackStatusModal({ isOpen: false, feedback: null })} feedback={feedbackStatusModal.feedback} onUpdateStatus={handleUpdateFeedbackStatus} />}
     </div>
   );
 };
 
-const EcoModal = ({ isOpen, onClose, onSave, eco, productVersions, product }: any) => {
-    const { t } = useContext(LanguageContext);
-    const [isUploading, setIsUploading] = useState(false);
-    const ecoFileInputRef = useRef<HTMLInputElement>(null);
+// --- Modal Implementations ---
 
-    const [formData, setFormData] = useState({
-        ecrNumber: eco?.ecrNumber || '',
-        ecrDate: eco?.ecrDate || '',
-        ecoNumber: eco?.ecoNumber || '',
-        date: eco?.date || new Date().toISOString().split('T')[0],
-        version: eco?.version || product.currentVersion,
-        description: eco ? t(eco.description) : '',
-        status: eco?.status || EcoStatus.EVALUATING,
-        imageUrls: eco?.imageUrls || [],
-        implementationDate: eco?.implementationDate || ''
+const EcoModal = ({ isOpen, onClose, onSave, eco, productVersions, product }: any) => {
+    const [formData, setFormData] = useState<any>(eco || {
+        ecoNumber: '', date: new Date().toISOString().split('T')[0], version: product.currentVersion,
+        description: { en: '', zh: '' }, affectedBatches: [], affectedCustomers: [], status: EcoStatus.EVALUATING, imageUrls: []
     });
 
-    const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0];
-        if (file) {
-            try {
-                setIsUploading(true);
-                const url = await api.uploadImage(file);
-                setFormData(prev => ({ ...prev, imageUrls: [...prev.imageUrls, url] }));
-            } catch (err) {
-                console.error("Upload failed", err);
-                alert("照片上傳失敗");
-            } finally {
-                setIsUploading(false);
-            }
-        }
-    };
-
-    const removePhoto = (urlToRemove: string) => {
-        setFormData(prev => ({ ...prev, imageUrls: prev.imageUrls.filter((u: string) => u !== urlToRemove) }));
-    };
-
-    const handleSubmit = (e: React.FormEvent) => {
-        e.preventDefault();
-        onSave({
-            ...formData,
-            description: { en: formData.description, zh: formData.description },
-            affectedBatches: eco?.affectedBatches || [], // Preserving existing if editing, but removing from form as requested
-            affectedCustomers: eco?.affectedCustomers || []
-        });
-    };
+    const handleSave = (e: React.FormEvent) => { e.preventDefault(); onSave(formData); };
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md animate-fade-in">
-            <div className="bg-white rounded-3xl shadow-2xl w-full max-w-2xl animate-slide-up overflow-hidden">
-                <div className="flex justify-between items-center p-6 border-b border-slate-100">
-                    <h2 className="text-xl font-bold">{eco ? 'Edit ECO Record' : 'Add New ECO'}</h2>
-                    <button onClick={onClose} className="p-2 rounded-full hover:bg-slate-100"><X size={20} /></button>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
+            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-xl overflow-hidden">
+                <div className="p-6 border-b border-slate-100 flex justify-between items-center">
+                    <h2 className="text-xl font-bold">{eco ? 'Edit ECO' : 'Add New ECO'}</h2>
+                    <button onClick={onClose} className="p-2 hover:bg-slate-100 rounded-full"><X size={20}/></button>
                 </div>
-                <form onSubmit={handleSubmit} className="p-6 space-y-4 max-h-[80vh] overflow-y-auto custom-scrollbar">
+                <form onSubmit={handleSave} className="p-6 space-y-4">
                     <div className="grid grid-cols-2 gap-4">
                         <div>
-                            <label className="block text-xs font-bold text-slate-400 uppercase mb-1">Target Version</label>
-                            <input 
-                                list="version-suggestions"
-                                required 
-                                className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-intenza-500/20" 
-                                value={formData.version} 
-                                onChange={e => setFormData({...formData, version: e.target.value})} 
-                                placeholder="e.g. v2.5"
-                            />
-                            <datalist id="version-suggestions">
-                                {productVersions.map((v: string) => <option key={v} value={v} />)}
-                            </datalist>
-                        </div>
-                        <div><label className="block text-xs font-bold text-slate-400 uppercase mb-1">Status</label><select className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-intenza-500/20" value={formData.status} onChange={e => setFormData({...formData, status: e.target.value as EcoStatus})}>{Object.values(EcoStatus).map(s => <option key={s} value={s}>{s}</option>)}</select></div>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-4 p-4 bg-slate-50 rounded-xl border border-slate-100">
-                        <div className="col-span-2 text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">ECR Information (Engineering Change Request)</div>
-                        <div>
-                            <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">ECR Number</label>
-                            <input className="w-full px-4 py-2 bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-500/20" value={formData.ecrNumber} onChange={e => setFormData({...formData, ecrNumber: e.target.value})} placeholder="ECR-202X-XXX" />
+                            <label className="block text-xs font-bold text-slate-500 uppercase mb-1">ECO Number</label>
+                            <input type="text" value={formData.ecoNumber} onChange={e => setFormData({...formData, ecoNumber: e.target.value})} className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg"/>
                         </div>
                         <div>
-                            <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Initiation Date</label>
-                            <input type="date" className="w-full px-4 py-2 bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-500/20" value={formData.ecrDate} onChange={e => setFormData({...formData, ecrDate: e.target.value})} />
+                            <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Version</label>
+                            <select value={formData.version} onChange={e => setFormData({...formData, version: e.target.value})} className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg">
+                                {productVersions.map((v: string) => <option key={v} value={v}>{v}</option>)}
+                            </select>
                         </div>
                     </div>
-
-                    <div className="grid grid-cols-2 gap-4 p-4 bg-indigo-50/30 rounded-xl border border-indigo-100/50">
-                        <div className="col-span-2 text-[10px] font-black text-indigo-400 uppercase tracking-widest mb-1">ECO Information (Engineering Change Order)</div>
+                    <div>
+                        <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Description (EN)</label>
+                        <textarea value={formData.description.en} onChange={e => setFormData({...formData, description: {...formData.description, en: e.target.value}})} className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg" rows={3}/>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
                         <div>
-                            <label className="block text-[10px] font-bold text-indigo-500 uppercase mb-1">ECO Number</label>
-                            <input className="w-full px-4 py-2 bg-white border border-indigo-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20" value={formData.ecoNumber} onChange={e => setFormData({...formData, ecoNumber: e.target.value})} placeholder="ECO-202X-XXX" />
+                            <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Status</label>
+                            <select value={formData.status} onChange={e => setFormData({...formData, status: e.target.value})} className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg">
+                                {Object.values(EcoStatus).map(s => <option key={s} value={s}>{s}</option>)}
+                            </select>
                         </div>
                         <div>
-                            <label className="block text-[10px] font-bold text-indigo-500 uppercase mb-1">Completion Date (ECO Date)</label>
-                            <input type="date" className="w-full px-4 py-2 bg-white border border-indigo-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20" value={formData.date} onChange={e => setFormData({...formData, date: e.target.value})} />
+                            <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Date</label>
+                            <input type="date" value={formData.date} onChange={e => setFormData({...formData, date: e.target.value})} className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg"/>
                         </div>
                     </div>
-
-                    <div><label className="block text-xs font-bold text-slate-400 uppercase mb-1">Description</label><textarea required className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-intenza-500/20" rows={3} value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})} /></div>
-                    
-                    {formData.status === EcoStatus.IN_PRODUCTION && (
-                        <div><label className="block text-xs font-bold text-slate-400 uppercase mb-1">Implementation Date</label><input type="date" className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-intenza-500/20" value={formData.implementationDate} onChange={e => setFormData({...formData, implementationDate: e.target.value})} /></div>
-                    )}
-
-                    {/* Image Upload Integration into EcoModal */}
-                    <div className="pt-4 border-t border-slate-50">
-                        <label className="block text-xs font-bold text-slate-400 uppercase mb-2">Attached References (Images/Videos)</label>
-                        <div className="flex flex-wrap gap-2 mb-3">
-                            {formData.imageUrls.map((url: string, idx: number) => (
-                                <div key={idx} className="relative w-20 h-20 rounded-lg border border-slate-200 overflow-hidden group">
-                                    {isVideo(url) ? (
-                                        <div className="w-full h-full bg-slate-900 flex items-center justify-center text-white"><Video size={20}/></div>
-                                    ) : (
-                                        <img src={url} alt="" className="w-full h-full object-cover" />
-                                    )}
-                                    <button 
-                                        type="button" 
-                                        onClick={() => removePhoto(url)} 
-                                        className="absolute inset-0 bg-red-500/80 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-                                    >
-                                        <X size={20} strokeWidth={3} />
-                                    </button>
-                                </div>
-                            ))}
-                            <button 
-                                type="button" 
-                                onClick={() => ecoFileInputRef.current?.click()}
-                                disabled={isUploading}
-                                className="w-20 h-20 rounded-lg border-2 border-dashed border-slate-200 flex flex-col items-center justify-center text-slate-400 hover:border-indigo-400 hover:text-indigo-500 transition-all bg-slate-50/50"
-                            >
-                                {isUploading ? <Loader2 size={24} className="animate-spin" /> : <Upload size={24} />}
-                                <span className="text-[10px] font-bold mt-1 uppercase">Upload</span>
-                            </button>
-                        </div>
-                        <input ref={ecoFileInputRef} type="file" accept="image/*,video/*" className="hidden" onChange={handleFileUpload} />
-                    </div>
-
-                    <div className="flex gap-4 pt-4 border-t border-slate-100">
-                        <button type="button" onClick={onClose} className="flex-1 py-3 text-slate-500 font-bold hover:bg-slate-50 rounded-xl">Cancel</button>
-                        <button type="submit" className="flex-1 py-3 bg-slate-900 text-white font-bold rounded-xl hover:bg-slate-800 transition-all shadow-lg shadow-slate-900/20">Save Record</button>
+                    <div className="flex gap-3 pt-4 border-t border-slate-100">
+                        <button type="button" onClick={onClose} className="flex-1 py-2 font-bold text-slate-500 hover:bg-slate-50 rounded-lg">Cancel</button>
+                        <button type="submit" className="flex-1 py-2 bg-slate-900 text-white font-bold rounded-lg hover:bg-slate-800 transition-all">Save Changes</button>
                     </div>
                 </form>
             </div>
         </div>
     );
 };
-
-const TEST_NAME_OPTIONS = ['Durability Test', 'Salt Spray Test', 'Packaging Test'];
 
 const TestModal = ({ isOpen, onClose, onSave, test }: any) => {
-    const { t } = useContext(LanguageContext);
-    const [isUploading, setIsUploading] = useState(false);
-    const durabilityFileInputRef = useRef<HTMLInputElement>(null);
-
-    const [formData, setFormData] = useState({
-        category: test?.category || 'Mechanical',
-        testName: test ? t(test.testName) : '',
-        version: test?.version || '',
-        score: test?.score || 0,
-        status: test?.status || TestStatus.PENDING,
-        details: test ? t(test.details) : '',
-        attachmentUrls: test?.attachmentUrls || [],
-        updatedDate: test?.updatedDate || new Date().toISOString().split('T')[0]
+    const [formData, setFormData] = useState<any>(test || {
+        category: 'Mechanical', testName: { en: '', zh: '' }, version: 'v1.0', score: 0, status: TestStatus.PENDING, details: { en: '', zh: '' }, updatedDate: new Date().toISOString().split('T')[0]
     });
-
-    const [testNameType, setTestNameType] = useState<string>(
-        test ? (TEST_NAME_OPTIONS.includes(t(test.testName)) ? t(test.testName) : 'Other') : 'Durability Test'
-    );
-
-    useEffect(() => {
-        if (testNameType !== 'Other') {
-            setFormData(prev => ({ ...prev, testName: testNameType }));
-        }
-    }, [testNameType]);
-
-    const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0];
-        if (file) {
-            try {
-                setIsUploading(true);
-                const url = await api.uploadImage(file);
-                setFormData(prev => ({
-                    ...prev,
-                    attachmentUrls: [...prev.attachmentUrls, url]
-                }));
-            } catch (err) {
-                console.error("Upload failed", err);
-                alert("照片上傳失敗");
-            } finally {
-                setIsUploading(false);
-            }
-        }
-    };
-
-    const removePhoto = (urlToRemove: string) => {
-        setFormData(prev => ({
-            ...prev,
-            attachmentUrls: prev.attachmentUrls.filter((u: string) => u !== urlToRemove)
-        }));
-    };
-
+    const handleSave = (e: React.FormEvent) => { e.preventDefault(); onSave(formData); };
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md animate-fade-in">
-            <div className="bg-white rounded-3xl shadow-2xl w-full max-w-lg animate-slide-up">
-                <div className="flex justify-between items-center p-6 border-b border-slate-100">
-                    <h2 className="text-xl font-bold">{test ? 'Edit Test Result' : 'Add Test Result'}</h2>
-                    <button onClick={onClose} className="p-2 rounded-full hover:bg-slate-100"><X size={20} /></button>
-                </div>
-                <form onSubmit={(e) => { e.preventDefault(); onSave({...formData, testName: {en: formData.testName, zh: formData.testName}, details: {en: formData.details, zh: formData.details}}); }} className="p-6 space-y-4 max-h-[80vh] overflow-y-auto custom-scrollbar">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
+            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-xl overflow-hidden">
+                <div className="p-6 border-b border-slate-100 flex justify-between items-center"><h2 className="text-xl font-bold">{test ? 'Edit Test' : 'Add Test'}</h2><button onClick={onClose} className="p-2 hover:bg-slate-100 rounded-full"><X size={20}/></button></div>
+                <form onSubmit={handleSave} className="p-6 space-y-4">
+                    <div><label className="block text-xs font-bold text-slate-500 uppercase mb-1">Test Name (EN)</label><input type="text" value={formData.testName.en} onChange={e => setFormData({...formData, testName: {...formData.testName, en: e.target.value}})} className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg"/></div>
                     <div className="grid grid-cols-2 gap-4">
-                        <div>
-                            <label className="block text-xs font-bold text-slate-400 uppercase mb-1">Category</label>
-                            <select className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20" value={formData.category} onChange={e => setFormData({...formData, category: e.target.value})}>
-                                <option value="Mechanical">Mechanical</option>
-                                <option value="Electrical">Electrical</option>
-                            </select>
-                        </div>
-                        <div>
-                            <label className="block text-xs font-bold text-slate-400 uppercase mb-1">Test Version</label>
-                            <input className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20" value={formData.version} onChange={e => setFormData({...formData, version: e.target.value})} placeholder="e.g. Prototype v2" />
-                        </div>
+                        <div><label className="block text-xs font-bold text-slate-500 uppercase mb-1">Status</label><select value={formData.status} onChange={e => setFormData({...formData, status: e.target.value})} className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg">{Object.values(TestStatus).map(s => <option key={s} value={s}>{s}</option>)}</select></div>
+                        <div><label className="block text-xs font-bold text-slate-500 uppercase mb-1">Progress (%)</label><input type="number" value={formData.score} onChange={e => setFormData({...formData, score: Number(e.target.value)})} className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg"/></div>
                     </div>
-
-                    <div>
-                        <label className="block text-xs font-bold text-slate-400 uppercase mb-1">Test Name</label>
-                        <div className="space-y-2">
-                            <select className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-intenza-500/20" value={testNameType} onChange={e => setTestNameType(e.target.value)}>
-                                {TEST_NAME_OPTIONS.map(opt => <option key={opt} value={opt}>{opt}</option>)}
-                                <option value="Other">Other (Custom input)</option>
-                            </select>
-                            {testNameType === 'Other' && (
-                                <input required className="w-full px-4 py-2 bg-white border border-slate-200 rounded-lg ring-1 ring-intenza-100 focus:outline-none focus:ring-2 focus:ring-intenza-500/20" value={formData.testName} onChange={e => setFormData({...formData, testName: e.target.value})} placeholder="Enter custom test name" />
-                            )}
-                        </div>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-4">
-                        <div><label className="block text-xs font-bold text-slate-400 uppercase mb-1">Progress (%)</label><input type="number" min="0" max="100" className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20" value={formData.score} onChange={e => setFormData({...formData, score: Number(e.target.value)})} /></div>
-                        <div>
-                            <label className="block text-xs font-bold text-slate-400 uppercase mb-1">Status</label>
-                            <select className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20" value={formData.status} onChange={e => setFormData({...formData, status: e.target.value as TestStatus})}>
-                                {Object.values(TestStatus).filter(s => s !== TestStatus.WARNING).map(s => <option key={s} value={s}>{s}</option>)}
-                            </select>
-                        </div>
-                    </div>
-                    <div><label className="block text-xs font-bold text-slate-400 uppercase mb-1">Details / Notes</label><textarea className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-indigo-500/20" rows={3} value={formData.details} onChange={e => setFormData({...formData, details: e.target.value})} /></div>
-                    
-                    {/* Durability Photo Upload Area */}
-                    <div>
-                        <label className="block text-xs font-bold text-slate-400 uppercase mb-2">Test Photos / Reference</label>
-                        <div className="flex flex-wrap gap-2 mb-3">
-                            {formData.attachmentUrls.map((url: string, idx: number) => (
-                                <div key={idx} className="relative w-16 h-16 rounded-lg border border-slate-200 overflow-hidden group">
-                                    <img src={url} alt="" className="w-full h-full object-cover" />
-                                    <button 
-                                        type="button" 
-                                        onClick={() => removePhoto(url)} 
-                                        className="absolute inset-0 bg-red-500/80 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-                                    >
-                                        <X size={16} strokeWidth={3} />
-                                    </button>
-                                </div>
-                            ))}
-                            <button 
-                                type="button" 
-                                onClick={() => durabilityFileInputRef.current?.click()}
-                                disabled={isUploading}
-                                className="w-16 h-16 rounded-lg border-2 border-dashed border-slate-200 flex flex-col items-center justify-center text-slate-400 hover:border-indigo-400 hover:text-indigo-500 transition-all bg-slate-50/50"
-                            >
-                                {isUploading ? <Loader2 size={16} className="animate-spin" /> : <Upload size={16} />}
-                                <span className="text-[8px] font-bold mt-1 uppercase">Add</span>
-                            </button>
-                        </div>
-                        <input ref={durabilityFileInputRef} type="file" accept="image/*" className="hidden" onChange={handleFileUpload} />
-                    </div>
-
-                    <div className="flex gap-4 pt-4 border-t border-slate-100">
-                        <button type="button" onClick={onClose} className="flex-1 py-3 text-slate-500 font-bold hover:bg-slate-50 rounded-xl">Cancel</button>
-                        <button type="submit" className="flex-1 py-3 bg-slate-900 text-white font-bold rounded-xl shadow-lg shadow-slate-900/10">Save Record</button>
-                    </div>
+                    <div className="flex gap-3 pt-4 border-t border-slate-100"><button type="button" onClick={onClose} className="flex-1 py-2 font-bold text-slate-500 hover:bg-slate-50 rounded-lg">Cancel</button><button type="submit" className="flex-1 py-2 bg-slate-900 text-white font-bold rounded-lg hover:bg-slate-800 transition-all">Save Test</button></div>
                 </form>
             </div>
         </div>
     );
 };
 
-// --- Missing Modals Implementation ---
+const NoShipmentModal = ({ isOpen, onClose, version }: any) => (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
+        <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-8 text-center">
+            <div className="w-16 h-16 bg-amber-50 rounded-full flex items-center justify-center mx-auto mb-4"><Ship size={32} className="text-amber-500" /></div>
+            <h3 className="text-lg font-bold text-slate-900 mb-2">No Market Data Found</h3>
+            <p className="text-sm text-slate-500 mb-6">Version <span className="font-mono font-bold text-slate-900">{version}</span> currently has no recorded shipments in the dashboard database.</p>
+            <button onClick={onClose} className="w-full py-2 bg-slate-900 text-white font-bold rounded-lg hover:bg-slate-800 transition-all">Close</button>
+        </div>
+    </div>
+);
 
 const StartEvaluationModal = ({ isOpen, onClose, onStartProject, allTesters, project }: any) => {
-    const { t } = useContext(LanguageContext);
-    const [name, setName] = useState(project ? t(project.name) : '');
-    const [selectedTesterIds, setSelectedTesterIds] = useState<string[]>(project?.testerIds || []);
-
-    const handleSubmit = (e: React.FormEvent) => {
-        e.preventDefault();
-        onStartProject({ en: name, zh: name }, selectedTesterIds);
-    };
-
-    const toggleTester = (id: string) => {
-        setSelectedTesterIds(prev => prev.includes(id) ? prev.filter(t => t !== id) : [...prev, id]);
-    };
-
+    const [name, setName] = useState(project ? project.name.en : '');
+    const [selectedTesterIds, setSelectedTesterIds] = useState<string[]>(project ? project.testerIds : []);
+    const handleSave = () => onStartProject({ en: name, zh: name }, selectedTesterIds);
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md animate-fade-in">
-            <div className="bg-white rounded-3xl shadow-2xl w-full max-w-lg animate-slide-up overflow-hidden">
-                <div className="flex justify-between items-center p-6 border-b border-slate-100">
-                    <h2 className="text-xl font-bold">{project ? 'Edit Evaluation' : 'Start New Evaluation'}</h2>
-                    <button onClick={onClose} className="p-2 rounded-full hover:bg-slate-100 text-slate-500"><X size={20} /></button>
-                </div>
-                <form onSubmit={handleSubmit} className="p-6 space-y-6">
-                    <div>
-                        <label className="block text-xs font-bold text-slate-400 uppercase mb-1">Project Name</label>
-                        <input required className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-intenza-500/20" value={name} onChange={e => setName(e.target.value)} placeholder="e.g. 550Te2 Handlebar Ergo Review" />
-                    </div>
-                    <div>
-                        <label className="block text-xs font-bold text-slate-400 uppercase mb-3">Select Testers</label>
-                        <div className="grid grid-cols-2 gap-2 max-h-48 overflow-y-auto pr-2 custom-scrollbar">
-                            {allTesters.map((tester: any) => (
-                                <button key={tester.id} type="button" onClick={() => toggleTester(tester.id)} className={`flex items-center gap-3 p-2 rounded-xl border transition-all text-left ${selectedTesterIds.includes(tester.id) ? 'bg-slate-900 text-white border-slate-900' : 'bg-white text-slate-600 border-slate-200 hover:border-slate-400'}`}>
-                                    <div className="w-8 h-8 rounded-full overflow-hidden flex-shrink-0 bg-slate-100"><img src={tester.imageUrl} className="w-full h-full object-cover" /></div>
-                                    <span className="text-xs font-bold truncate">{tester.name}</span>
-                                </button>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
+            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden">
+                <div className="p-6 border-b border-slate-100 flex justify-between items-center"><h2 className="text-xl font-bold">{project ? 'Edit Project' : 'Start Evaluation'}</h2><button onClick={onClose} className="p-2 hover:bg-slate-100 rounded-full"><X size={20}/></button></div>
+                <div className="p-6 space-y-4">
+                    <div><label className="block text-xs font-bold text-slate-500 uppercase mb-1">Project Name</label><input type="text" value={name} onChange={e => setName(e.target.value)} className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg"/></div>
+                    <div><label className="block text-xs font-bold text-slate-500 uppercase mb-1">Select Testers</label>
+                        <div className="max-h-40 overflow-y-auto space-y-2 border border-slate-100 p-2 rounded-lg">
+                            {allTesters.map((t: Tester) => (
+                                <label key={t.id} className="flex items-center gap-2 text-sm"><input type="checkbox" checked={selectedTesterIds.includes(t.id)} onChange={e => e.target.checked ? setSelectedTesterIds([...selectedTesterIds, t.id]) : setSelectedTesterIds(selectedTesterIds.filter(id => id !== t.id))}/>{t.name}</label>
                             ))}
                         </div>
                     </div>
-                    <div className="flex gap-4 pt-4 border-t border-slate-100">
-                        <button type="button" onClick={onClose} className="flex-1 py-3 text-slate-500 font-bold hover:bg-slate-50 rounded-xl">Cancel</button>
-                        <button type="submit" disabled={selectedTesterIds.length === 0} className="flex-1 py-3 bg-slate-900 text-white font-bold rounded-xl shadow-lg disabled:opacity-50">{project ? 'Save Changes' : 'Create Project'}</button>
-                    </div>
-                </form>
+                    <button onClick={handleSave} className="w-full py-3 bg-slate-900 text-white font-bold rounded-xl shadow-lg mt-4">{project ? 'Update Project' : 'Launch Project'}</button>
+                </div>
             </div>
         </div>
     );
@@ -1454,16 +1146,11 @@ const StartEvaluationModal = ({ isOpen, onClose, onStartProject, allTesters, pro
 const AddTaskModal = ({ isOpen, onClose, onSave }: any) => {
     const [name, setName] = useState('');
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md animate-fade-in">
-            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm animate-slide-up">
-                <div className="p-6 border-b border-slate-100 flex justify-between items-center">
-                    <h2 className="text-lg font-bold">Add Test Task</h2>
-                    <button onClick={onClose} className="p-1 hover:bg-slate-100 rounded-full"><X size={20}/></button>
-                </div>
-                <form onSubmit={(e) => { e.preventDefault(); onSave(name); }} className="p-6 space-y-4">
-                    <input required autoFocus className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-intenza-500/20" value={name} onChange={e => setName(e.target.value)} placeholder="Task name..." />
-                    <button type="submit" className="w-full py-2 bg-slate-900 text-white font-bold rounded-lg hover:bg-slate-800 transition-colors">Add Task</button>
-                </form>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
+            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6">
+                <h3 className="text-lg font-bold mb-4">Add Task</h3>
+                <input type="text" value={name} onChange={e => setName(e.target.value)} className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg mb-4" placeholder="e.g. Max Resistance Comfort"/>
+                <div className="flex gap-2"><button onClick={onClose} className="flex-1 py-2 text-slate-500">Cancel</button><button onClick={() => onSave(name)} className="flex-1 py-2 bg-slate-900 text-white rounded-lg">Add Task</button></div>
             </div>
         </div>
     );
@@ -1472,276 +1159,121 @@ const AddTaskModal = ({ isOpen, onClose, onSave }: any) => {
 const EditTaskNameModal = ({ isOpen, onClose, currentName, onSave }: any) => {
     const [name, setName] = useState(currentName);
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md animate-fade-in">
-            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm animate-slide-up">
-                <div className="p-6 border-b border-slate-100 flex justify-between items-center">
-                    <h2 className="text-lg font-bold">Edit Task Name</h2>
-                    <button onClick={onClose} className="p-1 hover:bg-slate-100 rounded-full"><X size={20}/></button>
-                </div>
-                <form onSubmit={(e) => { e.preventDefault(); onSave(name); }} className="p-6 space-y-4">
-                    <input required autoFocus className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-intenza-500/20" value={name} onChange={e => setName(e.target.value)} />
-                    <button type="submit" className="w-full py-2 bg-slate-900 text-white font-bold rounded-lg hover:bg-slate-800 transition-colors">Save Name</button>
-                </form>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
+            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6">
+                <h3 className="text-lg font-bold mb-4">Rename Task</h3>
+                <input type="text" value={name} onChange={e => setName(e.target.value)} className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg mb-4"/>
+                <div className="flex gap-2"><button onClick={onClose} className="flex-1 py-2 text-slate-500">Cancel</button><button onClick={() => onSave(name)} className="flex-1 py-2 bg-slate-900 text-white rounded-lg">Save</button></div>
             </div>
         </div>
     );
 };
 
 const SetTaskResultsModal = ({ isOpen, onClose, onSave, project, testers }: any) => {
-    const [passTesterIds, setPassTesterIds] = useState<string[]>([]);
-    
-    const projectTesters = testers.filter((t: any) => project.testerIds.includes(t.id));
-
+    const [passIds, setPassIds] = useState<string[]>([]);
+    const projectTesters = testers.filter((t: Tester) => project.testerIds.includes(t.id));
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md animate-fade-in">
-            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md animate-slide-up">
-                <div className="p-6 border-b border-slate-100 flex justify-between items-center">
-                    <h2 className="text-lg font-bold text-slate-900">Batch Set Pass/NG</h2>
-                    <button onClick={onClose} className="p-1 hover:bg-slate-100 rounded-full"><X size={20}/></button>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
+            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6">
+                <h3 className="text-lg font-bold mb-4">Set Results</h3>
+                <div className="space-y-2 mb-6 max-h-60 overflow-y-auto">
+                    {projectTesters.map((t: Tester) => (
+                        <label key={t.id} className="flex items-center justify-between p-2 border border-slate-50 rounded-lg hover:bg-slate-50 transition-colors cursor-pointer">
+                            <span className="text-sm font-medium">{t.name}</span>
+                            <div className="flex gap-1">
+                                <button onClick={() => setPassIds([...passIds.filter(id => id !== t.id), t.id])} className={`px-3 py-1 rounded text-xs font-bold ${passIds.includes(t.id) ? 'bg-emerald-500 text-white' : 'bg-slate-100 text-slate-400'}`}>PASS</button>
+                                <button onClick={() => setPassIds(passIds.filter(id => id !== t.id))} className={`px-3 py-1 rounded text-xs font-bold ${!passIds.includes(t.id) ? 'bg-rose-500 text-white' : 'bg-slate-100 text-slate-400'}`}>NG</button>
+                            </div>
+                        </label>
+                    ))}
                 </div>
-                <div className="p-6 space-y-4">
-                   <p className="text-xs text-slate-500 mb-2">Select testers who <span className="text-emerald-600 font-bold uppercase">Passed</span> this task. Unselected testers will be marked as NG.</p>
-                   <div className="grid grid-cols-2 gap-2">
-                       {projectTesters.map((t: any) => (
-                          <button 
-                            key={t.id} 
-                            onClick={() => setPassTesterIds(prev => prev.includes(t.id) ? prev.filter(id => id !== t.id) : [...prev, t.id])}
-                            className={`flex items-center gap-3 p-2 rounded-xl border transition-all text-left ${passTesterIds.includes(t.id) ? 'bg-emerald-50 border-emerald-500 text-emerald-900 shadow-sm' : 'bg-white border-slate-100 text-slate-500 hover:border-slate-300'}`}
-                          >
-                             <div className="w-6 h-6 rounded-full overflow-hidden bg-slate-200"><img src={t.imageUrl} className="w-full h-full object-cover" /></div>
-                             <span className="text-xs font-bold truncate">{t.name}</span>
-                          </button>
-                       ))}
-                   </div>
-                   <div className="flex gap-4 pt-4 border-t border-slate-50">
-                       <button onClick={onClose} className="flex-1 py-3 text-slate-400 font-bold hover:bg-slate-50 rounded-xl transition-colors">Cancel</button>
-                       <button onClick={() => onSave(passTesterIds)} className="flex-1 py-3 bg-slate-900 text-white font-bold rounded-xl shadow-lg hover:bg-slate-800 transition-all">Submit Results</button>
-                   </div>
-                </div>
+                <div className="flex gap-2"><button onClick={onClose} className="flex-1 py-2 text-slate-500">Cancel</button><button onClick={() => onSave(passIds)} className="flex-1 py-2 bg-slate-900 text-white rounded-lg">Confirm</button></div>
             </div>
         </div>
     );
 };
 
-const SetPassNgModal = ({ isOpen, onClose, onSet, existingReason, project }: any) => {
-    const { t } = useContext(LanguageContext);
-    const [reason, setReason] = useState(existingReason ? t(existingReason.reason) : '');
+const SetPassNgModal = ({ isOpen, onClose, onSet, existingReason }: any) => {
+    const [reason, setReason] = useState(existingReason ? existingReason.reason.en : '');
     const [type, setType] = useState<'ISSUE' | 'IDEA'>(existingReason?.decisionStatus === NgDecisionStatus.IDEA ? 'IDEA' : 'ISSUE');
-    const [attachments, setAttachments] = useState<string[]>(existingReason?.attachmentUrls || []);
-    const [isUploading, setIsUploading] = useState(false);
-    const fileInputRef = useRef<HTMLInputElement>(null);
-
-    const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0];
-        if (file) {
-            try {
-                setIsUploading(true);
-                const url = await api.uploadImage(file);
-                setAttachments(prev => [...prev, url]);
-            } catch (err) {
-                alert("Upload failed");
-            } finally {
-                setIsUploading(false);
-            }
-        }
-    };
-
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md animate-fade-in">
-            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md animate-slide-up">
-                <div className="p-6 border-b border-slate-100 flex justify-between items-center">
-                    <h2 className="text-lg font-bold">Feedback Details</h2>
-                    <button onClick={onClose} className="p-1 hover:bg-slate-100 rounded-full"><X size={20}/></button>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
+            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6">
+                <h3 className="text-lg font-bold mb-4">NG Reason</h3>
+                <div className="flex gap-2 mb-4">
+                    <button onClick={() => setType('ISSUE')} className={`flex-1 py-2 text-xs font-bold rounded-lg border transition-all ${type === 'ISSUE' ? 'bg-rose-50 border-rose-200 text-rose-600' : 'bg-slate-50 border-slate-100 text-slate-400'}`}>Report Issue</button>
+                    <button onClick={() => setType('IDEA')} className={`flex-1 py-2 text-xs font-bold rounded-lg border transition-all ${type === 'IDEA' ? 'bg-sky-50 border-sky-200 text-sky-600' : 'bg-slate-50 border-slate-100 text-slate-400'}`}>Log as Idea</button>
                 </div>
-                <form onSubmit={(e) => { e.preventDefault(); onSet({ en: reason, zh: reason }, false, attachments, type); }} className="p-6 space-y-4">
-                    <div>
-                        <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Category Type</label>
-                        <div className="flex bg-slate-100 p-1 rounded-lg">
-                            <button type="button" onClick={() => setType('ISSUE')} className={`flex-1 py-1.5 text-xs font-bold rounded-md transition-all ${type === 'ISSUE' ? 'bg-white text-rose-600 shadow-sm' : 'text-slate-400'}`}>NG / Issue</button>
-                            <button type="button" onClick={() => setType('IDEA')} className={`flex-1 py-1.5 text-xs font-bold rounded-md transition-all ${type === 'IDEA' ? 'bg-white text-sky-600 shadow-sm' : 'text-slate-400'}`}>UX Idea</button>
-                        </div>
-                    </div>
-                    <div>
-                        <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Detailed Description</label>
-                        <textarea required autoFocus rows={4} className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-intenza-500/20" value={reason} onChange={e => setReason(e.target.value)} placeholder="Describe the findings..." />
-                    </div>
-                    <div>
-                        <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Evidence Photos</label>
-                        <div className="flex flex-wrap gap-2">
-                            {attachments.map((url, i) => (
-                                <div key={i} className="relative w-12 h-12 rounded-lg overflow-hidden group">
-                                    <img src={url} className="w-full h-full object-cover" />
-                                    <button type="button" onClick={() => setAttachments(prev => prev.filter(u => u !== url))} className="absolute inset-0 bg-red-500/80 flex items-center justify-center opacity-0 group-hover:opacity-100"><X size={14} className="text-white"/></button>
-                                </div>
-                            ))}
-                            <button type="button" onClick={() => fileInputRef.current?.click()} className="w-12 h-12 rounded-lg border-2 border-dashed border-slate-200 flex items-center justify-center text-slate-300 hover:border-slate-400 transition-colors">
-                                {isUploading ? <Loader2 size={16} className="animate-spin" /> : <Plus size={16}/>}
-                            </button>
-                            <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleUpload} />
-                        </div>
-                    </div>
-                    <button type="submit" className="w-full py-3 bg-slate-900 text-white font-bold rounded-xl hover:bg-slate-800 transition-all shadow-lg shadow-slate-900/10">Save Record</button>
-                </form>
+                <textarea value={reason} onChange={e => setReason(e.target.value)} className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg mb-4" rows={3} placeholder="Describe the issue or suggestion..."/>
+                <div className="flex gap-2"><button onClick={onClose} className="flex-1 py-2 text-slate-500">Cancel</button><button onClick={() => onSet({ en: reason, zh: reason }, false, [], type)} className="flex-1 py-2 bg-slate-900 text-white rounded-lg">Save</button></div>
             </div>
         </div>
     );
 };
 
 const StatusDecisionModal = ({ isOpen, onClose, context, onSetStatus, onLinkEco, onCreateEco, activeEcos }: any) => {
-  const [view, setView] = useState<'MAIN' | 'LINK_ECO'>('MAIN');
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md animate-fade-in">
-        <div className="bg-white rounded-3xl shadow-2xl w-full max-w-sm animate-slide-up overflow-hidden">
-            <div className="p-6 border-b border-slate-100 flex justify-between items-center">
-                <h2 className="text-lg font-bold">{view === 'MAIN' ? 'Manage Decision' : 'Link to Open ECO'}</h2>
-                <button onClick={onClose} className="p-1 hover:bg-slate-100 rounded-full"><X size={20}/></button>
+    return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
+            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6">
+                <h3 className="text-lg font-bold mb-4">Decision Status</h3>
+                <div className="space-y-2">
+                    {Object.values(NgDecisionStatus).map(status => (
+                        <button key={status} onClick={() => onSetStatus(status)} className={`w-full py-2.5 rounded-lg text-sm font-bold border transition-all ${context.currentStatus === status ? 'bg-slate-900 text-white border-slate-800' : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'}`}>{status}</button>
+                    ))}
+                    <div className="py-2 border-t border-slate-100 mt-4">
+                        <h4 className="text-[10px] font-bold text-slate-400 uppercase mb-2">ECO Management</h4>
+                        <button onClick={onCreateEco} className="w-full py-2.5 bg-intenza-600 text-white rounded-lg text-sm font-bold hover:bg-intenza-700 mb-2">Create New ECO</button>
+                        {activeEcos.length > 0 && (
+                            <div className="max-h-32 overflow-y-auto space-y-1">
+                                {activeEcos.map((eco: DesignChange) => (
+                                    <button key={eco.id} onClick={() => onLinkEco(eco.id)} className="w-full text-left p-2 text-xs hover:bg-slate-50 rounded border border-transparent hover:border-slate-200 flex justify-between items-center"><span className="truncate">{eco.ecoNumber} - {eco.description.en}</span><LinkIcon size={12}/></button>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                </div>
+                <button onClick={onClose} className="w-full py-2 mt-4 text-slate-400 font-bold">Close</button>
             </div>
-            
-            {view === 'MAIN' ? (
-                <div className="p-6 space-y-3">
-                    <button onClick={onCreateEco} className="w-full py-4 px-4 bg-intenza-600 text-white rounded-2xl flex items-center gap-4 hover:bg-intenza-700 transition-all group">
-                        <div className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center group-hover:scale-110 transition-transform"><Plus size={20}/></div>
-                        <div className="text-left">
-                            <div className="font-bold text-sm">Start New ECO</div>
-                            <div className="text-[10px] text-white/60">Create design change record</div>
-                        </div>
-                    </button>
-                    
-                    <button onClick={() => setView('LINK_ECO')} className="w-full py-4 px-4 bg-slate-50 border border-slate-200 text-slate-700 rounded-2xl flex items-center gap-4 hover:bg-slate-100 transition-all group">
-                        <div className="w-10 h-10 rounded-xl bg-slate-200 flex items-center justify-center group-hover:scale-110 transition-transform"><LinkIcon size={20}/></div>
-                        <div className="text-left">
-                            <div className="font-bold text-sm">Link Existing ECO</div>
-                            <div className="text-[10px] text-slate-400">Attach to current open task</div>
-                        </div>
-                    </button>
-
-                    <div className="grid grid-cols-2 gap-2 mt-4">
-                        {[NgDecisionStatus.PENDING, NgDecisionStatus.DISCUSSION, NgDecisionStatus.IGNORED].map(status => (
-                            <button key={status} onClick={() => onSetStatus(status)} className="py-2 text-[10px] font-bold rounded-xl border border-slate-100 bg-slate-50 hover:bg-white transition-all uppercase tracking-widest text-slate-500">{status}</button>
-                        ))}
-                    </div>
-                </div>
-            ) : (
-                <div className="p-6">
-                    <div className="space-y-2 max-h-64 overflow-y-auto pr-1 custom-scrollbar">
-                        {activeEcos.length > 0 ? activeEcos.map((eco: any) => (
-                            <button key={eco.id} onClick={() => onLinkEco(eco.id)} className="w-full p-4 rounded-xl border border-slate-100 hover:border-intenza-200 hover:bg-intenza-50/50 transition-all text-left">
-                                <div className="text-xs font-bold text-intenza-600 mb-1">{eco.ecoNumber}</div>
-                                <div className="text-[11px] font-medium text-slate-700 line-clamp-2">{eco.description.en}</div>
-                            </button>
-                        )) : <div className="text-center py-8 text-slate-400 italic text-sm">No open ECOs found</div>}
-                    </div>
-                    <button onClick={() => setView('MAIN')} className="w-full mt-4 py-2 text-xs font-bold text-slate-400 hover:text-slate-600">Go Back</button>
-                </div>
-            )}
         </div>
-    </div>
-  );
+    );
 };
 
 const FeedbackModal = ({ isOpen, onClose, onSave, feedback, product }: any) => {
-    const { t } = useContext(LanguageContext);
-    const [formData, setFormData] = useState({
-        date: feedback?.date || new Date().toISOString().split('T')[0],
-        category: feedback?.category || 'Resistance profile',
-        content: feedback ? t(feedback.content) : '',
-        source: feedback?.source || ''
-    });
-
-    const categories: ErgoProjectCategory[] = ['Resistance profile', 'Experience', 'Stroke', 'Other Suggestion'];
-
+    const [formData, setFormData] = useState<any>(feedback || { date: new Date().toISOString().split('T')[0], category: 'Experience', content: { en: '', zh: '' }, source: '' });
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md animate-fade-in">
-            <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md animate-slide-up">
-                <div className="p-6 border-b border-slate-100 flex justify-between items-center">
-                    <h2 className="text-lg font-bold">{feedback ? 'Edit Feedback' : 'Add Customer Complaint'}</h2>
-                    <button onClick={onClose} className="p-1 hover:bg-slate-100 rounded-full"><X size={20}/></button>
-                </div>
-                <form onSubmit={(e) => { e.preventDefault(); onSave({ ...formData, content: { en: formData.content, zh: formData.content } }, false); }} className="p-6 space-y-4">
-                    <div className="grid grid-cols-2 gap-4">
-                        <div><label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Date</label><input type="date" required className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg" value={formData.date} onChange={e => setFormData({...formData, date: e.target.value})} /></div>
-                        <div><label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Source</label><input required className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg" value={formData.source} onChange={e => setFormData({...formData, source: e.target.value})} placeholder="e.g. Sales, Gym Owner" /></div>
-                    </div>
-                    <div>
-                        <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Category</label>
-                        <select className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg" value={formData.category} onChange={e => setFormData({...formData, category: e.target.value as ErgoProjectCategory})}>
-                            {categories.map(c => <option key={c} value={c}>{c}</option>)}
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
+            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6">
+                <h3 className="text-lg font-bold mb-4">{feedback ? 'Edit Feedback' : 'Add Feedback'}</h3>
+                <div className="space-y-4">
+                    <div><label className="block text-xs font-bold text-slate-500 uppercase mb-1">Source (Customer)</label><input type="text" value={formData.source} onChange={e => setFormData({...formData, source: e.target.value})} className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg"/></div>
+                    <div><label className="block text-xs font-bold text-slate-500 uppercase mb-1">Category</label>
+                        <select value={formData.category} onChange={e => setFormData({...formData, category: e.target.value})} className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg">
+                            <option value="Resistance profile">Resistance profile</option>
+                            <option value="Experience">Experience</option>
+                            <option value="Stroke">Stroke</option>
+                            <option value="Other Suggestion">Other Suggestion</option>
                         </select>
                     </div>
-                    <div>
-                        <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Content</label>
-                        <textarea required rows={4} className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg resize-none" value={formData.content} onChange={e => setFormData({...formData, content: e.target.value})} placeholder="What was the complaint?" />
-                    </div>
-                    <button type="submit" className="w-full py-3 bg-slate-900 text-white font-bold rounded-xl hover:bg-slate-800 transition-all shadow-lg shadow-intenza-900/10">Save Feedback</button>
-                </form>
+                    <div><label className="block text-xs font-bold text-slate-500 uppercase mb-1">Content</label><textarea value={formData.content.en} onChange={e => setFormData({...formData, content: { en: e.target.value, zh: e.target.value }})} className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg" rows={3}/></div>
+                </div>
+                <div className="flex gap-2 mt-6"><button onClick={onClose} className="flex-1 py-2 text-slate-500">Cancel</button><button onClick={() => onSave(formData, false)} className="flex-1 py-2 bg-slate-900 text-white rounded-lg">Save</button></div>
             </div>
         </div>
     );
 };
 
-const FeedbackStatusDecisionModal = ({ isOpen, onClose, feedback, onUpdateStatus }: any) => {
-    return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md animate-fade-in">
-            <div className="bg-white rounded-3xl shadow-2xl w-full max-w-sm animate-slide-up overflow-hidden">
-                <div className="p-6 border-b border-slate-100 flex justify-between items-center">
-                    <h2 className="text-lg font-bold">Feedback Status</h2>
-                    <button onClick={onClose} className="p-1 hover:bg-slate-100 rounded-full"><X size={20}/></button>
-                </div>
-                <div className="p-6 space-y-2">
-                    {['PENDING', 'DISCUSSION', 'IGNORED'].map((status: any) => (
-                        <button 
-                            key={status} 
-                            onClick={() => onUpdateStatus(feedback.id, status)} 
-                            className={`w-full py-3 px-4 rounded-xl border text-sm font-bold transition-all text-left ${feedback.status === status ? 'bg-slate-900 text-white border-slate-900 shadow-lg' : 'bg-slate-50 border-slate-100 text-slate-600 hover:bg-white hover:border-slate-300'}`}
-                        >
-                            {status}
-                        </button>
-                    ))}
-                </div>
+const FeedbackStatusDecisionModal = ({ isOpen, onClose, feedback, onUpdateStatus }: any) => (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
+        <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6 text-center">
+            <h3 className="text-lg font-bold mb-6">Update Feedback Status</h3>
+            <div className="space-y-2">
+                {['PENDING', 'DISCUSSION', 'IGNORED'].map((status: any) => (
+                    <button key={status} onClick={() => onUpdateStatus(feedback.id, status)} className={`w-full py-3 rounded-xl font-bold border transition-all ${feedback.status === status ? 'bg-slate-900 text-white border-slate-800' : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'}`}>{status}</button>
+                ))}
             </div>
+            <button onClick={onClose} className="mt-6 text-slate-400 text-sm font-bold">Cancel</button>
         </div>
-    );
-};
+    </div>
+);
 
-const NoShipmentModal = ({ isOpen, onClose, version }: { isOpen: boolean; onClose: () => void; version: string }) => {
-    const { t, language } = useContext(LanguageContext);
-    return (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md animate-fade-in">
-            <div className="bg-white rounded-3xl shadow-2xl w-full max-w-sm animate-slide-up overflow-hidden">
-                <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50/30">
-                    <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
-                        <AlertTriangle size={20} className="text-amber-500" />
-                        {t({ en: 'Market Distribution', zh: '出貨客戶分佈' })}
-                    </h2>
-                    <button onClick={onClose} className="p-1 hover:bg-slate-100 rounded-full text-slate-400 transition-colors"><X size={20}/></button>
-                </div>
-                <div className="p-8 flex flex-col items-center text-center">
-                    <div className="w-16 h-16 bg-amber-50 rounded-full flex items-center justify-center mb-4">
-                        <Ship size={32} className="text-amber-500 opacity-60" />
-                    </div>
-                    <p className="text-slate-600 font-medium leading-relaxed">
-                        {language === 'zh' 
-                            ? `此版本 (${version}) 尚無任何出貨記錄。` 
-                            : `No shipment records found for version ${version}.`
-                        }
-                    </p>
-                    <p className="text-xs text-slate-400 mt-2">
-                        {language === 'zh'
-                            ? '請確認該 SKU 是否已正式導入量產或是否有資料遺失。'
-                            : 'Please verify if this SKU is in production or check if data is missing.'
-                        }
-                    </p>
-                </div>
-                <div className="p-4 bg-slate-50 border-t border-slate-100">
-                    <button 
-                        onClick={onClose} 
-                        className="w-full py-3 bg-slate-900 text-white font-bold rounded-xl hover:bg-slate-800 transition-all shadow-lg shadow-slate-900/10"
-                    >
-                        {t({ en: 'Understood', zh: '了解' })}
-                    </button>
-                </div>
-            </div>
-        </div>
-    );
-};
+export default ProductDetail;
