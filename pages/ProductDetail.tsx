@@ -1,3 +1,4 @@
+
 import React, { useState, useMemo, useEffect, useContext, useRef } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { 
@@ -804,7 +805,7 @@ const ImageLightbox = ({ imgUrl, onClose, caption, onSaveCaption, isViewer }: an
     const [isEditing, setIsEditing] = useState(false);
 
     return (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-8 bg-slate-950/95 backdrop-blur-xl animate-fade-in">
+        <div className="fixed inset-0 z-[110] flex items-center justify-center p-8 bg-slate-950/95 backdrop-blur-xl animate-fade-in">
             <button onClick={onClose} className="absolute top-8 right-8 p-3 bg-white/10 hover:bg-white/20 text-white rounded-full transition-colors z-20"><X size={32}/></button>
             
             <div className="w-full h-full flex flex-col items-center justify-center gap-8">
@@ -1097,25 +1098,27 @@ const EcoModal = ({ isOpen, onClose, onSave, eco, productVersions, product }: an
     const [isUp, setIsUp] = useState(false);
     const fileRef = useRef<HTMLInputElement>(null);
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm"><div className="bg-white rounded-2xl w-full max-w-xl overflow-hidden flex flex-col max-h-[90vh]">
-            <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-white sticky top-0 z-10"><h2 className="text-xl font-bold">{eco ? 'Edit ECO' : 'Add New ECO'}</h2><button onClick={onClose} className="p-2 hover:bg-slate-100 rounded-full"><X size={20}/></button></div>
-            <form onSubmit={(e) => {e.preventDefault(); onSave(formData);}} className="p-6 space-y-4 overflow-y-auto">
-                <div className="grid grid-cols-2 gap-4">
-                    <div><label className="block text-xs font-bold text-slate-500 uppercase mb-1">ECO Number</label><input type="text" value={formData.ecoNumber} onChange={e => setFormData({...formData, ecoNumber: e.target.value})} className="w-full px-4 py-2 bg-slate-50 border rounded-lg focus:ring-2 outline-none"/></div>
-                    <div><label className="block text-xs font-bold text-slate-500 uppercase mb-1">Version</label><input type="text" list="v-list" value={formData.version} onChange={e => setFormData({...formData, version: e.target.value})} className="w-full px-4 py-2 bg-slate-50 border rounded-lg"/><datalist id="v-list">{productVersions.map((v: string) => <option key={v} value={v} />)}</datalist></div>
-                </div>
-                <div><label className="block text-xs font-bold text-slate-500 uppercase mb-1">Description</label><textarea value={formData.description.en} onChange={e => setFormData({...formData, description: {en: e.target.value, zh: e.target.value}})} className="w-full px-4 py-2 bg-slate-50 border rounded-lg" rows={3}/></div>
-                <div className="grid grid-cols-2 gap-4">
-                    <div><label className="block text-xs font-bold text-slate-500 uppercase mb-1">Status</label><select value={formData.status} onChange={e => setFormData({...formData, status: e.target.value as EcoStatus})} className="w-full px-4 py-2 bg-slate-50 border rounded-lg">{Object.values(EcoStatus).map(s => <option key={s} value={s}>{s}</option>)}</select></div>
-                    <div><label className="block text-xs font-bold text-slate-500 uppercase mb-1">Date</label><input type="date" value={formData.date} onChange={e => setFormData({...formData, date: e.target.value})} className="w-full px-4 py-2 bg-slate-50 border rounded-lg"/></div>
-                </div>
-                <div className="pt-4 border-t"><label className="block text-xs font-bold text-slate-500 uppercase mb-3">Media</label><div className="grid grid-cols-4 gap-3">{(formData.imageUrls || []).map((url: string, i: number) => <div key={i} className="relative aspect-square rounded-lg overflow-hidden border bg-slate-100 group">
-                    {isVideo(url)?<div className="w-full h-full flex items-center justify-center"><Video size={20}/></div>:<img src={url} className="w-full h-full object-cover"/>}
-                    <button type="button" onClick={() => setFormData({...formData, imageUrls: formData.imageUrls.filter((_:any,idx:number)=>idx!==i), imageCaptions: (formData.imageCaptions||[]).filter((_:any,idx:number)=>idx!==i)})} className="absolute top-1 right-1 p-1 bg-black/50 text-white rounded-full opacity-0 group-hover:opacity-100"><X size={10}/></button>
-                </div>)}<button type="button" onClick={() => fileRef.current?.click()} className="aspect-square border-2 border-dashed rounded-lg flex flex-col items-center justify-center text-slate-400 bg-slate-50">{isUp?<Loader2 className="animate-spin"/>:<Plus/>}</button><input ref={fileRef} type="file" multiple accept="image/*,video/*" className="hidden" onChange={async e => {const fs=e.target.files; if(!fs) return; setIsUp(true); try{const urls=await Promise.all(Array.from(fs).map(f=>api.uploadImage(f as File))); setFormData({...formData, imageUrls:[...(formData.imageUrls||[]),...urls], imageCaptions: [...(formData.imageCaptions||[]), ...urls.map(()=>'')]});}finally{setIsUp(false);}}}/></div></div>
-                <div className="flex gap-3 pt-6"><button type="button" onClick={onClose} className="flex-1 py-3 font-bold text-slate-500">Cancel</button><button type="submit" className="flex-1 py-3 bg-slate-900 text-white font-bold rounded-xl">Save ECO</button></div>
-            </form>
-        </div></div>
+        <div className="fixed inset-0 z-[100] flex justify-center items-start overflow-y-auto p-4 md:p-8 bg-slate-900/50 backdrop-blur-sm animate-fade-in">
+            <div className="bg-white rounded-2xl w-full max-w-xl overflow-hidden flex flex-col my-auto shadow-2xl">
+                <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-white sticky top-0 z-10"><h2 className="text-xl font-bold">{eco ? 'Edit ECO' : 'Add New ECO'}</h2><button onClick={onClose} className="p-2 hover:bg-slate-100 rounded-full"><X size={20}/></button></div>
+                <form onSubmit={(e) => {e.preventDefault(); onSave(formData);}} className="p-6 space-y-4 overflow-y-auto">
+                    <div className="grid grid-cols-2 gap-4">
+                        <div><label className="block text-xs font-bold text-slate-500 uppercase mb-1">ECO Number</label><input type="text" value={formData.ecoNumber} onChange={e => setFormData({...formData, ecoNumber: e.target.value})} className="w-full px-4 py-2 bg-slate-50 border rounded-lg focus:ring-2 outline-none"/></div>
+                        <div><label className="block text-xs font-bold text-slate-500 uppercase mb-1">Version</label><input type="text" list="v-list" value={formData.version} onChange={e => setFormData({...formData, version: e.target.value})} className="w-full px-4 py-2 bg-slate-50 border rounded-lg"/><datalist id="v-list">{productVersions.map((v: string) => <option key={v} value={v} />)}</datalist></div>
+                    </div>
+                    <div><label className="block text-xs font-bold text-slate-500 uppercase mb-1">Description</label><textarea value={formData.description.en} onChange={e => setFormData({...formData, description: {en: e.target.value, zh: e.target.value}})} className="w-full px-4 py-2 bg-slate-50 border rounded-lg" rows={3}/></div>
+                    <div className="grid grid-cols-2 gap-4">
+                        <div><label className="block text-xs font-bold text-slate-500 uppercase mb-1">Status</label><select value={formData.status} onChange={e => setFormData({...formData, status: e.target.value as EcoStatus})} className="w-full px-4 py-2 bg-slate-50 border rounded-lg">{Object.values(EcoStatus).map(s => <option key={s} value={s}>{s}</option>)}</select></div>
+                        <div><label className="block text-xs font-bold text-slate-500 uppercase mb-1">Date</label><input type="date" value={formData.date} onChange={e => setFormData({...formData, date: e.target.value})} className="w-full px-4 py-2 bg-slate-50 border rounded-lg"/></div>
+                    </div>
+                    <div className="pt-4 border-t"><label className="block text-xs font-bold text-slate-500 uppercase mb-3">Media</label><div className="grid grid-cols-4 gap-3">{(formData.imageUrls || []).map((url: string, i: number) => <div key={i} className="relative aspect-square rounded-lg overflow-hidden border bg-slate-100 group">
+                        {isVideo(url)?<div className="w-full h-full flex items-center justify-center"><Video size={20}/></div>:<img src={url} className="w-full h-full object-cover"/>}
+                        <button type="button" onClick={() => setFormData({...formData, imageUrls: formData.imageUrls.filter((_:any,idx:number)=>idx!==i), imageCaptions: (formData.imageCaptions||[]).filter((_:any,idx:number)=>idx!==i)})} className="absolute top-1 right-1 p-1 bg-black/50 text-white rounded-full opacity-0 group-hover:opacity-100"><X size={10}/></button>
+                    </div>)}<button type="button" onClick={() => fileRef.current?.click()} className="aspect-square border-2 border-dashed rounded-lg flex flex-col items-center justify-center text-slate-400 bg-slate-50">{isUp?<Loader2 className="animate-spin"/>:<Plus/>}</button><input ref={fileRef} type="file" multiple accept="image/*,video/*" className="hidden" onChange={async e => {const fs=e.target.files; if(!fs) return; setIsUp(true); try{const urls=await Promise.all(Array.from(fs).map(f=>api.uploadImage(f as File))); setFormData({...formData, imageUrls:[...(formData.imageUrls||[]),...urls], imageCaptions: [...(formData.imageCaptions||[]), ...urls.map(()=>'')]});}finally{setIsUp(false);}}}/></div></div>
+                    <div className="flex gap-3 pt-6"><button type="button" onClick={onClose} className="flex-1 py-3 font-bold text-slate-500">Cancel</button><button type="submit" className="flex-1 py-3 bg-slate-900 text-white font-bold rounded-xl">Save ECO</button></div>
+                </form>
+            </div>
+        </div>
     );
 };
 
@@ -1128,28 +1131,30 @@ const TestModal = ({ isOpen, onClose, onSave, test, productVersions }: any) => {
     const [custom, setCustom] = useState(!opts.some(o => o.en === formData.testName.en));
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm"><div className="bg-white rounded-2xl w-full max-w-xl overflow-hidden flex flex-col max-h-[90vh]">
-            <div className="p-6 border-b flex justify-between items-center"><h2 className="text-xl font-bold">Edit Test Record</h2><button onClick={onClose}><X/></button></div>
-            <form onSubmit={e => {e.preventDefault(); onSave(formData);}} className="p-6 space-y-4 overflow-y-auto">
-                <div className="grid grid-cols-2 gap-4">
-                    <div><label className="text-xs font-bold text-slate-500">Test Item</label><select value={custom ? 'Other Custom Test' : formData.testName.en} onChange={e => { if(e.target.value==='Other Custom Test'){ setCustom(true); setFormData({...formData, testName:{en:'',zh:''}}); }else{ setCustom(false); const s=opts.find(o=>o.en===e.target.value); if(s)setFormData({...formData,testName:s}); } }} className="w-full p-2 border rounded-lg">{opts.map(o => <option key={o.en} value={o.en}>{language==='en'?o.en:o.zh}</option>)}</select></div>
-                    <div><label className="text-xs font-bold text-slate-500">Version</label><input type="text" list="dl" value={formData.version} onChange={e => setFormData({...formData,version:e.target.value})} className="w-full p-2 border rounded-lg"/><datalist id="dl">{productVersions.map((v:any)=><option key={v} value={v}/>)}</datalist></div>
-                </div>
-                {custom && <input type="text" placeholder="Custom name" value={formData.testName.en} onChange={e=>setFormData({...formData,testName:{en:e.target.value,zh:e.target.value}})} className="w-full p-2 border rounded-lg"/>}
-                <div className="grid grid-cols-2 gap-4">
-                    <div><label className="text-xs font-bold text-slate-500">Status</label><select value={formData.status} onChange={e=>setFormData({...formData,status:e.target.value})} className="w-full p-2 border rounded-lg">{Object.values(TestStatus).map(s=><option key={s} value={s}>{s}</option>)}</select></div>
-                    <div><label className="text-xs font-bold text-slate-500">Progress: {formData.score}%</label><input type="range" min="0" max="100" value={formData.score} onChange={e=>setFormData({...formData,score:Number(e.target.value)})} className="w-full"/></div>
-                </div>
-                <div><label className="text-xs font-bold text-slate-500">Details</label><textarea value={formData.details.en} onChange={e=>setFormData({...formData,details:{en:e.target.value,zh:e.target.value}})} className="w-full p-2 border rounded-lg" rows={3}/></div>
-                <div className="pt-2"><label className="text-xs font-bold text-slate-500">Photos</label><div className="grid grid-cols-4 gap-2">{(formData.attachmentUrls||[]).map((u:any,i:any)=><img key={i} src={u} className="aspect-square object-cover rounded border"/>)}<button type="button" onClick={()=>fileRef.current?.click()} className="aspect-square border-2 border-dashed rounded flex items-center justify-center">{isUp?<Loader2 className="animate-spin"/>:<Plus/>}</button><input ref={fileRef} type="file" multiple accept="image/*" className="hidden" onChange={async e=>{const fs=e.target.files; if(!fs)return; setIsUp(true); try{const urls=await Promise.all(Array.from(fs).map(f=>api.uploadImage(f as File))); setFormData({...formData,attachmentUrls:[...(formData.attachmentUrls||[]),...urls]});}finally{setIsUp(false);}}}/></div></div>
-                <div className="flex gap-2 pt-4"><button type="button" onClick={onClose} className="flex-1 py-3 text-slate-500">Cancel</button><button type="submit" className="flex-1 py-3 bg-slate-900 text-white rounded-xl">Save</button></div>
-            </form>
-        </div></div>
+        <div className="fixed inset-0 z-[100] flex justify-center items-start overflow-y-auto p-4 md:p-8 bg-slate-900/50 backdrop-blur-sm animate-fade-in">
+            <div className="bg-white rounded-2xl w-full max-w-xl overflow-hidden flex flex-col my-auto shadow-2xl">
+                <div className="p-6 border-b flex justify-between items-center"><h2 className="text-xl font-bold">Edit Test Record</h2><button onClick={onClose}><X/></button></div>
+                <form onSubmit={e => {e.preventDefault(); onSave(formData);}} className="p-6 space-y-4 overflow-y-auto">
+                    <div className="grid grid-cols-2 gap-4">
+                        <div><label className="text-xs font-bold text-slate-500">Test Item</label><select value={custom ? 'Other Custom Test' : formData.testName.en} onChange={e => { if(e.target.value==='Other Custom Test'){ setCustom(true); setFormData({...formData, testName:{en:'',zh:''}}); }else{ setCustom(false); const s=opts.find(o=>o.en===e.target.value); if(s)setFormData({...formData,testName:s}); } }} className="w-full p-2 border rounded-lg">{opts.map(o => <option key={o.en} value={o.en}>{language==='en'?o.en:o.zh}</option>)}</select></div>
+                        <div><label className="text-xs font-bold text-slate-500">Version</label><input type="text" list="dl" value={formData.version} onChange={e => setFormData({...formData,version:e.target.value})} className="w-full p-2 border rounded-lg"/><datalist id="dl">{productVersions.map((v:any)=><option key={v} value={v}/>)}</datalist></div>
+                    </div>
+                    {custom && <input type="text" placeholder="Custom name" value={formData.testName.en} onChange={e=>setFormData({...formData,testName:{en:e.target.value,zh:e.target.value}})} className="w-full p-2 border rounded-lg"/>}
+                    <div className="grid grid-cols-2 gap-4">
+                        <div><label className="text-xs font-bold text-slate-500">Status</label><select value={formData.status} onChange={e=>setFormData({...formData,status:e.target.value})} className="w-full p-2 border rounded-lg">{Object.values(TestStatus).map(s=><option key={s} value={s}>{s}</option>)}</select></div>
+                        <div><label className="text-xs font-bold text-slate-500">Progress: {formData.score}%</label><input type="range" min="0" max="100" value={formData.score} onChange={e=>setFormData({...formData,score:Number(e.target.value)})} className="w-full"/></div>
+                    </div>
+                    <div><label className="text-xs font-bold text-slate-500">Details</label><textarea value={formData.details.en} onChange={e=>setFormData({...formData,details:{en:e.target.value,zh:e.target.value}})} className="w-full p-2 border rounded-lg" rows={3}/></div>
+                    <div className="pt-2"><label className="text-xs font-bold text-slate-500">Photos</label><div className="grid grid-cols-4 gap-2">{(formData.attachmentUrls||[]).map((u:any,i:any)=><img key={i} src={u} className="aspect-square object-cover rounded border"/>)}<button type="button" onClick={()=>fileRef.current?.click()} className="aspect-square border-2 border-dashed rounded flex items-center justify-center">{isUp?<Loader2 className="animate-spin"/>:<Plus/>}</button><input ref={fileRef} type="file" multiple accept="image/*" className="hidden" onChange={async e=>{const fs=e.target.files; if(!fs)return; setIsUp(true); try{const urls=await Promise.all(Array.from(fs).map(f=>api.uploadImage(f as File))); setFormData({...formData,attachmentUrls:[...(formData.attachmentUrls||[]),...urls]});}finally{setIsUp(false);}}}/></div></div>
+                    <div className="flex gap-2 pt-4"><button type="button" onClick={onClose} className="flex-1 py-3 text-slate-500">Cancel</button><button type="submit" className="flex-1 py-3 bg-slate-900 text-white rounded-xl">Save</button></div>
+                </form>
+            </div>
+        </div>
     );
 };
 
 const NoShipmentModal = ({ onClose, version }: any) => (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm"><div className="bg-white rounded-2xl w-full max-w-sm p-8 text-center"><Ship size={48} className="mx-auto mb-4 text-amber-500"/><h3 className="text-lg font-bold mb-2">No Market Data</h3><p className="text-sm text-slate-500 mb-6">Version {version} has no recorded shipments.</p><button onClick={onClose} className="w-full py-2 bg-slate-900 text-white rounded-lg">Close</button></div></div>
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm"><div className="bg-white rounded-2xl w-full max-w-sm p-8 text-center shadow-2xl"><Ship size={48} className="mx-auto mb-4 text-amber-500"/><h3 className="text-lg font-bold mb-2">No Market Data</h3><p className="text-sm text-slate-500 mb-6">Version {version} has no recorded shipments.</p><button onClick={onClose} className="w-full py-2 bg-slate-900 text-white rounded-lg">Close</button></div></div>
 );
 
 const StartEvaluationModal = ({ onClose, onStartProject, allTesters, testerGroups = [], project }: any) => {
@@ -1166,8 +1171,8 @@ const StartEvaluationModal = ({ onClose, onStartProject, allTesters, testerGroup
     };
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm animate-fade-in">
-            <div className="bg-white rounded-3xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[90vh] shadow-2xl">
+        <div className="fixed inset-0 z-[100] flex justify-center items-start overflow-y-auto p-4 md:p-8 bg-slate-900/50 backdrop-blur-sm animate-fade-in">
+            <div className="bg-white rounded-3xl w-full max-w-2xl overflow-hidden flex flex-col my-auto shadow-2xl max-h-[90vh]">
                 <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-white sticky top-0 z-10">
                     <h2 className="text-xl font-black text-slate-900">{project ? 'Edit Project' : 'New Evaluation Project'}</h2>
                     <button onClick={onClose} className="p-2 hover:bg-slate-100 rounded-full transition-colors"><X size={20}/></button>
@@ -1243,21 +1248,21 @@ const StartEvaluationModal = ({ onClose, onStartProject, allTesters, testerGroup
 const AddTaskModal = ({ onClose, onSave }: any) => {
     const [n, setN] = useState('');
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm"><div className="bg-white rounded-2xl w-full max-w-sm p-6"><h3 className="font-bold mb-4">Add Task</h3><input type="text" value={n} onChange={e=>setN(e.target.value)} className="w-full p-2 border rounded-xl mb-4 focus:ring-2 focus:ring-slate-200 outline-none"/><button onClick={()=>onSave(n)} className="w-full py-3 bg-slate-900 text-white rounded-xl font-bold">Add Task</button><button onClick={onClose} className="w-full py-2 mt-2 text-slate-400 font-medium">Cancel</button></div></div>
+        <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm animate-fade-in"><div className="bg-white rounded-2xl w-full max-w-sm p-6 shadow-2xl"><h3 className="font-bold mb-4">Add Task</h3><input type="text" value={n} onChange={e=>setN(e.target.value)} className="w-full p-2 border rounded-xl mb-4 focus:ring-2 focus:ring-slate-200 outline-none"/><button onClick={()=>onSave(n)} className="w-full py-3 bg-slate-900 text-white rounded-xl font-bold">Add Task</button><button onClick={onClose} className="w-full py-2 mt-2 text-slate-400 font-medium">Cancel</button></div></div>
     );
 };
 
 const SetTaskResultsModal = ({ onClose, onSave, project, testers }: any) => {
     const [ids, setIds] = useState<string[]>([]);
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm"><div className="bg-white rounded-[2rem] w-full max-w-md p-8 shadow-2xl animate-slide-up"><h3 className="text-xl font-black text-slate-900 mb-6 uppercase tracking-tight">Set Quick Results</h3><div className="space-y-3 mb-8 max-h-[40vh] overflow-y-auto custom-scrollbar pr-2">{testers.filter((t:any)=>project.testerIds.includes(t.id)).map((t:any)=><div key={t.id} className="flex items-center justify-between p-3 bg-slate-50 rounded-2xl border border-slate-100"><span className="font-bold text-slate-700">{t.name}</span><div className="flex gap-1.5"><button onClick={()=>setIds([...ids.filter(i=>i!==t.id),t.id])} className={`px-4 py-1.5 rounded-xl text-[10px] font-black uppercase transition-all ${ids.includes(t.id)?'bg-emerald-500 text-white shadow-lg shadow-emerald-500/20':'bg-white text-slate-400 border border-slate-200 hover:border-emerald-300'}`}>PASS</button><button onClick={()=>setIds(ids.filter(i=>i!==t.id))} className={`px-4 py-1.5 rounded-xl text-[10px] font-black uppercase transition-all ${!ids.includes(t.id)?'bg-rose-500 text-white shadow-lg shadow-rose-500/20':'bg-white text-slate-400 border border-slate-200 hover:border-rose-300'}`}>NG</button></div></div>)}</div><button onClick={()=>onSave(ids)} className="w-full py-4 bg-slate-900 text-white rounded-2xl font-black uppercase tracking-widest hover:bg-slate-800 transition-all shadow-xl shadow-slate-900/20">Confirm Results</button></div></div>
+        <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm animate-fade-in"><div className="bg-white rounded-[2rem] w-full max-w-md p-8 shadow-2xl animate-slide-up"><h3 className="text-xl font-black text-slate-900 mb-6 uppercase tracking-tight">Set Quick Results</h3><div className="space-y-3 mb-8 max-h-[40vh] overflow-y-auto custom-scrollbar pr-2">{testers.filter((t:any)=>project.testerIds.includes(t.id)).map((t:any)=><div key={t.id} className="flex items-center justify-between p-3 bg-slate-50 rounded-2xl border border-slate-100"><span className="font-bold text-slate-700">{t.name}</span><div className="flex gap-1.5"><button onClick={()=>setIds([...ids.filter(i=>i!==t.id),t.id])} className={`px-4 py-1.5 rounded-xl text-[10px] font-black uppercase transition-all ${ids.includes(t.id)?'bg-emerald-500 text-white shadow-lg shadow-emerald-500/20':'bg-white text-slate-400 border border-slate-200 hover:border-emerald-300'}`}>PASS</button><button onClick={()=>setIds(ids.filter(i=>i!==t.id))} className={`px-4 py-1.5 rounded-xl text-[10px] font-black uppercase transition-all ${!ids.includes(t.id)?'bg-rose-500 text-white shadow-lg shadow-rose-500/20':'bg-white text-slate-400 border border-slate-200 hover:border-rose-300'}`}>NG</button></div></div>)}</div><button onClick={()=>onSave(ids)} className="w-full py-4 bg-slate-900 text-white rounded-2xl font-black uppercase tracking-widest hover:bg-slate-800 transition-all shadow-xl shadow-slate-900/20">Confirm Results</button></div></div>
     );
 };
 
 const SetPassNgModal = ({ onClose, onSet, existingReason }: any) => {
     const [r, setR] = useState(existingReason?.reason?.en || '');
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm"><div className="bg-white rounded-3xl w-full max-w-sm p-8 shadow-2xl animate-slide-up"><h3 className="text-xl font-black text-slate-900 mb-4 uppercase tracking-tight">Set NG Reason</h3><textarea value={r} onChange={e=>setR(e.target.value)} className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-2 focus:ring-intenza-500/20 outline-none text-slate-900 font-medium mb-6 resize-none" rows={4} placeholder="Describe the issue observed... "/><button onClick={()=>onSet({en:r,zh:r},false,[],'ISSUE')} className="w-full py-4 bg-slate-900 text-white rounded-2xl font-black uppercase tracking-widest hover:bg-slate-800 transition-all">Save Reason</button></div></div>
+        <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm animate-fade-in"><div className="bg-white rounded-3xl w-full max-w-sm p-8 shadow-2xl animate-slide-up"><h3 className="text-xl font-black text-slate-900 mb-4 uppercase tracking-tight">Set NG Reason</h3><textarea value={r} onChange={e=>setR(e.target.value)} className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-2 focus:ring-intenza-500/20 outline-none text-slate-900 font-medium mb-6 resize-none" rows={4} placeholder="Describe the issue observed... "/><button onClick={()=>onSet({en:r,zh:r},false,[],'ISSUE')} className="w-full py-4 bg-slate-900 text-white rounded-2xl font-black uppercase tracking-widest hover:bg-slate-800 transition-all">Save Reason</button></div></div>
     );
 };
 
@@ -1280,7 +1285,7 @@ const StatusDecisionModal = ({ onClose, onSetStatus, onLinkEco, onCreateEco, act
     };
 
     return (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md animate-fade-in">
+        <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md animate-fade-in">
             <div className="bg-white rounded-[2rem] w-full max-w-sm overflow-hidden shadow-2xl">
                 <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-white">
                     <h2 className="text-xl font-black text-slate-900 uppercase tracking-tight">Manage Decision</h2>
@@ -1368,7 +1373,7 @@ const StatusDecisionModal = ({ onClose, onSetStatus, onLinkEco, onCreateEco, act
 const FeedbackModal = ({ onClose, onSave, feedback }: any) => {
     const [d, setD] = useState(feedback || { content: {en:'',zh:''}, source: '', category: 'Experience', date: new Date().toISOString().split('T')[0] });
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm"><div className="bg-white rounded-2xl w-full max-w-md p-6"><h2 className="font-bold mb-4">Feedback</h2><input type="text" placeholder="Source" value={d.source} onChange={e=>setD({...d,source:e.target.value})} className="w-full p-2 border rounded mb-2"/><textarea placeholder="Content" value={d.content.en} onChange={e=>setD({...d,content:{en:e.target.value,zh:e.target.value}})} className="w-full p-2 border rounded mb-4" rows={3}/><button onClick={()=>onSave(d)} className="w-full py-2 bg-slate-900 text-white rounded">Save</button></div></div>
+        <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm animate-fade-in"><div className="bg-white rounded-2xl w-full max-w-md p-6 shadow-2xl"><h2 className="font-bold mb-4">Feedback</h2><input type="text" placeholder="Source" value={d.source} onChange={e=>setD({...d,source:e.target.value})} className="w-full p-2 border rounded mb-2"/><textarea placeholder="Content" value={d.content.en} onChange={e=>setD({...d,content:{en:e.target.value,zh:e.target.value}})} className="w-full p-2 border rounded mb-4" rows={3}/><button onClick={()=>onSave(d)} className="w-full py-2 bg-slate-900 text-white rounded">Save</button></div></div>
     );
 };
 
@@ -1387,7 +1392,7 @@ const FeedbackStatusDecisionModal = ({ onClose, onUpdateStatus, onLinkEco, onCre
     };
 
     return (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md animate-fade-in">
+        <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md animate-fade-in">
             <div className="bg-white rounded-[2rem] w-full max-w-sm overflow-hidden shadow-2xl">
                 <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-white">
                     <h2 className="text-xl font-black text-slate-900 uppercase tracking-tight">Manage Feedback</h2>
