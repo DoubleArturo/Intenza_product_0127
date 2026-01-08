@@ -1171,71 +1171,90 @@ const StartEvaluationModal = ({ onClose, onStartProject, allTesters, testerGroup
     };
 
     return (
-        <div className="fixed inset-0 z-[9999] flex justify-center items-center p-4 bg-slate-950/80 backdrop-blur-xl animate-fade-in overflow-hidden">
-            <div className="bg-white rounded-[3rem] w-[98vw] h-[96vh] shadow-2xl flex flex-col border border-white/20 overflow-hidden relative">
-                {/* Fixed Header */}
-                <div className="p-8 border-b border-slate-100 flex justify-between items-center bg-white shrink-0">
-                    <div>
-                        <h2 className="text-3xl font-black text-slate-900 tracking-tight">{project ? 'Edit Project Definition' : 'Launch New Evaluation Project'}</h2>
-                        <p className="text-slate-400 text-sm font-bold uppercase tracking-widest mt-1">Configure verification scope and test cohort baseline</p>
+        <div className="fixed inset-0 z-[99999] flex justify-center items-center p-2 md:p-3 bg-slate-950/85 backdrop-blur-2xl animate-fade-in overflow-hidden">
+            <div className="bg-white rounded-[3.5rem] w-[99vw] h-[98vh] max-w-[2200px] shadow-[0_32px_128px_rgba(0,0,0,0.4)] flex flex-col border border-white/20 overflow-hidden relative scale-[0.99] animate-slide-up">
+                {/* Fixed Header - Elevated styling */}
+                <div className="p-8 md:p-10 border-b border-slate-100 flex justify-between items-center bg-white shrink-0">
+                    <div className="flex items-center gap-6">
+                        <div className="w-16 h-16 bg-slate-900 rounded-[1.5rem] flex items-center justify-center text-white shadow-2xl">
+                           <Activity size={32} />
+                        </div>
+                        <div>
+                            <h2 className="text-4xl font-black text-slate-900 tracking-tighter">{project ? 'Project Reconstruction' : 'Initialize Performance Audit'}</h2>
+                            <p className="text-slate-400 text-sm font-bold uppercase tracking-[0.2em] mt-1 opacity-70">Human factors baseline & cohort identification engine</p>
+                        </div>
                     </div>
-                    <button onClick={onClose} className="p-4 hover:bg-slate-100 rounded-3xl transition-colors text-slate-400 hover:text-slate-900"><X size={36} strokeWidth={3} /></button>
+                    <button onClick={onClose} className="p-5 hover:bg-slate-100 rounded-[2rem] transition-all text-slate-300 hover:text-slate-900 hover:rotate-90"><X size={48} strokeWidth={2.5} /></button>
                 </div>
                 
-                {/* Scrollable Body */}
-                <div className="p-10 space-y-12 overflow-y-auto flex-1 custom-scrollbar bg-slate-50/20">
-                    <div className="max-w-4xl">
-                        <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-4">Project Title & Identification</label>
-                        <input type="text" placeholder="Enter evaluation project title (e.g., Q1 Ergo Audit - Resistance Profile)..." value={name} onChange={e=>setName(e.target.value)} className="w-full p-6 bg-white border border-slate-200 rounded-[2rem] shadow-sm focus:ring-8 focus:ring-intenza-500/10 focus:border-intenza-600 outline-none font-bold text-2xl"/>
+                {/* Ultra-Dense Scrollable Body */}
+                <div className="p-10 md:p-12 space-y-12 overflow-y-auto flex-1 custom-scrollbar bg-slate-50/10">
+                    <div className="flex flex-col lg:flex-row gap-12">
+                        <div className="flex-1">
+                            <label className="block text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] mb-4">Verification Identity</label>
+                            <input type="text" placeholder="Project name / Internal audit ID..." value={name} onChange={e=>setName(e.target.value)} className="w-full p-8 bg-white border-2 border-slate-100 rounded-[2.5rem] shadow-xl focus:ring-12 focus:ring-intenza-500/5 focus:border-intenza-600 outline-none font-black text-3xl transition-all"/>
+                        </div>
+
+                        {testerGroups.length > 0 && (
+                            <div className="lg:w-1/3">
+                                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] mb-4 flex items-center gap-2"><Users2 size={12}/> Quick-Access Presets</label>
+                                <div className="flex flex-wrap gap-2.5">
+                                    {testerGroups.map(g => (
+                                        <button key={g.id} onClick={() => handleApplyGroup(g.id)} className="flex items-center gap-3 px-6 py-3 bg-white border border-slate-200 rounded-full text-xs font-black text-slate-700 hover:border-indigo-500 hover:text-indigo-600 transition-all hover:shadow-lg">
+                                            <span className="w-2 h-2 rounded-full bg-indigo-500" />
+                                            {t(g.name)}
+                                            <span className="opacity-40 font-mono">[{g.testerIds.length}]</span>
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
                     </div>
 
-                    {testerGroups.length > 0 && (
-                        <div className="max-w-full">
-                            <div className="flex items-center gap-3 mb-6">
-                                <div className="p-2.5 bg-indigo-50 rounded-2xl"><Users2 size={24} className="text-indigo-600" /></div>
-                                <label className="text-xs font-black text-slate-400 uppercase tracking-widest">Quick Import Cohort Pre-sets</label>
+                    <div className="border-t-2 border-slate-50 pt-12">
+                        <div className="flex flex-col md:flex-row md:items-end justify-between gap-10 mb-12">
+                            <div className="flex items-center gap-5">
+                                <div className="p-3.5 bg-intenza-50 rounded-3xl text-intenza-600 shadow-sm"><User size={28} strokeWidth={2.5} /></div>
+                                <div>
+                                    <h3 className="text-sm font-black text-slate-400 uppercase tracking-[0.4em]">Candidate Selection Hub</h3>
+                                    <div className="text-3xl font-black text-slate-900 mt-1">{ids.length} <span className="text-slate-200 uppercase text-xl ml-1 tracking-widest">Active Enrollments</span></div>
+                                </div>
                             </div>
-                            <div className="flex flex-wrap gap-4">
-                                {testerGroups.map(g => (
-                                    <button key={g.id} onClick={() => handleApplyGroup(g.id)} className="flex items-center gap-5 px-8 py-5 bg-white border border-slate-200 rounded-[2.5rem] text-base font-black text-slate-700 hover:border-indigo-400 hover:shadow-xl hover:-translate-y-1 transition-all group/btn">
-                                        <Users2 size={20} className="text-indigo-500 group-hover/btn:scale-110 transition-transform" />
-                                        <span>{t(g.name)}</span>
-                                        <span className="ml-2 px-4 py-1.5 bg-slate-100 rounded-full text-xs font-mono text-slate-500">{g.testerIds.length} subjects</span>
-                                    </button>
-                                ))}
-                            </div>
-                        </div>
-                    )}
-
-                    <div className="border-t border-slate-100 pt-12">
-                        <div className="flex flex-col md:flex-row md:items-end justify-between gap-10 mb-10">
-                            <div className="flex items-center gap-4">
-                                <div className="p-2.5 bg-intenza-50 rounded-2xl"><User size={24} className="text-intenza-600" /></div>
-                                <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest">Select Subject Cohort ({ids.length} Active Candidates)</h3>
-                            </div>
-                            <div className="relative w-full md:w-[450px]">
-                                <Search size={28} className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-400" />
-                                <input type="text" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} placeholder="Filter subjects by name or height..." className="w-full pl-16 pr-8 py-5 bg-white border border-slate-200 rounded-3xl text-lg font-bold shadow-sm focus:border-intenza-600 outline-none" />
+                            <div className="relative w-full md:w-[600px]">
+                                <Search size={32} className="absolute left-8 top-1/2 -translate-y-1/2 text-slate-300" />
+                                <input type="text" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} placeholder="Filter subjects by name, height, or gender..." className="w-full pl-20 pr-10 py-7 bg-white border-2 border-slate-100 rounded-[2.5rem] text-xl font-bold shadow-2xl focus:border-intenza-600 outline-none transition-all placeholder:text-slate-200" />
                             </div>
                         </div>
                         
-                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 2xl:grid-cols-10 gap-8 pb-12">
+                        {/* Final High-Density Grid */}
+                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 2xl:grid-cols-10 3xl:grid-cols-12 4xl:grid-cols-14 gap-5 pb-12">
                             {filteredTesters.map((tester: Tester) => {
                                 const isSelected = ids.includes(tester.id);
                                 return (
                                     <div 
                                         key={tester.id} 
                                         onClick={() => isSelected ? setIds(ids.filter(i => i !== tester.id)) : setIds([...ids, tester.id])}
-                                        className={`relative group cursor-pointer transition-all duration-300 rounded-[3rem] border-2 overflow-hidden bg-white ${isSelected ? 'border-intenza-600 ring-[12px] ring-intenza-500/5 shadow-2xl -translate-y-2' : 'border-slate-100 hover:border-slate-300 hover:-translate-y-1'}`}
+                                        className={`relative group cursor-pointer transition-all duration-500 rounded-[2.5rem] border-2 overflow-hidden bg-white ${isSelected ? 'border-intenza-600 ring-[16px] ring-intenza-500/5 shadow-3xl -translate-y-3' : 'border-slate-100 hover:border-slate-300 hover:-translate-y-1.5'}`}
                                     >
                                         <div className="aspect-[3/4] bg-slate-100 relative overflow-hidden">
-                                            <img src={tester.imageUrl} className={`w-full h-full object-cover transition-all duration-700 ${isSelected ? 'grayscale-0' : 'grayscale-[0.6] group-hover:grayscale-0'}`} alt={tester.name} />
-                                            {isSelected && <div className="absolute inset-0 bg-intenza-600/30 backdrop-blur-[2px] flex items-center justify-center"><CheckCircle size={64} className="text-white drop-shadow-2xl" strokeWidth={3} /></div>}
-                                            <div className="absolute bottom-4 left-4 px-4 py-1.5 rounded-full bg-black/50 backdrop-blur-md text-[10px] font-black text-white uppercase tracking-widest">{tester.gender}</div>
+                                            <img src={tester.imageUrl} className={`w-full h-full object-cover transition-all duration-1000 ${isSelected ? 'scale-110 blur-[1px]' : 'grayscale-[0.8] group-hover:grayscale-0 group-hover:scale-105'}`} alt={tester.name} />
+                                            {isSelected && (
+                                                <div className="absolute inset-0 bg-intenza-600/40 backdrop-blur-sm flex items-center justify-center animate-fade-in">
+                                                    <CheckCircle size={72} className="text-white drop-shadow-[0_0_32px_rgba(255,255,255,0.8)]" strokeWidth={3} />
+                                                </div>
+                                            )}
+                                            <div className="absolute bottom-4 inset-x-4 flex justify-between items-center z-10">
+                                                <span className="px-3 py-1 rounded-full bg-black/60 backdrop-blur-md text-[8px] font-black text-white uppercase tracking-widest">{tester.gender}</span>
+                                                <span className="px-2 py-1 rounded-md bg-white/20 backdrop-blur-md text-[8px] font-bold text-white border border-white/20">{tester.height}cm</span>
+                                            </div>
                                         </div>
-                                        <div className="p-6">
-                                            <div className="text-base font-black text-slate-900 truncate uppercase tracking-tight">{tester.name}</div>
-                                            <div className="text-xs font-bold text-slate-300 mt-1.5 uppercase tracking-tighter">{tester.height}cm • {tester.experienceYears}y experience</div>
+                                        <div className="p-5 border-t border-slate-50">
+                                            <div className="text-xs font-black text-slate-900 truncate uppercase tracking-tighter">{tester.name}</div>
+                                            <div className="flex gap-1 mt-2">
+                                               {[...Array(5)].map((_, i) => (
+                                                  <div key={i} className={`w-1 h-1 rounded-full ${i < tester.rating ? 'bg-amber-400' : 'bg-slate-200'}`} />
+                                               ))}
+                                            </div>
                                         </div>
                                     </div>
                                 );
@@ -1244,28 +1263,28 @@ const StartEvaluationModal = ({ onClose, onStartProject, allTesters, testerGroup
                     </div>
                 </div>
 
-                {/* Fixed Footer */}
-                <div className="p-10 border-t border-slate-100 bg-white shrink-0 flex flex-col md:flex-row justify-between items-center gap-8 shadow-[0_-12px_60px_rgba(0,0,0,0.06)]">
-                    <div className="flex gap-12">
+                {/* Sticky High-Impact Footer */}
+                <div className="p-10 md:p-12 border-t-4 border-slate-900 bg-white shrink-0 flex flex-col md:flex-row justify-between items-center gap-12 shadow-[0_-24px_80px_rgba(0,0,0,0.15)] z-20">
+                    <div className="flex gap-16">
                         <div className="flex flex-col">
-                            <span className="text-[10px] font-black text-slate-300 uppercase tracking-widest mb-1.5">Target Verification Cohort</span>
-                            <span className="text-3xl font-black text-slate-900">{ids.length} <span className="text-slate-400 font-bold text-sm tracking-normal ml-1">Subjects Enrolled</span></span>
+                            <span className="text-[11px] font-black text-slate-300 uppercase tracking-[0.4em] mb-2">Registry Size</span>
+                            <span className="text-5xl font-black text-slate-900 tabular-nums">{ids.length}<span className="text-slate-200 text-2xl ml-2 tracking-normal">subjects</span></span>
                         </div>
-                        <div className="h-full w-px bg-slate-100 mx-2" />
+                        <div className="h-20 w-px bg-slate-100 hidden md:block" />
                         <div className="flex flex-col">
-                            <span className="text-[10px] font-black text-slate-300 uppercase tracking-widest mb-1.5">Evaluation Scope</span>
-                            <span className="text-3xl font-black text-slate-900">4 <span className="text-slate-400 font-bold text-sm tracking-normal ml-1">Impact Domains</span></span>
+                            <span className="text-[11px] font-black text-slate-300 uppercase tracking-[0.4em] mb-2">Auto-Provisioning</span>
+                            <span className="text-5xl font-black text-slate-900 tabular-nums">4<span className="text-slate-200 text-2xl ml-2 tracking-normal">domains</span></span>
                         </div>
                     </div>
                     <div className="flex gap-6 w-full md:w-auto">
-                        <button onClick={onClose} className="flex-1 md:flex-none px-12 py-6 text-slate-400 font-black uppercase tracking-[0.3em] hover:bg-slate-50 hover:text-slate-900 rounded-3xl transition-all">Cancel</button>
+                        <button onClick={onClose} className="flex-1 md:flex-none px-16 py-8 text-slate-400 font-black uppercase tracking-[0.5em] hover:bg-slate-50 hover:text-slate-900 rounded-[2.5rem] transition-all border-2 border-transparent hover:border-slate-200">Cancel</button>
                         <button 
                             onClick={()=>onStartProject({en:name,zh:name},ids)} 
                             disabled={!name || ids.length === 0}
-                            className="flex-1 md:flex-none px-20 py-6 bg-slate-900 text-white rounded-[2.5rem] font-black uppercase tracking-[0.4em] hover:bg-slate-800 transition-all shadow-2xl shadow-slate-900/40 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-4"
+                            className="flex-1 md:flex-none px-32 py-8 bg-slate-900 text-white rounded-[3rem] font-black uppercase tracking-[0.6em] hover:bg-intenza-600 transition-all shadow-[0_24px_64px_rgba(0,0,0,0.3)] hover:shadow-intenza-500/40 active:scale-[0.97] disabled:opacity-30 disabled:grayscale disabled:cursor-not-allowed flex items-center justify-center gap-6"
                         >
-                            <PlayCircle size={28} />
-                            {project ? 'Commit Baseline Sync' : 'Initialize Verification'}
+                            <PlayCircle size={40} strokeWidth={2.5} />
+                            {project ? 'Sync Configuration' : 'Launch Audit'}
                         </button>
                     </div>
                 </div>
@@ -1277,21 +1296,21 @@ const StartEvaluationModal = ({ onClose, onStartProject, allTesters, testerGroup
 const AddTaskModal = ({ onClose, onSave }: any) => {
     const [n, setN] = useState('');
     return (
-        <div className="fixed inset-0 z-[10001] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md animate-fade-in"><div className="bg-white rounded-[2.5rem] w-full max-w-md p-8 shadow-2xl"><h3 className="text-xl font-black mb-6 uppercase tracking-tight">Add Testing Domain</h3><input type="text" value={n} onChange={e=>setN(e.target.value)} placeholder="Enter task name..." className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl mb-6 focus:ring-4 focus:ring-slate-100 outline-none font-bold"/><button onClick={()=>onSave(n)} className="w-full py-5 bg-slate-900 text-white rounded-[1.5rem] font-black uppercase tracking-widest hover:bg-slate-800 transition-all">Create Task</button><button onClick={onClose} className="w-full py-4 mt-2 text-slate-400 font-bold uppercase text-xs tracking-widest hover:text-slate-600">Cancel</button></div></div>
+        <div className="fixed inset-0 z-[100001] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md animate-fade-in"><div className="bg-white rounded-[2.5rem] w-full max-w-md p-8 shadow-2xl"><h3 className="text-xl font-black mb-6 uppercase tracking-tight">Add Testing Domain</h3><input type="text" value={n} onChange={e=>setN(e.target.value)} placeholder="Enter task name..." className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl mb-6 focus:ring-4 focus:ring-slate-100 outline-none font-bold"/><button onClick={()=>onSave(n)} className="w-full py-5 bg-slate-900 text-white rounded-[1.5rem] font-black uppercase tracking-widest hover:bg-slate-800 transition-all">Create Task</button><button onClick={onClose} className="w-full py-4 mt-2 text-slate-400 font-bold uppercase text-xs tracking-widest hover:text-slate-600">Cancel</button></div></div>
     );
 };
 
 const SetTaskResultsModal = ({ onClose, onSave, project, testers }: any) => {
     const [ids, setIds] = useState<string[]>([]);
     return (
-        <div className="fixed inset-0 z-[10001] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md animate-fade-in"><div className="bg-white rounded-[3rem] w-full max-w-lg p-10 shadow-2xl animate-slide-up"><h3 className="text-2xl font-black text-slate-900 mb-8 uppercase tracking-tight">Assign Results Batch</h3><div className="space-y-4 mb-10 max-h-[50vh] overflow-y-auto custom-scrollbar pr-4">{testers.filter((t:any)=>project.testerIds.includes(t.id)).map((t:any)=><div key={t.id} className="flex items-center justify-between p-5 bg-slate-50 rounded-[2rem] border border-slate-100"><span className="font-black text-slate-700 uppercase tracking-tight">{t.name}</span><div className="flex gap-2"><button onClick={()=>setIds([...ids.filter(i=>i!==t.id),t.id])} className={`px-6 py-2.5 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all ${ids.includes(t.id)?'bg-emerald-500 text-white shadow-xl shadow-emerald-500/30':'bg-white text-slate-400 border border-slate-200 hover:border-emerald-300'}`}>PASS</button><button onClick={()=>setIds(ids.filter(i=>i!==t.id))} className={`px-6 py-2.5 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all ${!ids.includes(t.id)?'bg-rose-500 text-white shadow-xl shadow-rose-500/30':'bg-white text-slate-400 border border-slate-200 hover:border-rose-300'}`}>NG</button></div></div>)}</div><button onClick={()=>onSave(ids)} className="w-full py-6 bg-slate-900 text-white rounded-[2rem] font-black uppercase tracking-[0.2em] hover:bg-slate-800 transition-all shadow-2xl shadow-slate-900/30">Confirm Batch Entry</button></div></div>
+        <div className="fixed inset-0 z-[100001] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md animate-fade-in"><div className="bg-white rounded-[3rem] w-full max-w-lg p-10 shadow-2xl animate-slide-up"><h3 className="text-2xl font-black text-slate-900 mb-8 uppercase tracking-tight">Assign Results Batch</h3><div className="space-y-4 mb-10 max-h-[50vh] overflow-y-auto custom-scrollbar pr-4">{testers.filter((t:any)=>project.testerIds.includes(t.id)).map((t:any)=><div key={t.id} className="flex items-center justify-between p-5 bg-slate-50 rounded-[2rem] border border-slate-100"><span className="font-black text-slate-700 uppercase tracking-tight">{t.name}</span><div className="flex gap-2"><button onClick={()=>setIds([...ids.filter(i=>i!==t.id),t.id])} className={`px-6 py-2.5 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all ${ids.includes(t.id)?'bg-emerald-500 text-white shadow-xl shadow-emerald-500/30':'bg-white text-slate-400 border border-slate-200 hover:border-emerald-300'}`}>PASS</button><button onClick={()=>setIds(ids.filter(i=>i!==t.id))} className={`px-6 py-2.5 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all ${!ids.includes(t.id)?'bg-rose-500 text-white shadow-xl shadow-rose-500/30':'bg-white text-slate-400 border border-slate-200 hover:border-rose-300'}`}>NG</button></div></div>)}</div><button onClick={()=>onSave(ids)} className="w-full py-6 bg-slate-900 text-white rounded-[2rem] font-black uppercase tracking-[0.2em] hover:bg-slate-800 transition-all shadow-2xl shadow-slate-900/30">Confirm Batch Entry</button></div></div>
     );
 };
 
 const SetPassNgModal = ({ onClose, onSet, existingReason }: any) => {
     const [r, setR] = useState(existingReason?.reason?.en || '');
     return (
-        <div className="fixed inset-0 z-[10001] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md animate-fade-in"><div className="bg-white rounded-[3rem] w-full max-w-md p-10 shadow-2xl animate-slide-up"><h3 className="text-2xl font-black text-slate-900 mb-6 uppercase tracking-tight">Record NG Detail</h3><textarea value={r} onChange={e=>setR(e.target.value)} className="w-full p-6 bg-slate-50 border border-slate-200 rounded-[2rem] focus:ring-8 focus:ring-intenza-500/5 outline-none text-slate-900 font-bold mb-8 resize-none shadow-inner" rows={5} placeholder="Describe the mechanical or ergonomic observation... "/><button onClick={()=>onSet({en:r,zh:r},false,[],'ISSUE')} className="w-full py-6 bg-slate-900 text-white rounded-[2rem] font-black uppercase tracking-[0.2em] hover:bg-slate-800 transition-all shadow-xl shadow-slate-900/30">Save Observation</button></div></div>
+        <div className="fixed inset-0 z-[100001] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md animate-fade-in"><div className="bg-white rounded-[3rem] w-full max-w-md p-10 shadow-2xl animate-slide-up"><h3 className="text-2xl font-black text-slate-900 mb-6 uppercase tracking-tight">Record NG Detail</h3><textarea value={r} onChange={e=>setR(e.target.value)} className="w-full p-6 bg-slate-50 border border-slate-200 rounded-[2rem] focus:ring-8 focus:ring-intenza-500/5 outline-none text-slate-900 font-bold mb-8 resize-none shadow-inner" rows={5} placeholder="Describe the mechanical or ergonomic observation... "/><button onClick={()=>onSet({en:r,zh:r},false,[],'ISSUE')} className="w-full py-6 bg-slate-900 text-white rounded-[2rem] font-black uppercase tracking-[0.2em] hover:bg-slate-800 transition-all shadow-xl shadow-slate-900/30">Save Observation</button></div></div>
     );
 };
 
@@ -1314,7 +1333,7 @@ const StatusDecisionModal = ({ onClose, onSetStatus, onLinkEco, onCreateEco, act
     };
 
     return (
-        <div className="fixed inset-0 z-[10001] flex items-center justify-center p-4 bg-slate-900/70 backdrop-blur-lg animate-fade-in">
+        <div className="fixed inset-0 z-[100001] flex items-center justify-center p-4 bg-slate-900/70 backdrop-blur-lg animate-fade-in">
             <div className="bg-white rounded-[3rem] w-full max-w-sm overflow-hidden shadow-[0_32px_80px_rgba(0,0,0,0.5)] border border-white/20">
                 <div className="p-8 border-b border-slate-100 flex justify-between items-center bg-white">
                     <h2 className="text-xl font-black text-slate-900 uppercase tracking-tight">Manage Decision</h2>
@@ -1402,7 +1421,7 @@ const StatusDecisionModal = ({ onClose, onSetStatus, onLinkEco, onCreateEco, act
 const FeedbackModal = ({ onClose, onSave, feedback }: any) => {
     const [d, setD] = useState(feedback || { content: {en:'',zh:''}, source: '', category: 'Experience', date: new Date().toISOString().split('T')[0] });
     return (
-        <div className="fixed inset-0 z-[10001] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md animate-fade-in"><div className="bg-white rounded-[2.5rem] w-full max-w-md p-8 shadow-2xl"><h2 className="font-black text-xl mb-6 uppercase tracking-tight">Record Customer Voice</h2><input type="text" placeholder="Reporting Source (e.g. Anytime Fitness)" value={d.source} onChange={e=>setD({...d,source:e.target.value})} className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl mb-4 font-bold"/><textarea placeholder="Describe the feedback in detail..." value={d.content.en} onChange={e=>setD({...d,content:{en:e.target.value,zh:e.target.value}})} className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl mb-6 font-medium resize-none shadow-inner" rows={4}/><button onClick={()=>onSave(d)} className="w-full py-5 bg-slate-900 text-white rounded-[1.5rem] font-black uppercase tracking-widest shadow-xl">Commit Feedback</button></div></div>
+        <div className="fixed inset-0 z-[100001] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md animate-fade-in"><div className="bg-white rounded-[2.5rem] w-full max-w-md p-8 shadow-2xl"><h2 className="font-black text-xl mb-6 uppercase tracking-tight">Record Customer Voice</h2><input type="text" placeholder="Reporting Source (e.g. Anytime Fitness)" value={d.source} onChange={e=>setD({...d,source:e.target.value})} className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl mb-4 font-bold"/><textarea placeholder="Describe the feedback in detail..." value={d.content.en} onChange={e=>setD({...d,content:{en:e.target.value,zh:e.target.value}})} className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl mb-6 font-medium resize-none shadow-inner" rows={4}/><button onClick={()=>onSave(d)} className="w-full py-5 bg-slate-900 text-white rounded-[1.5rem] font-black uppercase tracking-widest shadow-xl">Commit Feedback</button></div></div>
     );
 };
 
@@ -1421,7 +1440,7 @@ const FeedbackStatusDecisionModal = ({ onClose, onUpdateStatus, onLinkEco, onCre
     };
 
     return (
-        <div className="fixed inset-0 z-[10001] flex items-center justify-center p-4 bg-slate-900/70 backdrop-blur-lg animate-fade-in">
+        <div className="fixed inset-0 z-[100001] flex items-center justify-center p-4 bg-slate-900/70 backdrop-blur-lg animate-fade-in">
             <div className="bg-white rounded-[3rem] w-full max-w-sm overflow-hidden shadow-[0_32px_80px_rgba(0,0,0,0.5)] border border-white/20">
                 <div className="p-8 border-b border-slate-100 flex justify-between items-center bg-white">
                     <h2 className="text-xl font-black text-slate-900 uppercase tracking-tight">Manage Feedback</h2>
