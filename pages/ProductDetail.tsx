@@ -956,14 +956,24 @@ const ErgoSection = ({ product, testers, testerGroups, onUpdateProduct, highligh
                 ...p,
                 tasks: {
                     ...p.tasks,
-                    [context.category]: p.tasks[context.category].map((t: EvaluationTask) => 
-                        t.id === context.taskId ? {
-                            ...t,
-                            ngReasons: t.ngReasons.map((ng: NgReason) => 
+                    [context.category]: p.tasks[context.category].map((t: EvaluationTask) => {
+                        if (t.id !== context.taskId) return t;
+                        
+                        // FIX: Ensure the NG record exists before updating status
+                        const exists = t.ngReasons.some(r => r.testerId === context.testerId);
+                        const newNgReasons = exists 
+                            ? t.ngReasons.map((ng: NgReason) => 
                                 ng.testerId === context.testerId ? { ...ng, decisionStatus: newStatus as NgDecisionStatus, linkedEcoId } : ng
-                            )
-                        } : t
-                    )
+                              )
+                            : [...t.ngReasons, { 
+                                testerId: context.testerId, 
+                                reason: { en: '', zh: '' }, 
+                                decisionStatus: newStatus as NgDecisionStatus, 
+                                linkedEcoId 
+                              }];
+                              
+                        return { ...t, ngReasons: newNgReasons };
+                    })
                 }
             } : p
         );
