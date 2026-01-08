@@ -186,7 +186,7 @@ const ProductDetail: React.FC<ProductDetailProps> = ({ products, shipments = [],
     }
   };
 
-  // Test Handlers (Fixing missing handlers for Life/Durability section)
+  // Test Handlers
   const handleOpenTestModal = (test: TestResult | null = null) => {
     if (isViewer) return;
     setEditingTest(test);
@@ -956,16 +956,89 @@ const ErgoSection = ({ product, testers, testerGroups, onUpdateProduct, highligh
           ))}
         </div>
       </div>
+
+      {/* IMPROVED SIDEBAR DRAWER WITH BETTER VISIBILITY WHEN CLOSED */}
       <div className={`absolute top-0 right-0 h-full transition-all duration-500 ease-in-out ${isFeedbackPanelOpen ? 'w-[38%]' : 'w-12'}`}>
-        <div className="bg-white rounded-2xl border border-slate-200 h-full shadow-2xl flex flex-col overflow-hidden">
-          <button onClick={() => setIsFeedbackPanelOpen(!isFeedbackPanelOpen)} className="absolute top-1/2 -left-6 -translate-y-1/2 bg-white p-2 rounded-l-lg border-l border-t border-b border-slate-200 hover:bg-slate-50 shadow-md">{isFeedbackPanelOpen ? <ChevronsRight size={20} className="text-slate-400" /> : <ChevronsLeft size={20} className="text-slate-400" />}</button>
-          {isFeedbackPanelOpen && (
-            <div className="flex-1 flex flex-col bg-slate-50">
-                <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-white sticky top-0 z-10"><h3 className="font-bold text-slate-900 flex items-center gap-2"><MessageSquare size={18} className="text-intenza-500"/>Customer Feedback</h3>{!isViewer && <button onClick={() => setFeedbackModalState({ isOpen: true, feedback: null })} className="text-xs font-medium bg-intenza-600 text-white px-3 py-1.5 rounded-md hover:bg-intenza-700 flex items-center gap-1 shadow-lg"><Plus size={12}/>Add</button>}</div>
-                <div className="p-6 overflow-y-auto flex-1 space-y-6">
-                    {product.customerFeedback.map((fb: ErgoFeedback) => (
-                        <CustomerFeedbackCard key={fb.id} feedback={fb} product={product} userRole={userRole} isHighlighted={highlightedFeedback?.feedbackId === fb.id} onStatusClick={() => setFeedbackStatusModal({ isOpen: true, feedback: fb })} onEdit={() => setFeedbackModalState({ isOpen: true, feedback: fb })} onDelete={() => onUpdateProduct({...product, customerFeedback: product.customerFeedback.filter((f: any) => f.id !== fb.id)})} />
-                    ))}
+        <div className="bg-white rounded-2xl border border-slate-200 h-full shadow-2xl flex flex-col overflow-hidden relative">
+          {/* Toggle Button */}
+          <button 
+            onClick={() => setIsFeedbackPanelOpen(!isFeedbackPanelOpen)} 
+            className="absolute top-1/2 -left-6 -translate-y-1/2 bg-white p-2 rounded-l-lg border-l border-t border-b border-slate-200 hover:bg-slate-50 shadow-md z-20"
+          >
+            {isFeedbackPanelOpen ? <ChevronsRight size={20} className="text-slate-400" /> : <ChevronsLeft size={20} className="text-slate-400" />}
+          </button>
+
+          {!isFeedbackPanelOpen ? (
+            /* COLLAPSED STATE: SHOW LABEL AND COUNT */
+            <div 
+              onClick={() => setIsFeedbackPanelOpen(true)}
+              className="flex-1 flex flex-col items-center py-8 cursor-pointer hover:bg-slate-50 transition-all group"
+            >
+              <MessageSquare size={20} className="text-slate-400 group-hover:text-intenza-600 mb-6 transition-colors" />
+              <div className="flex-1 flex items-center justify-center">
+                <span className="text-[10px] font-black text-slate-300 group-hover:text-slate-500 uppercase tracking-[0.3em] rotate-90 whitespace-nowrap transition-colors">
+                  Customer Feedback
+                </span>
+              </div>
+              {product.customerFeedback.length > 0 && (
+                <div className="mt-8 bg-intenza-600 text-white text-[9px] font-black px-2 py-1 rounded-full shadow-lg shadow-intenza-600/20">
+                  {product.customerFeedback.length}
+                </div>
+              )}
+            </div>
+          ) : (
+            /* EXPANDED STATE: FULL PANEL */
+            <div className="flex-1 flex flex-col bg-slate-50 animate-fade-in">
+                <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-white sticky top-0 z-10 shadow-sm">
+                  <h3 className="font-bold text-slate-900 flex items-center gap-2">
+                    <MessageSquare size={18} className="text-intenza-500"/>
+                    Customer Feedback
+                  </h3>
+                  {!isViewer && (
+                    <button 
+                      onClick={() => setFeedbackModalState({ isOpen: true, feedback: null })} 
+                      className="text-xs font-black bg-intenza-600 text-white px-3 py-1.5 rounded-xl hover:bg-intenza-700 flex items-center gap-1 shadow-lg shadow-intenza-600/20 transition-all active:scale-95"
+                    >
+                      <Plus size={14}/> Add
+                    </button>
+                  )}
+                </div>
+                
+                <div className="p-6 overflow-y-auto flex-1 space-y-6 custom-scrollbar">
+                    {product.customerFeedback.length > 0 ? (
+                        product.customerFeedback.map((fb: ErgoFeedback) => (
+                            <CustomerFeedbackCard 
+                                key={fb.id} 
+                                feedback={fb} 
+                                product={product} 
+                                userRole={userRole} 
+                                isHighlighted={highlightedFeedback?.feedbackId === fb.id} 
+                                onStatusClick={() => setFeedbackStatusModal({ isOpen: true, feedback: fb })} 
+                                onEdit={() => setFeedbackModalState({ isOpen: true, feedback: fb })} 
+                                onDelete={() => onUpdateProduct({...product, customerFeedback: product.customerFeedback.filter((f: any) => f.id !== fb.id)})} 
+                            />
+                        ))
+                    ) : (
+                        /* IMPROVED EMPTY STATE */
+                        <div className="h-full flex flex-col items-center justify-center text-center px-4 py-12">
+                            <div className="w-20 h-20 bg-white rounded-3xl border border-slate-100 flex items-center justify-center text-slate-200 mb-6 shadow-sm">
+                                <MessageSquare size={40} />
+                            </div>
+                            <h4 className="text-slate-900 font-bold text-lg mb-2">No Feedback Yet</h4>
+                            <p className="text-slate-400 text-xs mb-8 leading-relaxed max-w-[200px]">
+                              Collect field complaints or market observations here to link them to design changes.
+                            </p>
+                            {!isViewer && (
+                                <button 
+                                    onClick={() => setFeedbackModalState({ isOpen: true, feedback: null })} 
+                                    className="px-6 py-3 bg-slate-900 text-white rounded-2xl text-xs font-black uppercase tracking-widest shadow-xl shadow-slate-900/20 hover:bg-slate-800 transition-all flex items-center gap-2"
+                                >
+                                    <Plus size={18} strokeWidth={3} />
+                                    Add Your First Entry
+                                </button>
+                            )}
+                        </div>
+                    )}
                 </div>
             </div>
           )}
@@ -977,7 +1050,6 @@ const ErgoSection = ({ product, testers, testerGroups, onUpdateProduct, highligh
       {taskResultModalState.isOpen && <SetTaskResultsModal onClose={() => setTaskResultModalState({isOpen:false})} onSave={(ids: any) => { const {projectId, category, taskId} = taskResultModalState.context; onUpdateProduct({...product, ergoProjects: product.ergoProjects.map((p: any) => p.id === projectId ? {...p, tasks: {...p.tasks, [category]: p.tasks[category].map((t: any) => t.id === taskId ? {...t, passTesterIds: ids, ngReasons: p.testerIds.filter((tid: any) => !ids.includes(tid)).map((tid: any) => t.ngReasons.find((r: any) => r.testerId === tid) || {testerId: tid, reason: {en: '', zh: ''}, decisionStatus: 'PENDING'})} : t)}} : p)}); setTaskResultModalState({isOpen:false}); }} context={taskResultModalState.context} project={product.ergoProjects.find((p: any) => p.id === taskResultModalState.context.projectId)} testers={testers} />}
       {ngReasonModalState.isOpen && <SetPassNgModal onClose={() => setNgReasonModalState({isOpen:false})} onSet={(reason: any, isNew: any, atts: any, type: any) => { const {projectId, category, taskId, testerId} = ngReasonModalState.context; onUpdateProduct({...product, ergoProjects: product.ergoProjects.map((p: any) => p.id === projectId ? {...p, tasks: {...p.tasks, [category]: p.tasks[category].map((t: any) => t.id === taskId ? {...t, ngReasons: t.ngReasons.map((ng: any) => ng.testerId === testerId ? {...ng, reason, attachmentUrls: atts, decisionStatus: type === 'IDEA' ? 'IDEA' : ng.decisionStatus} : ng)} : t)}} : p)}); setNgReasonModalState({isOpen:false}); }} existingReason={product.ergoProjects.find((p: any) => p.id === ngReasonModalState.context.projectId)?.tasks[ngReasonModalState.context.category].find((t: any) => t.id === ngReasonModalState.context.taskId)?.ngReasons.find((ng: any) => ng.testerId === ngReasonModalState.context.testerId)} />}
       
-      {/* IMPROVED DECISION MODALS WITH BIDIRECTIONAL SYNC */}
       {statusModalState.isOpen && (
           <StatusDecisionModal 
               onClose={() => setStatusModalState({isOpen:false})} 
@@ -1268,8 +1340,7 @@ const SetPassNgModal = ({ onClose, onSet, existingReason }: any) => {
 };
 
 /**
- * REFACTORED StatusDecisionModal: Now supports direct status setting (Pending, Discussion, Ignored)
- * and links to ECOs with bidirectional synchronization.
+ * REFACTORED StatusDecisionModal
  */
 const StatusDecisionModal = ({ onClose, onSetStatus, onLinkEco, onCreateEco, activeEcos, versions, currentProductVersion, context }: any) => {
     const [view, setView] = useState('MAIN');
