@@ -185,7 +185,7 @@ const ProductDetail: React.FC<ProductDetailProps> = ({ products, shipments = [],
     }
   };
 
-  // Test Handlers (Fixing missing handlers for Life/Durability section)
+  // Test Handlers
   const handleOpenTestModal = (test: TestResult | null = null) => {
     if (isViewer) return;
     setEditingTest(test);
@@ -973,7 +973,7 @@ const ErgoSection = ({ product, testers, testerGroups, onUpdateProduct, highligh
       {isStartEvaluationModalOpen && <StartEvaluationModal onClose={() => setStartEvaluationModalOpen(false)} onStartProject={(name: any, ids: any) => { if(editingProject) { onUpdateProduct({...product, ergoProjects: product.ergoProjects.map((p: any) => p.id === editingProject.id ? {...p, name, testerIds: ids} : p)}); } else { onUpdateProduct({...product, ergoProjects: [...product.ergoProjects, {id: `proj-${Date.now()}`, name, date: new Date().toISOString().split('T')[0], testerIds: ids, overallStatus: 'PENDING', tasks: {'Resistance profile':[], 'Experience':[], 'Stroke':[], 'Other Suggestion':[]}, uniqueNgReasons: {}}]}); } setStartEvaluationModalOpen(false); }} allTesters={testers} testerGroups={testerGroups} project={editingProject} />}
       {addTaskModalState.isOpen && <AddTaskModal onClose={() => setAddTaskModalState({isOpen:false})} onSave={(name: any) => { const {projectId, category} = addTaskModalState.context; onUpdateProduct({...product, ergoProjects: product.ergoProjects.map((p: any) => p.id === projectId ? {...p, tasks: {...p.tasks, [category]: [...p.tasks[category], {id: `t-${Date.now()}`, name: {en: name, zh: name}, passTesterIds: [], ngReasons: []}]}} : p)}); setAddTaskModalState({isOpen:false}); }} />}
       {taskResultModalState.isOpen && <SetTaskResultsModal onClose={() => setTaskResultModalState({isOpen:false})} onSave={(ids: any) => { const {projectId, category, taskId} = taskResultModalState.context; onUpdateProduct({...product, ergoProjects: product.ergoProjects.map((p: any) => p.id === projectId ? {...p, tasks: {...p.tasks, [category]: p.tasks[category].map((t: any) => t.id === taskId ? {...t, passTesterIds: ids, ngReasons: p.testerIds.filter((tid: any) => !ids.includes(tid)).map((tid: any) => t.ngReasons.find((r: any) => r.testerId === tid) || {testerId: tid, reason: {en: '', zh: ''}, decisionStatus: 'PENDING'})} : t)}} : p)}); setTaskResultModalState({isOpen:false}); }} context={taskResultModalState.context} project={product.ergoProjects.find((p: any) => p.id === taskResultModalState.context.projectId)} testers={testers} />}
-      {ngReasonModalState.isOpen && <SetPassNgModal onClose={() => setNgReasonModalState({isOpen:false})} onSet={(reason: any, isNew: any, atts: any, type: any) => { const {projectId, category, taskId, testerId} = ngReasonModalState.context; onUpdateProduct({...product, ergoProjects: product.ergoProjects.map((p: any) => p.id === projectId ? {...p, tasks: {...p.tasks, [category]: p.tasks[category].map((t: any) => t.id === taskId ? {...t, ngReasons: t.ngReasons.map((ng: any) => ng.testerId === testerId ? {...ng, reason, attachmentUrls: atts, decisionStatus: type === 'IDEA' ? 'IDEA' : ng.decisionStatus} : ng)} : t)}} : p)}); setNgReasonModalState({isOpen:false}); }} existingReason={product.ergoProjects.find((p: any) => p.id === ngReasonModalState.context.projectId)?.tasks[ngReasonModalState.context.category].find((t: any) => t.id === ngReasonModalState.context.taskId)?.ngReasons.find((ng: any) => ng.testerId === ngReasonModalState.context.testerId)} />}
+      {ngReasonModalState.isOpen && <SetPassNgModal onClose={() => setNgReasonModalState({isOpen:false})} onSet={(reason: any, i: any, atts: any, type: any) => { const {projectId, category, taskId, testerId} = ngReasonModalState.context; onUpdateProduct({...product, ergoProjects: product.ergoProjects.map((p: any) => p.id === projectId ? {...p, tasks: {...p.tasks, [category]: p.tasks[category].map((t: any) => t.id === taskId ? {...t, ngReasons: t.ngReasons.map((ng: any) => ng.testerId === testerId ? {...ng, reason, attachmentUrls: atts, decisionStatus: type === 'IDEA' ? 'IDEA' : ng.decisionStatus} : ng)} : t)}} : p)}); setNgReasonModalState({isOpen:false}); }} existingReason={product.ergoProjects.find((p: any) => p.id === ngReasonModalState.context.projectId)?.tasks[ngReasonModalState.context.category].find((t: any) => t.id === ngReasonModalState.context.taskId)?.ngReasons.find((ng: any) => ng.testerId === ngReasonModalState.context.testerId)} />}
       
       {/* IMPROVED DECISION MODALS WITH BIDIRECTIONAL SYNC */}
       {statusModalState.isOpen && (
@@ -1098,7 +1098,7 @@ const EcoModal = ({ isOpen, onClose, onSave, eco, productVersions, product }: an
     const [isUp, setIsUp] = useState(false);
     const fileRef = useRef<HTMLInputElement>(null);
     return (
-        <div className="fixed inset-0 z-[100] flex justify-center items-start overflow-y-auto p-4 md:p-8 bg-slate-900/50 backdrop-blur-sm animate-fade-in">
+        <div className="fixed inset-0 z-[120] flex justify-center items-start overflow-y-auto p-4 md:p-8 bg-slate-900/50 backdrop-blur-sm animate-fade-in">
             <div className="bg-white rounded-2xl w-full max-w-xl overflow-hidden flex flex-col my-auto shadow-2xl">
                 <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-white sticky top-0 z-10"><h2 className="text-xl font-bold">{eco ? 'Edit ECO' : 'Add New ECO'}</h2><button onClick={onClose} className="p-2 hover:bg-slate-100 rounded-full"><X size={20}/></button></div>
                 <form onSubmit={(e) => {e.preventDefault(); onSave(formData);}} className="p-6 space-y-4 overflow-y-auto">
@@ -1131,7 +1131,7 @@ const TestModal = ({ isOpen, onClose, onSave, test, productVersions }: any) => {
     const [custom, setCustom] = useState(!opts.some(o => o.en === formData.testName.en));
 
     return (
-        <div className="fixed inset-0 z-[100] flex justify-center items-start overflow-y-auto p-4 md:p-8 bg-slate-900/50 backdrop-blur-sm animate-fade-in">
+        <div className="fixed inset-0 z-[120] flex justify-center items-start overflow-y-auto p-4 md:p-8 bg-slate-900/50 backdrop-blur-sm animate-fade-in">
             <div className="bg-white rounded-2xl w-full max-w-xl overflow-hidden flex flex-col my-auto shadow-2xl">
                 <div className="p-6 border-b flex justify-between items-center"><h2 className="text-xl font-bold">Edit Test Record</h2><button onClick={onClose}><X/></button></div>
                 <form onSubmit={e => {e.preventDefault(); onSave(formData);}} className="p-6 space-y-4 overflow-y-auto">
@@ -1154,7 +1154,7 @@ const TestModal = ({ isOpen, onClose, onSave, test, productVersions }: any) => {
 };
 
 const NoShipmentModal = ({ onClose, version }: any) => (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm"><div className="bg-white rounded-2xl w-full max-w-sm p-8 text-center shadow-2xl"><Ship size={48} className="mx-auto mb-4 text-amber-500"/><h3 className="text-lg font-bold mb-2">No Market Data</h3><p className="text-sm text-slate-500 mb-6">Version {version} has no recorded shipments.</p><button onClick={onClose} className="w-full py-2 bg-slate-900 text-white rounded-lg">Close</button></div></div>
+    <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm"><div className="bg-white rounded-2xl w-full max-w-sm p-8 text-center shadow-2xl"><Ship size={48} className="mx-auto mb-4 text-amber-500"/><h3 className="text-lg font-bold mb-2">No Market Data</h3><p className="text-sm text-slate-500 mb-6">Version {version} has no recorded shipments.</p><button onClick={onClose} className="w-full py-2 bg-slate-900 text-white rounded-lg">Close</button></div></div>
 );
 
 const StartEvaluationModal = ({ onClose, onStartProject, allTesters, testerGroups = [], project }: any) => {
@@ -1171,58 +1171,68 @@ const StartEvaluationModal = ({ onClose, onStartProject, allTesters, testerGroup
     };
 
     return (
-        <div className="fixed inset-0 z-[100] flex justify-center items-start overflow-y-auto p-4 md:p-8 bg-slate-900/50 backdrop-blur-sm animate-fade-in">
-            <div className="bg-white rounded-3xl w-full max-w-2xl overflow-hidden flex flex-col my-auto shadow-2xl max-h-[90vh]">
-                <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-white sticky top-0 z-10">
-                    <h2 className="text-xl font-black text-slate-900">{project ? 'Edit Project' : 'New Evaluation Project'}</h2>
-                    <button onClick={onClose} className="p-2 hover:bg-slate-100 rounded-full transition-colors"><X size={20}/></button>
+        <div className="fixed inset-0 z-[120] flex justify-center items-start overflow-y-auto p-4 md:p-8 bg-slate-900/50 backdrop-blur-sm animate-fade-in">
+            <div className="bg-white rounded-3xl w-full max-w-7xl overflow-hidden flex flex-col my-auto shadow-2xl h-[92vh]">
+                <div className="p-8 border-b border-slate-100 flex justify-between items-center bg-white sticky top-0 z-10">
+                    <div>
+                        <h2 className="text-2xl font-black text-slate-900">{project ? 'Edit Project' : 'Launch New Evaluation Project'}</h2>
+                        <p className="text-slate-400 text-xs font-bold uppercase tracking-widest mt-1">Configure verification scope and test group</p>
+                    </div>
+                    <button onClick={onClose} className="p-3 hover:bg-slate-100 rounded-full transition-colors"><X size={24} strokeWidth={3} /></button>
                 </div>
                 
-                <div className="p-6 space-y-6 overflow-y-auto flex-1 custom-scrollbar">
-                    <div>
-                        <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Project Name</label>
-                        <input type="text" placeholder="Enter evaluation project title..." value={name} onChange={e=>setName(e.target.value)} className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-intenza-500/20 focus:border-intenza-600 outline-none font-bold"/>
+                <div className="p-8 space-y-10 overflow-y-auto flex-1 custom-scrollbar bg-slate-50/30">
+                    <div className="max-w-3xl">
+                        <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Project Title</label>
+                        <input type="text" placeholder="Enter evaluation project title (e.g., Q1 Ergo Audit)..." value={name} onChange={e=>setName(e.target.value)} className="w-full p-4 bg-white border border-slate-200 rounded-2xl shadow-sm focus:ring-4 focus:ring-intenza-500/10 focus:border-intenza-600 outline-none font-bold text-lg"/>
                     </div>
 
                     {testerGroups.length > 0 && (
                         <div>
-                            <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Quick Import Groups</label>
-                            <div className="flex flex-wrap gap-2">
+                            <div className="flex items-center gap-2 mb-4">
+                                <Users2 size={16} className="text-indigo-500" />
+                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Quick Import Predefined Groups</label>
+                            </div>
+                            <div className="flex flex-wrap gap-3">
                                 {testerGroups.map(g => (
-                                    <button key={g.id} onClick={() => handleApplyGroup(g.id)} className="flex items-center gap-2 px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-bold text-slate-600 hover:bg-slate-50 hover:border-slate-300 transition-all">
-                                        <Users2 size={12} className="text-indigo-500" />
-                                        {t(g.name)} ({g.testerIds.length})
+                                    <button key={g.id} onClick={() => handleApplyGroup(g.id)} className="flex items-center gap-3 px-5 py-3 bg-white border border-slate-200 rounded-2xl text-sm font-bold text-slate-700 hover:border-indigo-400 hover:shadow-md transition-all">
+                                        <Users2 size={14} className="text-indigo-500" />
+                                        {t(g.name)} <span className="ml-1 opacity-40 font-mono">({g.testerIds.length})</span>
                                     </button>
                                 ))}
                             </div>
                         </div>
                     )}
 
-                    <div>
-                        <div className="flex items-center justify-between mb-3">
-                            <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest">Select Testers ({ids.length})</label>
-                            <div className="relative w-48">
-                                <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-                                <input type="text" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} placeholder="Find subject..." className="w-full pl-9 pr-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs focus:border-intenza-600 outline-none" />
+                    <div className="border-t border-slate-100 pt-10">
+                        <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-6">
+                            <div className="flex items-center gap-2">
+                                <User size={16} className="text-intenza-600" />
+                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Select Individual Subjects ({ids.length})</label>
+                            </div>
+                            <div className="relative w-full md:w-80">
+                                <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
+                                <input type="text" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} placeholder="Filter subjects by name..." className="w-full pl-12 pr-4 py-3 bg-white border border-slate-200 rounded-xl text-sm font-bold shadow-sm focus:border-intenza-600 outline-none" />
                             </div>
                         </div>
                         
-                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-7 gap-6">
                             {filteredTesters.map((tester: Tester) => {
                                 const isSelected = ids.includes(tester.id);
                                 return (
                                     <div 
                                         key={tester.id} 
                                         onClick={() => isSelected ? setIds(ids.filter(i => i !== tester.id)) : setIds([...ids, tester.id])}
-                                        className={`relative group cursor-pointer transition-all duration-300 rounded-2xl border-2 overflow-hidden ${isSelected ? 'border-intenza-600 ring-4 ring-intenza-500/10' : 'border-slate-100 hover:border-slate-200'}`}
+                                        className={`relative group cursor-pointer transition-all duration-300 rounded-[2rem] border-2 overflow-hidden bg-white ${isSelected ? 'border-intenza-600 ring-8 ring-intenza-500/5 shadow-xl' : 'border-slate-100 hover:border-slate-200'}`}
                                     >
-                                        <div className="aspect-square bg-slate-100">
-                                            <img src={tester.imageUrl} className="w-full h-full object-cover grayscale-[0.5] group-hover:grayscale-0 transition-all" alt={tester.name} />
-                                            {isSelected && <div className="absolute inset-0 bg-intenza-600/20 backdrop-blur-[1px] flex items-center justify-center"><CheckCircle size={32} className="text-white drop-shadow-lg" strokeWidth={3} /></div>}
+                                        <div className="aspect-[3/4] bg-slate-100 relative overflow-hidden">
+                                            <img src={tester.imageUrl} className={`w-full h-full object-cover transition-all duration-700 ${isSelected ? 'grayscale-0' : 'grayscale-[0.5] group-hover:grayscale-0'}`} alt={tester.name} />
+                                            {isSelected && <div className="absolute inset-0 bg-intenza-600/20 backdrop-blur-[1px] flex items-center justify-center"><CheckCircle size={40} className="text-white drop-shadow-2xl" strokeWidth={3} /></div>}
+                                            <div className="absolute bottom-2 left-2 px-2 py-0.5 rounded-full bg-black/40 backdrop-blur-md text-[8px] font-black text-white uppercase tracking-tighter">{tester.gender}</div>
                                         </div>
-                                        <div className="p-2 bg-white">
-                                            <div className="text-[10px] font-black text-slate-800 truncate">{tester.name}</div>
-                                            <div className="text-[8px] font-bold text-slate-400 uppercase">{tester.height}cm • {tester.gender}</div>
+                                        <div className="p-4">
+                                            <div className="text-xs font-black text-slate-800 truncate uppercase">{tester.name}</div>
+                                            <div className="text-[10px] font-bold text-slate-300 mt-0.5">{tester.height}cm • {tester.experienceYears}y Exp</div>
                                         </div>
                                     </div>
                                 );
@@ -1231,13 +1241,17 @@ const StartEvaluationModal = ({ onClose, onStartProject, allTesters, testerGroup
                     </div>
                 </div>
 
-                <div className="p-6 border-t border-slate-100 bg-white sticky bottom-0">
+                <div className="p-8 border-t border-slate-100 bg-white sticky bottom-0 flex justify-between items-center shadow-[0_-4px_20px_rgba(0,0,0,0.02)]">
+                    <div className="hidden sm:flex flex-col">
+                        <span className="text-[9px] font-black text-slate-300 uppercase tracking-widest">Active Selection</span>
+                        <span className="text-sm font-black text-slate-900">{ids.length} subjects will be assigned to tasks</span>
+                    </div>
                     <button 
                         onClick={()=>onStartProject({en:name,zh:name},ids)} 
                         disabled={!name || ids.length === 0}
-                        className="w-full py-4 bg-slate-900 text-white rounded-2xl font-black uppercase tracking-widest hover:bg-slate-800 transition-all shadow-xl shadow-slate-900/20 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="w-full sm:w-auto px-12 py-5 bg-slate-900 text-white rounded-2xl font-black uppercase tracking-[0.2em] hover:bg-slate-800 transition-all shadow-2xl shadow-slate-900/20 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                        {project ? 'Update Evaluation' : 'Launch Evaluation Project'}
+                        {project ? 'Update Project Baseline' : 'Launch Verification Project'}
                     </button>
                 </div>
             </div>
@@ -1248,21 +1262,21 @@ const StartEvaluationModal = ({ onClose, onStartProject, allTesters, testerGroup
 const AddTaskModal = ({ onClose, onSave }: any) => {
     const [n, setN] = useState('');
     return (
-        <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm animate-fade-in"><div className="bg-white rounded-2xl w-full max-w-sm p-6 shadow-2xl"><h3 className="font-bold mb-4">Add Task</h3><input type="text" value={n} onChange={e=>setN(e.target.value)} className="w-full p-2 border rounded-xl mb-4 focus:ring-2 focus:ring-slate-200 outline-none"/><button onClick={()=>onSave(n)} className="w-full py-3 bg-slate-900 text-white rounded-xl font-bold">Add Task</button><button onClick={onClose} className="w-full py-2 mt-2 text-slate-400 font-medium">Cancel</button></div></div>
+        <div className="fixed inset-0 z-[130] flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm animate-fade-in"><div className="bg-white rounded-2xl w-full max-w-sm p-6 shadow-2xl"><h3 className="font-bold mb-4">Add Task</h3><input type="text" value={n} onChange={e=>setN(e.target.value)} className="w-full p-2 border rounded-xl mb-4 focus:ring-2 focus:ring-slate-200 outline-none"/><button onClick={()=>onSave(n)} className="w-full py-3 bg-slate-900 text-white rounded-xl font-bold">Add Task</button><button onClick={onClose} className="w-full py-2 mt-2 text-slate-400 font-medium">Cancel</button></div></div>
     );
 };
 
 const SetTaskResultsModal = ({ onClose, onSave, project, testers }: any) => {
     const [ids, setIds] = useState<string[]>([]);
     return (
-        <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm animate-fade-in"><div className="bg-white rounded-[2rem] w-full max-w-md p-8 shadow-2xl animate-slide-up"><h3 className="text-xl font-black text-slate-900 mb-6 uppercase tracking-tight">Set Quick Results</h3><div className="space-y-3 mb-8 max-h-[40vh] overflow-y-auto custom-scrollbar pr-2">{testers.filter((t:any)=>project.testerIds.includes(t.id)).map((t:any)=><div key={t.id} className="flex items-center justify-between p-3 bg-slate-50 rounded-2xl border border-slate-100"><span className="font-bold text-slate-700">{t.name}</span><div className="flex gap-1.5"><button onClick={()=>setIds([...ids.filter(i=>i!==t.id),t.id])} className={`px-4 py-1.5 rounded-xl text-[10px] font-black uppercase transition-all ${ids.includes(t.id)?'bg-emerald-500 text-white shadow-lg shadow-emerald-500/20':'bg-white text-slate-400 border border-slate-200 hover:border-emerald-300'}`}>PASS</button><button onClick={()=>setIds(ids.filter(i=>i!==t.id))} className={`px-4 py-1.5 rounded-xl text-[10px] font-black uppercase transition-all ${!ids.includes(t.id)?'bg-rose-500 text-white shadow-lg shadow-rose-500/20':'bg-white text-slate-400 border border-slate-200 hover:border-rose-300'}`}>NG</button></div></div>)}</div><button onClick={()=>onSave(ids)} className="w-full py-4 bg-slate-900 text-white rounded-2xl font-black uppercase tracking-widest hover:bg-slate-800 transition-all shadow-xl shadow-slate-900/20">Confirm Results</button></div></div>
+        <div className="fixed inset-0 z-[130] flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm animate-fade-in"><div className="bg-white rounded-[2rem] w-full max-w-md p-8 shadow-2xl animate-slide-up"><h3 className="text-xl font-black text-slate-900 mb-6 uppercase tracking-tight">Set Quick Results</h3><div className="space-y-3 mb-8 max-h-[40vh] overflow-y-auto custom-scrollbar pr-2">{testers.filter((t:any)=>project.testerIds.includes(t.id)).map((t:any)=><div key={t.id} className="flex items-center justify-between p-3 bg-slate-50 rounded-2xl border border-slate-100"><span className="font-bold text-slate-700">{t.name}</span><div className="flex gap-1.5"><button onClick={()=>setIds([...ids.filter(i=>i!==t.id),t.id])} className={`px-4 py-1.5 rounded-xl text-[10px] font-black uppercase transition-all ${ids.includes(t.id)?'bg-emerald-500 text-white shadow-lg shadow-emerald-500/20':'bg-white text-slate-400 border border-slate-200 hover:border-emerald-300'}`}>PASS</button><button onClick={()=>setIds(ids.filter(i=>i!==t.id))} className={`px-4 py-1.5 rounded-xl text-[10px] font-black uppercase transition-all ${!ids.includes(t.id)?'bg-rose-500 text-white shadow-lg shadow-rose-500/20':'bg-white text-slate-400 border border-slate-200 hover:border-rose-300'}`}>NG</button></div></div>)}</div><button onClick={()=>onSave(ids)} className="w-full py-4 bg-slate-900 text-white rounded-2xl font-black uppercase tracking-widest hover:bg-slate-800 transition-all shadow-xl shadow-slate-900/20">Confirm Results</button></div></div>
     );
 };
 
 const SetPassNgModal = ({ onClose, onSet, existingReason }: any) => {
     const [r, setR] = useState(existingReason?.reason?.en || '');
     return (
-        <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm animate-fade-in"><div className="bg-white rounded-3xl w-full max-w-sm p-8 shadow-2xl animate-slide-up"><h3 className="text-xl font-black text-slate-900 mb-4 uppercase tracking-tight">Set NG Reason</h3><textarea value={r} onChange={e=>setR(e.target.value)} className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-2 focus:ring-intenza-500/20 outline-none text-slate-900 font-medium mb-6 resize-none" rows={4} placeholder="Describe the issue observed... "/><button onClick={()=>onSet({en:r,zh:r},false,[],'ISSUE')} className="w-full py-4 bg-slate-900 text-white rounded-2xl font-black uppercase tracking-widest hover:bg-slate-800 transition-all">Save Reason</button></div></div>
+        <div className="fixed inset-0 z-[130] flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm animate-fade-in"><div className="bg-white rounded-3xl w-full max-w-sm p-8 shadow-2xl animate-slide-up"><h3 className="text-xl font-black text-slate-900 mb-4 uppercase tracking-tight">Set NG Reason</h3><textarea value={r} onChange={e=>setR(e.target.value)} className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-2 focus:ring-intenza-500/20 outline-none text-slate-900 font-medium mb-6 resize-none" rows={4} placeholder="Describe the issue observed... "/><button onClick={()=>onSet({en:r,zh:r},false,[],'ISSUE')} className="w-full py-4 bg-slate-900 text-white rounded-2xl font-black uppercase tracking-widest hover:bg-slate-800 transition-all">Save Reason</button></div></div>
     );
 };
 
@@ -1285,7 +1299,7 @@ const StatusDecisionModal = ({ onClose, onSetStatus, onLinkEco, onCreateEco, act
     };
 
     return (
-        <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md animate-fade-in">
+        <div className="fixed inset-0 z-[130] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md animate-fade-in">
             <div className="bg-white rounded-[2rem] w-full max-w-sm overflow-hidden shadow-2xl">
                 <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-white">
                     <h2 className="text-xl font-black text-slate-900 uppercase tracking-tight">Manage Decision</h2>
@@ -1373,7 +1387,7 @@ const StatusDecisionModal = ({ onClose, onSetStatus, onLinkEco, onCreateEco, act
 const FeedbackModal = ({ onClose, onSave, feedback }: any) => {
     const [d, setD] = useState(feedback || { content: {en:'',zh:''}, source: '', category: 'Experience', date: new Date().toISOString().split('T')[0] });
     return (
-        <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm animate-fade-in"><div className="bg-white rounded-2xl w-full max-w-md p-6 shadow-2xl"><h2 className="font-bold mb-4">Feedback</h2><input type="text" placeholder="Source" value={d.source} onChange={e=>setD({...d,source:e.target.value})} className="w-full p-2 border rounded mb-2"/><textarea placeholder="Content" value={d.content.en} onChange={e=>setD({...d,content:{en:e.target.value,zh:e.target.value}})} className="w-full p-2 border rounded mb-4" rows={3}/><button onClick={()=>onSave(d)} className="w-full py-2 bg-slate-900 text-white rounded">Save</button></div></div>
+        <div className="fixed inset-0 z-[130] flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm animate-fade-in"><div className="bg-white rounded-2xl w-full max-w-md p-6 shadow-2xl"><h2 className="font-bold mb-4">Feedback</h2><input type="text" placeholder="Source" value={d.source} onChange={e=>setD({...d,source:e.target.value})} className="w-full p-2 border rounded mb-2"/><textarea placeholder="Content" value={d.content.en} onChange={e=>setD({...d,content:{en:e.target.value,zh:e.target.value}})} className="w-full p-2 border rounded mb-4" rows={3}/><button onClick={()=>onSave(d)} className="w-full py-2 bg-slate-900 text-white rounded">Save</button></div></div>
     );
 };
 
@@ -1392,7 +1406,7 @@ const FeedbackStatusDecisionModal = ({ onClose, onUpdateStatus, onLinkEco, onCre
     };
 
     return (
-        <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md animate-fade-in">
+        <div className="fixed inset-0 z-[130] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md animate-fade-in">
             <div className="bg-white rounded-[2rem] w-full max-w-sm overflow-hidden shadow-2xl">
                 <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-white">
                     <h2 className="text-xl font-black text-slate-900 uppercase tracking-tight">Manage Feedback</h2>
