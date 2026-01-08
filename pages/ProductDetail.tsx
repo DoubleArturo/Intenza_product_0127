@@ -1,4 +1,3 @@
-
 import React, { useState, useMemo, useEffect, useContext, useRef } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { 
@@ -7,7 +6,7 @@ import {
   ChevronsLeft, Tag, FileText, User, Database, Mars, Venus, Link as LinkIcon, Search, 
   ClipboardList, ListPlus, Check, ChevronDown, ChevronRight, RefreshCw, HelpCircle, 
   BarChart3, AlertCircle, PlayCircle, Loader2, StickyNote, Lightbulb, Paperclip, 
-  Video, Image as ImageIcon, Save, Star, Info, Ship, Users2 
+  Video, Image as ImageIcon, Save, Star, Info, Ship, Users2, Maximize2 
 } from 'lucide-react';
 import { ProductModel, TestStatus, DesignChange, LocalizedString, TestResult, EcoStatus, ErgoFeedback, ErgoProject, Tester, ErgoProjectCategory, NgReason, ProjectOverallStatus, Gender, NgDecisionStatus, EvaluationTask, ShipmentData, TesterGroup } from '../types';
 import GeminiInsight from '../components/GeminiInsight';
@@ -59,6 +58,9 @@ const ProductDetail: React.FC<ProductDetailProps> = ({ products, shipments = [],
   const ergoSectionRef = useRef<HTMLDivElement>(null);
   const [highlightedFeedback, setHighlightedFeedback] = useState<{projectId?: string, taskId?: string, testerId?: string, feedbackId?: string} | null>(null);
   const [isFeedbackPanelOpen, setIsFeedbackPanelOpen] = useState(false);
+
+  // Lightbox state
+  const [lightboxState, setLightboxState] = useState<{isOpen: boolean, ecoId?: string, imgUrl?: string, imgIndex?: number} | null>(null);
 
   const isViewer = userRole === 'viewer';
 
@@ -137,20 +139,41 @@ const ProductDetail: React.FC<ProductDetailProps> = ({ products, shipments = [],
       let updatedDesignHistory;
       let newCurrentVersion = product.currentVersion;
 
+      const now = new Date();
+      const timestamp = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+
       if (ecoData.status === EcoStatus.IN_PRODUCTION) {
           newCurrentVersion = ecoData.version;
       }
 
       if (editingEco) {
           updatedDesignHistory = product.designHistory.map(eco => 
-              eco.id === editingEco.id ? { ...eco, ...ecoData } : eco
+              eco.id === editingEco.id ? { ...eco, ...ecoData, updatedAt: timestamp } : eco
           );
       } else {
-          const newEco = { ...ecoData, id: `eco-${Date.now()}` };
+          const newEco = { ...ecoData, id: `eco-${Date.now()}`, updatedAt: timestamp };
           updatedDesignHistory = [...product.designHistory, newEco];
       }
       await onUpdateProduct({ ...product, designHistory: updatedDesignHistory, currentVersion: newCurrentVersion });
       handleCloseEcoModal();
+  };
+
+  const handleUpdateImageCaption = async (ecoId: string, imgIndex: number, caption: string) => {
+    if (isViewer) return;
+    const now = new Date();
+    const timestamp = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+    
+    const updatedHistory = product.designHistory.map(eco => {
+        if (eco.id === ecoId) {
+            const captions = [...(eco as any).imageCaptions || []];
+            // Fill gaps if any
+            while (captions.length <= imgIndex) captions.push('');
+            captions[imgIndex] = caption;
+            return { ...eco, imageCaptions: captions, updatedAt: timestamp };
+        }
+        return eco;
+    });
+    await onUpdateProduct({ ...product, designHistory: updatedHistory });
   };
 
   const handleDeleteEco = (ecoId: string) => {
@@ -158,6 +181,44 @@ const ProductDetail: React.FC<ProductDetailProps> = ({ products, shipments = [],
     if (window.confirm('確定要刪除此 ECO 記錄嗎？')) {
       const updatedDesignHistory = product.designHistory.filter(eco => eco.id !== ecoId);
       onUpdateProduct({ ...product, designHistory: updatedDesignHistory });
+    }
+  };
+
+  // Test Handlers (Fixing missing handlers for Life/Durability section)
+  const handleOpenTestModal = (test: TestResult | null = null) => {
+    if (isViewer) return;
+    setEditingTest(test);
+    setIsTestModalOpen(true);
+  };
+
+  const handleCloseTestModal = () => {
+    setIsTestModalOpen(false);
+    setEditingTest(null);
+  };
+
+  const handleSaveTest = async (testData: any) => {
+    if (isViewer) return;
+    let updatedDurabilityTests;
+    const now = new Date();
+    const timestamp = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+
+    if (editingTest) {
+      updatedDurabilityTests = product.durabilityTests.map(t =>
+        t.id === editingTest.id ? { ...t, ...testData, updatedDate: timestamp } : t
+      );
+    } else {
+      const newTest = { ...testData, id: `test-${Date.now()}`, updatedDate: timestamp };
+      updatedDurabilityTests = [...product.durabilityTests, newTest];
+    }
+    await onUpdateProduct({ ...product, durabilityTests: updatedDurabilityTests });
+    handleCloseTestModal();
+  };
+
+  const handleDeleteTest = (testId: string) => {
+    if (isViewer) return;
+    if (window.confirm('確定要刪除此測試記錄嗎？')) {
+      const updatedDurabilityTests = product.durabilityTests.filter(t => t.id !== testId);
+      onUpdateProduct({ ...product, durabilityTests: updatedDurabilityTests });
     }
   };
   
@@ -174,37 +235,18 @@ const ProductDetail: React.FC<ProductDetailProps> = ({ products, shipments = [],
     onUpdateProduct({ ...product, currentVersion: version });
   };
 
-  // Durability Test Handlers
-  const handleOpenTestModal = (test: TestResult | null = null) => {
-    if (isViewer) return;
-    setEditingTest(test);
-    setIsTestModalOpen(true);
-  };
-
-  const handleCloseTestModal = () => {
-    setIsTestModalOpen(false);
-    setEditingTest(null);
-  };
-
-  const handleSaveTest = async (testResult: Omit<TestResult, 'id'>) => {
-      if (isViewer) return;
-      let updatedTests;
-      if (editingTest) {
-          updatedTests = product.durabilityTests.map(t => t.id === editingTest.id ? { ...editingTest, ...testResult } : t);
-      } else {
-          const newTest = { ...testResult, id: `test-${Date.now()}` };
-          updatedTests = [...product.durabilityTests, newTest];
+  // Source navigation helper
+  const navigateToSource = (source: any) => {
+      setActiveTab('ERGO');
+      if (source.feedbackId) {
+          setIsFeedbackPanelOpen(true);
       }
-      await onUpdateProduct({ ...product, durabilityTests: updatedTests });
-      handleCloseTestModal();
-  };
-
-  const handleDeleteTest = (testId: string) => {
-      if (isViewer) return;
-      if (window.confirm('Are you sure you want to delete this test result?')) {
-          const updatedTests = product.durabilityTests.filter(t => t.id !== testId);
-          onUpdateProduct({ ...product, durabilityTests: updatedTests });
-      }
+      setHighlightedFeedback({
+          projectId: source.projectId,
+          taskId: source.taskId,
+          testerId: source.testerId,
+          feedbackId: source.feedbackId
+      });
   };
 
   const productVersions = useMemo(() => Array.from(new Set([product.currentVersion, ...product.designHistory.map(h => h.version)])).sort().reverse(), [product]);
@@ -256,6 +298,8 @@ const ProductDetail: React.FC<ProductDetailProps> = ({ products, shipments = [],
                  onDeleteEco={handleDeleteEco} 
                  onDeleteVersion={handleDeleteVersion} 
                  onSetCurrentVersion={handleSetCurrentVersion}
+                 onNavigateToSource={navigateToSource}
+                 onOpenLightbox={(ecoId: string, url: string, idx: number) => setLightboxState({isOpen: true, ecoId, imgUrl: url, imgIndex: idx})}
                  onNoShipment={(version: string) => {
                     setSelectedVersionForModal(version);
                     setIsNoShipmentModalOpen(true);
@@ -333,6 +377,17 @@ const ProductDetail: React.FC<ProductDetailProps> = ({ products, shipments = [],
       {isEcoModalOpen && <EcoModal isOpen={isEcoModalOpen} onClose={handleCloseEcoModal} onSave={handleSaveEco} eco={editingEco} productVersions={productVersions} product={product}/>}
       {isTestModalOpen && <TestModal isOpen={isTestModalOpen} onClose={handleCloseTestModal} onSave={handleSaveTest} test={editingTest} productVersions={productVersions}/>}
       {isNoShipmentModalOpen && <NoShipmentModal isOpen={isNoShipmentModalOpen} onClose={() => setIsNoShipmentModalOpen(false)} version={selectedVersionForModal} />}
+      
+      {/* Lightbox Modal */}
+      {lightboxState && lightboxState.isOpen && (
+        <ImageLightbox 
+            imgUrl={lightboxState.imgUrl!} 
+            onClose={() => setLightboxState(null)} 
+            caption={(product.designHistory.find(e => e.id === lightboxState.ecoId) as any)?.imageCaptions?.[lightboxState.imgIndex!] || ''}
+            onSaveCaption={(caption: string) => handleUpdateImageCaption(lightboxState.ecoId!, lightboxState.imgIndex!, caption)}
+            isViewer={isViewer}
+        />
+      )}
     </div>
   );
 };
@@ -610,7 +665,7 @@ const CustomerFeedbackCard = ({ feedback, onStatusClick, onEdit, onDelete, produ
     );
 };
 
-const DesignSection = ({ product, shipments, userRole, onAddEco, onEditEco, onDeleteEco, onDeleteVersion, onSetCurrentVersion, onNoShipment }: any) => {
+const DesignSection = ({ product, shipments, userRole, onAddEco, onEditEco, onDeleteEco, onDeleteVersion, onSetCurrentVersion, onNoShipment, onNavigateToSource, onOpenLightbox }: any) => {
   const { t, language } = useContext(LanguageContext);
   const navigate = useNavigate();
   const isViewer = userRole === 'viewer';
@@ -661,40 +716,67 @@ const DesignSection = ({ product, shipments, userRole, onAddEco, onEditEco, onDe
                <button onClick={() => onDeleteVersion(selectedVersion)} className="flex items-center gap-1 text-xs font-bold text-slate-400 hover:text-red-500 transition-colors px-3 py-1.5 rounded-lg hover:bg-red-50"><Trash2 size={14} /> 刪除此版本</button>
              )}
           </div>
-          <div className="space-y-6">
-               {activeChanges.map((change: DesignChange) => {
+          <div className="space-y-8">
+               {activeChanges.map((change: any) => {
                   const linkedSources = change.sourceFeedbacks || [];
-                  const ergoCount = linkedSources.filter(s => s.projectId).length;
-                  const feedbackCount = linkedSources.filter(s => s.feedbackId).length;
+                  const ergoCount = linkedSources.filter((s: any) => s.projectId).length;
+                  const feedbackCount = linkedSources.filter((s: any) => s.feedbackId).length;
 
                   return (
-                    <div key={change.id} className="group relative rounded-lg transition-colors hover:bg-slate-50/50 -m-3 p-3">
-                        <div className="flex flex-col md:flex-row gap-6">
+                    <div key={change.id} className="group relative rounded-2xl transition-all hover:bg-slate-50/80 -m-4 p-4 border border-transparent hover:border-slate-100">
+                        <div className="flex flex-col md:flex-row gap-8">
                             <div className="md:w-48 flex-shrink-0">
-                                <span className="font-mono text-sm font-bold text-intenza-600 bg-intenza-50 px-2 py-1 rounded border border-intenza-100">{change.ecoNumber || change.ecrNumber || 'N/A'}</span>
-                                <div className={`mt-2 px-2 py-0.5 rounded text-[10px] font-bold uppercase w-fit border ${ecoStatusStyles[change.status]}`}>
-                                    {ecoStatusTranslations[change.status]}
+                                <span className="font-mono text-sm font-black text-intenza-600 bg-intenza-50 px-2 py-1 rounded border border-intenza-100 shadow-sm">{change.ecoNumber || change.ecrNumber || 'N/A'}</span>
+                                <div className={`mt-3 px-2 py-1 rounded-md text-[10px] font-black uppercase w-fit border shadow-sm ${ecoStatusStyles[change.status as EcoStatus]}`}>
+                                    {ecoStatusTranslations[change.status as EcoStatus]}
                                 </div>
-                                <div className="flex flex-col gap-1.5 text-slate-500 text-[10px] font-bold uppercase tracking-wider mt-3">
-                                    <div className="flex items-center gap-2"><Calendar size={12} className="text-slate-400" />ECO Date: {change.date}</div>
+                                <div className="flex flex-col gap-2 text-slate-400 text-[10px] font-bold uppercase tracking-widest mt-4">
+                                    <div className="flex items-center gap-2"><Calendar size={12} className="text-slate-300" />Issue: {change.date}</div>
+                                    {change.updatedAt && (
+                                        <div className="flex items-center gap-2 text-intenza-500 bg-intenza-50/50 px-1.5 py-0.5 rounded w-fit"><RefreshCw size={10} />Updated: {change.updatedAt}</div>
+                                    )}
                                 </div>
                                 
-                                {/* REVERSE LINKAGE UI */}
+                                {/* REVERSE LINKAGE UI - Now Interactive */}
                                 {(ergoCount > 0 || feedbackCount > 0) && (
-                                    <div className="mt-4 pt-3 border-t border-slate-100 space-y-1.5">
-                                        <div className="text-[9px] font-black text-slate-300 uppercase tracking-widest">關聯來源</div>
-                                        {ergoCount > 0 && <div className="flex items-center gap-1.5 text-[10px] font-bold text-indigo-600"><UserCheck size={10}/> {ergoCount} 人因評估項</div>}
-                                        {feedbackCount > 0 && <div className="flex items-center gap-1.5 text-[10px] font-bold text-emerald-600"><MessageSquare size={10}/> {feedbackCount} 客戶回饋</div>}
+                                    <div className="mt-6 pt-4 border-t border-slate-100 space-y-2">
+                                        <div className="text-[9px] font-black text-slate-300 uppercase tracking-widest">關聯來源 (點擊跳轉)</div>
+                                        {linkedSources.map((s: any, idx: number) => (
+                                            <button 
+                                                key={idx} 
+                                                onClick={() => onNavigateToSource(s)}
+                                                className={`flex items-center gap-1.5 text-[10px] font-bold p-1 rounded hover:bg-white hover:shadow-sm transition-all w-full text-left ${s.projectId ? 'text-indigo-600' : 'text-emerald-600'}`}
+                                            >
+                                                {s.projectId ? <UserCheck size={10}/> : <MessageSquare size={10}/>}
+                                                <span className="truncate">{s.projectId ? '人因評估項' : '客戶回饋'}</span>
+                                                <ChevronRight size={10} className="ml-auto opacity-40" />
+                                            </button>
+                                        ))}
                                     </div>
                                 )}
                             </div>
                             <div className="flex-1">
-                                <h4 className="text-lg font-medium text-slate-900 mb-3 leading-snug">{t(change.description)}</h4>
+                                <h4 className="text-xl font-bold text-slate-900 mb-4 leading-snug">{t(change.description)}</h4>
                                 {change.imageUrls && change.imageUrls.length > 0 && (
-                                    <div className="mb-4 flex flex-wrap gap-2">
-                                        {change.imageUrls.map((url, imgIndex) => (
-                                            <div key={imgIndex} className="inline-block">
-                                                {isVideo(url) ? <video src={url} controls className="h-32 rounded-lg border border-slate-200" /> : <img src={url} className="h-32 rounded-lg border border-slate-200 object-cover" />}
+                                    <div className="mb-4 flex flex-wrap gap-3">
+                                        {change.imageUrls.map((url: string, imgIndex: number) => (
+                                            <div key={imgIndex} className="relative group/img overflow-hidden rounded-xl border border-slate-200 shadow-sm bg-slate-50">
+                                                {isVideo(url) ? (
+                                                    <video src={url} className="h-40 w-auto" />
+                                                ) : (
+                                                    <img src={url} className="h-40 w-auto object-cover" />
+                                                )}
+                                                <div 
+                                                    onClick={() => onOpenLightbox(change.id, url, imgIndex)}
+                                                    className="absolute inset-0 bg-slate-900/40 opacity-0 group-hover/img:opacity-100 transition-opacity flex items-center justify-center cursor-pointer backdrop-blur-[2px]"
+                                                >
+                                                    <Maximize2 size={24} className="text-white drop-shadow-md" />
+                                                </div>
+                                                {change.imageCaptions?.[imgIndex] && (
+                                                    <div className="absolute bottom-0 inset-x-0 p-2 bg-black/60 backdrop-blur-md text-white text-[10px] font-bold truncate">
+                                                        {change.imageCaptions[imgIndex]}
+                                                    </div>
+                                                )}
                                             </div>
                                         ))}
                                     </div>
@@ -702,9 +784,9 @@ const DesignSection = ({ product, shipments, userRole, onAddEco, onEditEco, onDe
                             </div>
                         </div>
                         {!isViewer && (
-                            <div className="absolute top-2 right-2 flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                <button onClick={() => onEditEco(change)} className="p-2 bg-slate-100 rounded-full text-slate-500 hover:bg-slate-200 hover:text-slate-800"><Pencil size={14} /></button>
-                                <button onClick={() => onDeleteEco(change.id)} className="p-2 bg-red-50 rounded-full text-red-500 hover:bg-red-100 hover:text-red-700"><Trash2 size={14} /></button>
+                            <div className="absolute top-4 right-4 flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                <button onClick={() => onEditEco(change)} className="p-2.5 bg-white shadow-lg rounded-xl text-slate-400 hover:text-slate-900 border border-slate-100 transition-all hover:scale-110"><Pencil size={16} /></button>
+                                <button onClick={() => onDeleteEco(change.id)} className="p-2.5 bg-white shadow-lg rounded-xl text-rose-400 hover:text-rose-600 border border-slate-100 transition-all hover:scale-110"><Trash2 size={16} /></button>
                             </div>
                         )}
                     </div>
@@ -715,6 +797,62 @@ const DesignSection = ({ product, shipments, userRole, onAddEco, onEditEco, onDe
       </div>
     </div>
   );
+};
+
+const ImageLightbox = ({ imgUrl, onClose, caption, onSaveCaption, isViewer }: any) => {
+    const [localCaption, setLocalCaption] = useState(caption);
+    const [isEditing, setIsEditing] = useState(false);
+
+    return (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-8 bg-slate-950/95 backdrop-blur-xl animate-fade-in">
+            <button onClick={onClose} className="absolute top-8 right-8 p-3 bg-white/10 hover:bg-white/20 text-white rounded-full transition-colors z-20"><X size={32}/></button>
+            
+            <div className="w-full h-full flex flex-col items-center justify-center gap-8">
+                <div className="flex-1 w-full flex items-center justify-center overflow-hidden">
+                    {isVideo(imgUrl) ? (
+                        <video src={imgUrl} controls className="max-w-full max-h-full rounded-2xl shadow-2xl" />
+                    ) : (
+                        <img src={imgUrl} className="max-w-full max-h-full object-contain rounded-2xl shadow-2xl" />
+                    )}
+                </div>
+
+                <div className="w-full max-w-2xl bg-white/10 backdrop-blur-md border border-white/20 p-6 rounded-[2rem] shadow-2xl animate-slide-up">
+                    <div className="flex items-center justify-between mb-4">
+                        <div className="flex items-center gap-2 text-white/50">
+                            <FileText size={18} />
+                            <span className="text-xs font-black uppercase tracking-widest">Image Description</span>
+                        </div>
+                        {!isViewer && (
+                            <button 
+                                onClick={() => {
+                                    if (isEditing) onSaveCaption(localCaption);
+                                    setIsEditing(!isEditing);
+                                }}
+                                className="px-4 py-1.5 bg-white text-slate-900 rounded-xl text-xs font-black uppercase tracking-tight hover:bg-intenza-100 transition-all flex items-center gap-2"
+                            >
+                                {isEditing ? <><Save size={14}/> Save Annotation</> : <><Pencil size={14}/> Edit Description</>}
+                            </button>
+                        )}
+                    </div>
+
+                    {isEditing ? (
+                        <textarea 
+                            autoFocus
+                            value={localCaption} 
+                            onChange={e => setLocalCaption(e.target.value)}
+                            className="w-full bg-white/5 border border-white/10 rounded-2xl p-4 text-white text-sm outline-none focus:ring-2 focus:ring-white/20 transition-all resize-none font-medium"
+                            rows={3}
+                            placeholder="Add explanation for this design detail..."
+                        />
+                    ) : (
+                        <p className={`text-lg font-medium leading-relaxed ${localCaption ? 'text-white' : 'text-white/30 italic'}`}>
+                            {localCaption || 'No description provided for this visual evidence.'}
+                        </p>
+                    )}
+                </div>
+            </div>
+        </div>
+    );
 };
 
 const ErgoSection = ({ product, testers, testerGroups, onUpdateProduct, highlightedFeedback, isFeedbackPanelOpen, setIsFeedbackPanelOpen, userRole }: any) => {
@@ -858,6 +996,9 @@ const ErgoSection = ({ product, testers, testerGroups, onUpdateProduct, highligh
                   const {projectId, category, taskId, testerId} = statusModalState.context;
                   const ng = product.ergoProjects.find((p: any) => p.id === projectId).tasks[category].find((t: any) => t.id === taskId).ngReasons.find((r: any) => r.testerId === testerId);
                   const newEcoId = `eco-${Date.now()}`;
+                  const now = new Date();
+                  const timestamp = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+                  
                   const newEco: any = { 
                       id: newEcoId, 
                       ecoNumber: `EVAL-${Date.now().toString().slice(-4)}`, 
@@ -868,7 +1009,8 @@ const ErgoSection = ({ product, testers, testerGroups, onUpdateProduct, highligh
                       affectedCustomers: [], 
                       status: EcoStatus.EVALUATING, 
                       imageUrls: ng.attachmentUrls || [], 
-                      sourceFeedbacks: [{projectId, category, taskId, testerId}] 
+                      sourceFeedbacks: [{projectId, category, taskId, testerId}],
+                      updatedAt: timestamp 
                   };
                   onUpdateProduct({
                       ...product,
@@ -916,6 +1058,9 @@ const ErgoSection = ({ product, testers, testerGroups, onUpdateProduct, highligh
             onCreateEco={(version: string) => {
                 const f = feedbackStatusModal.feedback;
                 const newEcoId = `eco-${Date.now()}`;
+                const now = new Date();
+                const timestamp = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+                
                 const newEco: any = { 
                     id: newEcoId, 
                     ecoNumber: `CUST-${Date.now().toString().slice(-4)}`, 
@@ -926,7 +1071,8 @@ const ErgoSection = ({ product, testers, testerGroups, onUpdateProduct, highligh
                     affectedCustomers: [], 
                     status: EcoStatus.EVALUATING, 
                     imageUrls: f.attachmentUrls || [], 
-                    sourceFeedbacks: [{category: f.category, feedbackId: f.id}] 
+                    sourceFeedbacks: [{category: f.category, feedbackId: f.id}],
+                    updatedAt: timestamp 
                 };
                 onUpdateProduct({
                     ...product,
@@ -947,7 +1093,7 @@ const ErgoSection = ({ product, testers, testerGroups, onUpdateProduct, highligh
 // --- Modals ---
 
 const EcoModal = ({ isOpen, onClose, onSave, eco, productVersions, product }: any) => {
-    const [formData, setFormData] = useState<any>(eco || { ecoNumber: '', date: new Date().toISOString().split('T')[0], version: product.currentVersion, description: { en: '', zh: '' }, status: EcoStatus.EVALUATING, imageUrls: [] });
+    const [formData, setFormData] = useState<any>(eco || { ecoNumber: '', date: new Date().toISOString().split('T')[0], version: product.currentVersion, description: { en: '', zh: '' }, status: EcoStatus.EVALUATING, imageUrls: [], imageCaptions: [] });
     const [isUp, setIsUp] = useState(false);
     const fileRef = useRef<HTMLInputElement>(null);
     return (
@@ -963,7 +1109,10 @@ const EcoModal = ({ isOpen, onClose, onSave, eco, productVersions, product }: an
                     <div><label className="block text-xs font-bold text-slate-500 uppercase mb-1">Status</label><select value={formData.status} onChange={e => setFormData({...formData, status: e.target.value as EcoStatus})} className="w-full px-4 py-2 bg-slate-50 border rounded-lg">{Object.values(EcoStatus).map(s => <option key={s} value={s}>{s}</option>)}</select></div>
                     <div><label className="block text-xs font-bold text-slate-500 uppercase mb-1">Date</label><input type="date" value={formData.date} onChange={e => setFormData({...formData, date: e.target.value})} className="w-full px-4 py-2 bg-slate-50 border rounded-lg"/></div>
                 </div>
-                <div className="pt-4 border-t"><label className="block text-xs font-bold text-slate-500 uppercase mb-3">Media</label><div className="grid grid-cols-4 gap-3">{(formData.imageUrls || []).map((url: string, i: number) => <div key={i} className="relative aspect-square rounded-lg overflow-hidden border bg-slate-100">{isVideo(url)?<div className="w-full h-full flex items-center justify-center"><Video size={20}/></div>:<img src={url} className="w-full h-full object-cover"/>}</div>)}<button type="button" onClick={() => fileRef.current?.click()} className="aspect-square border-2 border-dashed rounded-lg flex flex-col items-center justify-center text-slate-400 bg-slate-50">{isUp?<Loader2 className="animate-spin"/>:<Plus/>}</button><input ref={fileRef} type="file" multiple accept="image/*,video/*" className="hidden" onChange={async e => {const fs=e.target.files; if(!fs) return; setIsUp(true); try{const urls=await Promise.all(Array.from(fs).map(f=>api.uploadImage(f as File))); setFormData({...formData, imageUrls:[...(formData.imageUrls||[]),...urls]});}finally{setIsUp(false);}}}/></div></div>
+                <div className="pt-4 border-t"><label className="block text-xs font-bold text-slate-500 uppercase mb-3">Media</label><div className="grid grid-cols-4 gap-3">{(formData.imageUrls || []).map((url: string, i: number) => <div key={i} className="relative aspect-square rounded-lg overflow-hidden border bg-slate-100 group">
+                    {isVideo(url)?<div className="w-full h-full flex items-center justify-center"><Video size={20}/></div>:<img src={url} className="w-full h-full object-cover"/>}
+                    <button type="button" onClick={() => setFormData({...formData, imageUrls: formData.imageUrls.filter((_:any,idx:number)=>idx!==i), imageCaptions: (formData.imageCaptions||[]).filter((_:any,idx:number)=>idx!==i)})} className="absolute top-1 right-1 p-1 bg-black/50 text-white rounded-full opacity-0 group-hover:opacity-100"><X size={10}/></button>
+                </div>)}<button type="button" onClick={() => fileRef.current?.click()} className="aspect-square border-2 border-dashed rounded-lg flex flex-col items-center justify-center text-slate-400 bg-slate-50">{isUp?<Loader2 className="animate-spin"/>:<Plus/>}</button><input ref={fileRef} type="file" multiple accept="image/*,video/*" className="hidden" onChange={async e => {const fs=e.target.files; if(!fs) return; setIsUp(true); try{const urls=await Promise.all(Array.from(fs).map(f=>api.uploadImage(f as File))); setFormData({...formData, imageUrls:[...(formData.imageUrls||[]),...urls], imageCaptions: [...(formData.imageCaptions||[]), ...urls.map(()=>'')]});}finally{setIsUp(false);}}}/></div></div>
                 <div className="flex gap-3 pt-6"><button type="button" onClick={onClose} className="flex-1 py-3 font-bold text-slate-500">Cancel</button><button type="submit" className="flex-1 py-3 bg-slate-900 text-white font-bold rounded-xl">Save ECO</button></div>
             </form>
         </div></div>
