@@ -1,7 +1,7 @@
 
 import React, { useState, useRef, useEffect, useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Search, ChevronRight, X, Upload, Pencil, Save, Star, Trash2, Image as ImageIcon, Loader2, ArrowUpDown, Calendar, Info, Settings2, Check } from 'lucide-react';
+import { Plus, Search, ChevronRight, X, Upload, Pencil, Save, Star, Trash2, Image as ImageIcon, Loader2, ArrowUpDown, Calendar, Info, Settings2, Check, ShieldCheck } from 'lucide-react';
 import { ProductModel, LocalizedString, EcoStatus } from '../types';
 import { LanguageContext } from '../App';
 import { api } from '../services/api';
@@ -51,6 +51,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
   
   // Tooltip State
   const [hoveredLightId, setHoveredLightId] = useState<string | null>(null);
+  const [hoveredSafetyId, setHoveredSafetyId] = useState<string | null>(null);
   const hoverTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Direct Selection State
@@ -68,6 +69,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
     version: 'v1.0',
     description: '',
     imageUrl: '',
+    safetyCert: '',
     statusOverride: 'AUTO' as 'RED' | 'BLUE' | 'GREEN' | 'AUTO'
   });
   
@@ -89,6 +91,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
           version: editingProduct.currentVersion,
           description: t(editingProduct.description),
           imageUrl: editingProduct.imageUrl,
+          safetyCert: editingProduct.safetyCert || '',
           statusOverride: editingProduct.statusOverride || 'AUTO'
         });
       } else {
@@ -99,6 +102,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
           version: 'v1.0',
           description: '',
           imageUrl: '',
+          safetyCert: '',
           statusOverride: 'AUTO'
         });
       }
@@ -173,6 +177,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
         sku: formData.sku,
         imageUrl: formData.imageUrl || editingProduct.imageUrl,
         currentVersion: formData.version,
+        safetyCert: formData.safetyCert,
         statusOverride: formData.statusOverride
       });
     } else {
@@ -183,6 +188,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
         imageUrl: formData.imageUrl,
         currentVersion: formData.version,
         description: { en: formData.description, zh: formData.description },
+        safetyCert: formData.safetyCert,
         statusOverride: formData.statusOverride
       };
       await onAddProduct(newProductData as any);
@@ -321,6 +327,9 @@ export const Dashboard: React.FC<DashboardProps> = ({
           
           const dotSizeClass = globalStatusLightSize === 'SMALL' ? 'w-3 h-3' : globalStatusLightSize === 'LARGE' ? 'w-6 h-6' : 'w-4 h-4';
           
+          // Split description by new lines for auto-bulleted list
+          const descriptionLines = t(p.description).split('\n').filter(l => l.trim().length > 0);
+
           return (
             <div 
               key={p.id} 
@@ -365,94 +374,136 @@ export const Dashboard: React.FC<DashboardProps> = ({
                     </div>
                   </div>
                 </div>
-                <p className="text-sm text-slate-500 line-clamp-2 mb-6 leading-relaxed flex-1 font-medium">{t(p.description)}</p>
+                
+                {/* AUTO-BULLETED DESCRIPTION */}
+                <div className="flex-1 mb-6">
+                  {descriptionLines.length > 0 ? (
+                    <ul className="space-y-1">
+                      {descriptionLines.map((line, idx) => (
+                        <li key={idx} className="flex items-start gap-2 text-sm text-slate-500 font-medium leading-relaxed">
+                          <div className="w-1.5 h-1.5 rounded-full bg-slate-200 mt-1.5 shrink-0" />
+                          <span className="line-clamp-2">{line}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p className="text-sm text-slate-300 italic font-medium">No description provided.</p>
+                  )}
+                </div>
+
                 <div className="pt-5 border-t-2 border-slate-50 flex items-center justify-between relative">
                   <div className="flex flex-col"><span className="text-[10px] font-black text-slate-300 uppercase tracking-[0.2em] mb-1">SKU Identity</span><span className="text-sm font-bold text-slate-800 font-mono tracking-tight">{p.sku}</span></div>
                   
-                  <div className="relative">
-                    <button 
-                      onClick={(e) => handleStatusLightClick(e, p)}
-                      onMouseEnter={() => handleMouseEnterLight(p.id)}
-                      onMouseLeave={handleMouseLeaveLight}
-                      className={`w-10 h-10 rounded-full flex items-center justify-center transition-all shadow-inner relative z-20 ${
-                        canEditLight ? 'hover:scale-110 active:scale-95' : 'cursor-pointer'
-                      } ${
-                        statusColor === 'red' ? 'bg-rose-50 hover:bg-rose-100 shadow-rose-200' :
-                        statusColor === 'blue' ? 'bg-blue-50 hover:bg-blue-100 shadow-blue-200' :
-                        'bg-emerald-50 hover:bg-emerald-100 shadow-emerald-200'
-                      }`}
-                    >
-                      <div className={`${dotSizeClass} rounded-full shadow-lg animate-pulse-slow ${
-                        statusColor === 'red' ? 'bg-rose-500 shadow-rose-500/50' :
-                        statusColor === 'blue' ? 'bg-blue-500 shadow-blue-500/50' :
-                        'bg-emerald-500 shadow-emerald-500/50'
-                      }`} />
-                    </button>
-
-                    {selectorProductId === p.id && (
-                        <div className="absolute bottom-full right-0 mb-4 bg-white border border-slate-200 shadow-2xl rounded-2xl p-2 z-[70] min-w-[140px] animate-slide-up flex flex-col gap-1">
-                            <div className="text-[9px] font-black text-slate-400 uppercase tracking-widest px-3 py-1 border-b border-slate-50 mb-1">Change Status</div>
-                            {(['AUTO', 'RED', 'BLUE', 'GREEN'] as const).map(mode => (
-                                <button 
-                                    key={mode}
-                                    onClick={(e) => { e.stopPropagation(); updateProductStatusDirectly(p, mode); }}
-                                    className={`flex items-center justify-between px-3 py-2 rounded-lg text-xs font-bold transition-all text-left group/btn ${
-                                        (p.statusOverride === mode || (mode === 'AUTO' && !p.statusOverride)) 
-                                        ? 'bg-slate-900 text-white' 
-                                        : 'bg-white text-slate-600 hover:bg-slate-50'
-                                    }`}
-                                >
-                                    <span className="flex items-center gap-2">
-                                        <div className={`w-2 h-2 rounded-full ${
-                                            mode === 'RED' ? 'bg-rose-500' : 
-                                            mode === 'BLUE' ? 'bg-blue-500' : 
-                                            mode === 'GREEN' ? 'bg-emerald-500' : 'bg-slate-400'
-                                        }`} />
-                                        {mode === 'AUTO' ? t({ en: 'Auto', zh: '系統自動' }) : mode}
-                                    </span>
-                                    {(p.statusOverride === mode || (mode === 'AUTO' && !p.statusOverride)) && <Check size={12} />}
-                                </button>
-                            ))}
-                            <button 
-                                onClick={(e) => { e.stopPropagation(); setSelectorProductId(null); }}
-                                className="mt-1 px-3 py-1.5 text-[10px] font-bold text-slate-400 hover:text-slate-600 text-center"
-                            >
-                                {t({ en: 'Cancel', zh: '取消' })}
-                            </button>
-                        </div>
+                  <div className="flex items-center gap-3">
+                    {/* SAFETY CERT BADGE */}
+                    {p.safetyCert && (
+                      <div className="relative">
+                        <button 
+                          onMouseEnter={() => setHoveredSafetyId(p.id)}
+                          onMouseLeave={() => setHoveredSafetyId(null)}
+                          className="w-8 h-8 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center border border-blue-100 hover:bg-blue-100 transition-colors shadow-sm"
+                        >
+                          <ShieldCheck size={18} strokeWidth={2.5} />
+                        </button>
+                        
+                        {hoveredSafetyId === p.id && (
+                          <div className="absolute bottom-full right-0 mb-4 w-56 p-4 bg-slate-900 text-white rounded-2xl shadow-2xl z-[60] animate-fade-in border border-slate-700/50 backdrop-blur-md">
+                            <div className="flex items-center gap-2 mb-2 border-b border-white/10 pb-2">
+                                <ShieldCheck size={14} className="text-blue-400" />
+                                <span className="text-[10px] font-black uppercase tracking-widest text-slate-300">{t({ en: 'Safety Certification', zh: '安規認證詳情' })}</span>
+                            </div>
+                            <p className="text-[11px] font-bold text-slate-100 leading-relaxed">{p.safetyCert}</p>
+                          </div>
+                        )}
+                      </div>
                     )}
 
-                    {hoveredLightId === p.id && selectorProductId !== p.id && (
-                        <div className="absolute bottom-full right-0 mb-4 w-64 p-4 bg-slate-900 text-white rounded-2xl shadow-2xl z-[60] animate-fade-in border border-slate-700/50 backdrop-blur-md">
-                        <div className="flex items-center gap-2 mb-3 border-b border-white/10 pb-2">
-                            <Info size={14} className="text-slate-400" />
-                            <span className="text-[10px] font-black uppercase tracking-widest text-slate-300">{t({ en: 'Status Guide', zh: '燈號狀態說明' })}</span>
-                        </div>
-                        <div className="space-y-3">
-                            <div className="flex items-start gap-3">
-                            <div className="w-2.5 h-2.5 rounded-full bg-blue-500 mt-1 shadow-lg shadow-blue-500/40" />
-                            <div className="flex-1">
-                                <div className="text-[11px] font-bold text-white leading-none">{t({ en: 'General ECO', zh: '一般設變中' })}</div>
-                                <div className="text-[10px] text-slate-400 mt-1">{t({ en: 'ECO in progress', zh: '設計變更進行中' })}</div>
-                            </div>
-                            </div>
-                            <div className="flex items-start gap-3">
-                            <div className="w-2.5 h-2.5 rounded-full bg-rose-500 mt-1 shadow-lg shadow-rose-500/40" />
-                            <div className="flex-1">
-                                <div className="text-[11px] font-bold text-white leading-none">{t({ en: 'Major ECO', zh: '重大設變中' })}</div>
-                                <div className="text-[10px] text-slate-400 mt-1">{t({ en: 'Safety or Ergonomic changes', zh: '安全、人因重大設變中' })}</div>
-                            </div>
-                            </div>
-                            <div className="flex items-start gap-3">
-                            <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 mt-1 shadow-lg shadow-emerald-500/40" />
-                            <div className="flex-1">
-                                <div className="text-[11px] font-bold text-white leading-none">{t({ en: 'Ready for Production', zh: '可量產' })}</div>
-                                <div className="text-[10px] text-slate-400 mt-1">{t({ en: 'No pending critical changes', zh: '目前無待處理重大設變' })}</div>
-                            </div>
-                            </div>
-                        </div>
-                        </div>
-                    )}
+                    {/* STATUS LIGHT */}
+                    <div className="relative">
+                      <button 
+                        onClick={(e) => handleStatusLightClick(e, p)}
+                        onMouseEnter={() => handleMouseEnterLight(p.id)}
+                        onMouseLeave={handleMouseLeaveLight}
+                        className={`w-10 h-10 rounded-full flex items-center justify-center transition-all shadow-inner relative z-20 ${
+                          canEditLight ? 'hover:scale-110 active:scale-95' : 'cursor-pointer'
+                        } ${
+                          statusColor === 'red' ? 'bg-rose-50 hover:bg-rose-100 shadow-rose-200' :
+                          statusColor === 'blue' ? 'bg-blue-50 hover:bg-blue-100 shadow-blue-200' :
+                          'bg-emerald-50 hover:bg-emerald-100 shadow-emerald-200'
+                        }`}
+                      >
+                        <div className={`${dotSizeClass} rounded-full shadow-lg animate-pulse-slow ${
+                          statusColor === 'red' ? 'bg-rose-500 shadow-rose-500/50' :
+                          statusColor === 'blue' ? 'bg-blue-500 shadow-blue-500/50' :
+                          'bg-emerald-500 shadow-emerald-500/50'
+                        }`} />
+                      </button>
+
+                      {selectorProductId === p.id && (
+                          <div className="absolute bottom-full right-0 mb-4 bg-white border border-slate-200 shadow-2xl rounded-2xl p-2 z-[70] min-w-[140px] animate-slide-up flex flex-col gap-1">
+                              <div className="text-[9px] font-black text-slate-400 uppercase tracking-widest px-3 py-1 border-b border-slate-50 mb-1">Change Status</div>
+                              {(['AUTO', 'RED', 'BLUE', 'GREEN'] as const).map(mode => (
+                                  <button 
+                                      key={mode}
+                                      onClick={(e) => { e.stopPropagation(); updateProductStatusDirectly(p, mode); }}
+                                      className={`flex items-center justify-between px-3 py-2 rounded-lg text-xs font-bold transition-all text-left group/btn ${
+                                          (p.statusOverride === mode || (mode === 'AUTO' && !p.statusOverride)) 
+                                          ? 'bg-slate-900 text-white' 
+                                          : 'bg-white text-slate-600 hover:bg-slate-50'
+                                      }`}
+                                  >
+                                      <span className="flex items-center gap-2">
+                                          <div className={`w-2 h-2 rounded-full ${
+                                              mode === 'RED' ? 'bg-rose-500' : 
+                                              mode === 'BLUE' ? 'bg-blue-500' : 
+                                              mode === 'GREEN' ? 'bg-emerald-500' : 'bg-slate-400'
+                                          }`} />
+                                          {mode === 'AUTO' ? t({ en: 'Auto', zh: '系統自動' }) : mode}
+                                      </span>
+                                      {(p.statusOverride === mode || (mode === 'AUTO' && !p.statusOverride)) && <Check size={12} />}
+                                  </button>
+                              ))}
+                              <button 
+                                  onClick={(e) => { e.stopPropagation(); setSelectorProductId(null); }}
+                                  className="mt-1 px-3 py-1.5 text-[10px] font-bold text-slate-400 hover:text-slate-600 text-center"
+                              >
+                                  {t({ en: 'Cancel', zh: '取消' })}
+                              </button>
+                          </div>
+                      )}
+
+                      {hoveredLightId === p.id && selectorProductId !== p.id && (
+                          <div className="absolute bottom-full right-0 mb-4 w-64 p-4 bg-slate-900 text-white rounded-2xl shadow-2xl z-[60] animate-fade-in border border-slate-700/50 backdrop-blur-md">
+                          <div className="flex items-center gap-2 mb-3 border-b border-white/10 pb-2">
+                              <Info size={14} className="text-slate-400" />
+                              <span className="text-[10px] font-black uppercase tracking-widest text-slate-300">{t({ en: 'Status Guide', zh: '燈號狀態說明' })}</span>
+                          </div>
+                          <div className="space-y-3">
+                              <div className="flex items-start gap-3">
+                              <div className="w-2.5 h-2.5 rounded-full bg-blue-500 mt-1 shadow-lg shadow-blue-500/40" />
+                              <div className="flex-1">
+                                  <div className="text-[11px] font-bold text-white leading-none">{t({ en: 'General ECO', zh: '一般設變中' })}</div>
+                                  <div className="text-[10px] text-slate-400 mt-1">{t({ en: 'ECO in progress', zh: '設計變更進行中' })}</div>
+                              </div>
+                              </div>
+                              <div className="flex items-start gap-3">
+                              <div className="w-2.5 h-2.5 rounded-full bg-rose-500 mt-1 shadow-lg shadow-rose-500/40" />
+                              <div className="flex-1">
+                                  <div className="text-[11px] font-bold text-white leading-none">{t({ en: 'Major ECO', zh: '重大設變中' })}</div>
+                                  <div className="text-[10px] text-slate-400 mt-1">{t({ en: 'Safety or Ergonomic changes', zh: '安全、人因重大設變中' })}</div>
+                              </div>
+                              </div>
+                              <div className="flex items-start gap-3">
+                              <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 mt-1 shadow-lg shadow-emerald-500/40" />
+                              <div className="flex-1">
+                                  <div className="text-[11px] font-bold text-white leading-none">{t({ en: 'Ready for Production', zh: '可量產' })}</div>
+                                  <div className="text-[10px] text-slate-400 mt-1">{t({ en: 'No pending critical changes', zh: '目前無待處理重大設變' })}</div>
+                              </div>
+                              </div>
+                          </div>
+                          </div>
+                      )}
+                    </div>
                   </div>
                 </div>
               </div>
@@ -487,36 +538,47 @@ export const Dashboard: React.FC<DashboardProps> = ({
                 <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleImageUpload} />
               </div>
 
-              {canEditLight && (
-                <div className="bg-slate-50 p-6 rounded-3xl border-2 border-slate-100">
+              <div className="bg-slate-50 p-6 rounded-3xl border-2 border-slate-100">
                    <div className="flex items-center gap-2 mb-4 text-slate-900">
                       <Settings2 size={18} />
-                      <h3 className="text-sm font-black uppercase tracking-widest">{t({ en: 'Light Status Overrides', zh: '指示燈手動覆蓋' })}</h3>
+                      <h3 className="text-sm font-black uppercase tracking-widest">{t({ en: 'Product Specific Settings', zh: '產品進階屬性設定' })}</h3>
                    </div>
                    <div className="space-y-6">
+                      {/* SAFETY CERT FIELD */}
                       <div>
-                         <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">{t({ en: 'Light Color / Mode', zh: '燈號顏色 / 模式選擇' })}</label>
-                         <div className="grid grid-cols-4 gap-2">
-                            {['AUTO', 'RED', 'BLUE', 'GREEN'].map(mode => (
-                               <button 
-                                 key={mode}
-                                 type="button"
-                                 onClick={() => setFormData({...formData, statusOverride: mode as any})}
-                                 className={`py-2 px-1 rounded-xl text-[10px] font-bold border-2 transition-all ${
-                                    formData.statusOverride === mode 
-                                    ? 'bg-slate-900 text-white border-slate-900' 
-                                    : 'bg-white text-slate-500 border-slate-100 hover:border-slate-300'
-                                 }`}
-                               >
-                                  {mode === 'AUTO' ? t({ en: 'Auto Calc', zh: '系統自動' }) : mode}
-                               </button>
-                            ))}
-                         </div>
+                        <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">{t({ en: 'Safety Certification Status', zh: '安規認證狀態內容' })}</label>
+                        <input 
+                          type="text" 
+                          placeholder={t({ en: 'e.g. CE / Passed 2024-01-01', zh: '例如：CE / 通過日期：2024-01-01' })}
+                          value={formData.safetyCert} 
+                          onChange={(e) => setFormData({...formData, safetyCert: e.target.value})} 
+                          className="w-full px-4 py-2 bg-white border border-slate-200 rounded-xl focus:border-intenza-600 outline-none text-xs font-bold"
+                        />
                       </div>
-                      <p className="text-[10px] text-slate-400 italic">{t({ en: 'Unified size and grid layout controlled by global settings.', zh: '指示燈大小與卡片排列數量由管理者在系統設定中統一控制。' })}</p>
+
+                      {canEditLight && (
+                        <div>
+                          <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">{t({ en: 'Light Color / Mode Overrides', zh: '燈號顏色 / 模式手動覆蓋' })}</label>
+                          <div className="grid grid-cols-4 gap-2">
+                              {['AUTO', 'RED', 'BLUE', 'GREEN'].map(mode => (
+                                <button 
+                                  key={mode}
+                                  type="button"
+                                  onClick={() => setFormData({...formData, statusOverride: mode as any})}
+                                  className={`py-2 px-1 rounded-xl text-[10px] font-bold border-2 transition-all ${
+                                      formData.statusOverride === mode 
+                                      ? 'bg-slate-900 text-white border-slate-900' 
+                                      : 'bg-white text-slate-500 border-slate-100 hover:border-slate-300'
+                                  }`}
+                                >
+                                    {mode === 'AUTO' ? t({ en: 'Auto Calc', zh: '系統自動' }) : mode}
+                                </button>
+                              ))}
+                          </div>
+                        </div>
+                      )}
                    </div>
-                </div>
-              )}
+              </div>
 
               <div className="grid grid-cols-2 gap-8">
                 <div className="col-span-2">
@@ -536,8 +598,8 @@ export const Dashboard: React.FC<DashboardProps> = ({
               </div>
 
               <div>
-                <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-3">Product Description</label>
-                <textarea rows={4} value={formData.description} onChange={(e) => setFormData({...formData, description: e.target.value})} className="w-full px-5 py-3.5 bg-slate-50 border-2 border-slate-100 rounded-2xl focus:border-slate-900 focus:bg-white outline-none transition-all resize-none font-medium" />
+                <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-3">Product Description (Supports Line Breaks for Bullets)</label>
+                <textarea rows={6} value={formData.description} onChange={(e) => setFormData({...formData, description: e.target.value})} className="w-full px-5 py-3.5 bg-slate-50 border-2 border-slate-100 rounded-2xl focus:border-slate-900 focus:bg-white outline-none transition-all resize-none font-medium" placeholder="Each line will appear as a bullet point..." />
               </div>
 
               <div className="flex gap-4 pt-6 sticky bottom-0 bg-white/80 backdrop-blur-md">
