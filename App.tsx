@@ -2,7 +2,7 @@
 import React, { useState, createContext, useCallback, useEffect, lazy, Suspense, useRef } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { MOCK_PRODUCTS, MOCK_SHIPMENTS, MOCK_TESTERS } from './services/mockData';
-import { ProductModel, Language, LocalizedString, Tester, ShipmentData, DEFAULT_SERIES, UserAccount, AppState, TesterGroup } from './types';
+import { ProductModel, Language, LocalizedString, Tester, ShipmentData, DEFAULT_SERIES, UserAccount, AppState, TesterGroup, AuditLog } from './types';
 import { api } from './services/api';
 import { Cloud, CloudCheck, CloudOff, Loader2, CheckCircle, AlertCircle } from 'lucide-react';
 
@@ -46,6 +46,7 @@ const App = () => {
   const [testers, setTesters] = useState<Tester[]>(MOCK_TESTERS);
   const [testerGroups, setTesterGroups] = useState<TesterGroup[]>([]);
   const [users, setUsers] = useState<UserAccount[]>([]);
+  const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
   const [showAiInsights, setShowAiInsights] = useState(false); 
   const [maxHistorySteps, setMaxHistorySteps] = useState(10);
   const [customLogoUrl, setCustomLogoUrl] = useState<string | undefined>(undefined);
@@ -68,11 +69,6 @@ const App = () => {
     return str[language] || str.en || str.zh || '';
   }, [language]);
 
-  const handleLogout = useCallback(() => {
-    setIsLoggedIn(false);
-    setCurrentUser(null);
-  }, []);
-
   const handleSyncToCloud = useCallback(async (isAutoSync = false) => {
     if (isSyncingRef.current || !isLoggedIn || currentUser?.role === 'viewer') return;
     
@@ -80,7 +76,7 @@ const App = () => {
     setSyncStatus('saving');
     
     const state: AppState = {
-      products, seriesList, shipments, testers, testerGroups, users, language, showAiInsights, maxHistorySteps, customLogoUrl, globalStatusLightSize, dashboardColumns, cardAspectRatio, chartColorStyle, analyticsTooltipScale, analyticsTooltipPosition
+      products, seriesList, shipments, testers, testerGroups, users, auditLogs, language, showAiInsights, maxHistorySteps, customLogoUrl, globalStatusLightSize, dashboardColumns, cardAspectRatio, chartColorStyle, analyticsTooltipScale, analyticsTooltipPosition
     };
 
     try {
@@ -95,7 +91,52 @@ const App = () => {
       setErrorDetail(error.message || 'Connection Error');
       isSyncingRef.current = false;
     }
-  }, [products, seriesList, shipments, testers, testerGroups, users, language, showAiInsights, maxHistorySteps, customLogoUrl, globalStatusLightSize, dashboardColumns, cardAspectRatio, chartColorStyle, analyticsTooltipScale, analyticsTooltipPosition, isLoggedIn, currentUser]);
+  }, [products, seriesList, shipments, testers, testerGroups, users, auditLogs, language, showAiInsights, maxHistorySteps, customLogoUrl, globalStatusLightSize, dashboardColumns, cardAspectRatio, chartColorStyle, analyticsTooltipScale, analyticsTooltipPosition, isLoggedIn, currentUser]);
+
+  const handleLogout = useCallback(async () => {
+    if (currentUser) {
+      // Find the last login entry for this user that hasn't logged out yet
+      setAuditLogs(prev => {
+        const logs = [...prev];
+        const lastIndex = [...logs].reverse().findIndex(l => l.username === currentUser.username && !l.logoutTime);
+        if (lastIndex !== -1) {
+            const actualIndex = logs.length - 1 - lastIndex;
+            const now = new Date();
+            const loginDate = new Date(logs[actualIndex].loginTime);
+            const diffMs = now.getTime() - loginDate.getTime();
+            const diffMins = Math.max(1, Math.round(diffMs / 60000));
+            
+            logs[actualIndex] = {
+                ...logs[actualIndex],
+                logoutTime: now.toLocaleString(),
+                durationMinutes: diffMins
+            };
+        }
+        return logs;
+      });
+      
+      // Wait a tiny bit for state to settle then attempt a final sync before closing session
+      // Since handleSyncToCloud checks isLoggedIn, we must sync while still logged in
+      setTimeout(() => {
+        setIsLoggedIn(false);
+        setCurrentUser(null);
+      }, 500);
+    } else {
+      setIsLoggedIn(false);
+      setCurrentUser(null);
+    }
+  }, [currentUser]);
+
+  const handleLoginSuccess = useCallback((user: any) => {
+    const newLog: AuditLog = {
+      id: `log-${Date.now()}`,
+      username: user.username,
+      loginTime: new Date().toLocaleString()
+    };
+    setAuditLogs(prev => [...prev, newLog]);
+    setCurrentUser(user);
+    setIsLoggedIn(true);
+  }, []);
 
   const handleLoadFromCloud = useCallback(async () => {
     if (isSyncingRef.current) return;
@@ -111,6 +152,7 @@ const App = () => {
         if (cloudData.testers) setTesters(cloudData.testers);
         if (cloudData.testerGroups) setTesterGroups(cloudData.testerGroups);
         if (cloudData.users) setUsers(cloudData.users);
+        if (cloudData.auditLogs) setAuditLogs(cloudData.auditLogs);
         if (cloudData.language) setLanguage(cloudData.language);
         if (cloudData.showAiInsights !== undefined) setShowAiInsights(cloudData.showAiInsights);
         if (cloudData.customLogoUrl) setCustomLogoUrl(cloudData.customLogoUrl);
@@ -162,17 +204,14 @@ const App = () => {
       const timer = setTimeout(() => handleSyncToCloud(true), 2000);
       return () => clearTimeout(timer);
     }
-  }, [users, seriesList, products, testers, testerGroups, shipments, customLogoUrl, globalStatusLightSize, dashboardColumns, cardAspectRatio, chartColorStyle, analyticsTooltipScale, analyticsTooltipPosition, isLoggedIn, handleSyncToCloud, currentUser]);
+  }, [users, seriesList, products, testers, testerGroups, shipments, auditLogs, customLogoUrl, globalStatusLightSize, dashboardColumns, cardAspectRatio, chartColorStyle, analyticsTooltipScale, analyticsTooltipPosition, isLoggedIn, handleSyncToCloud, currentUser]);
 
   return (
     <LanguageContext.Provider value={{ language, setLanguage, t }}>
       {!isLoggedIn ? (
         <Login 
           customLogoUrl={customLogoUrl}
-          onLoginSuccess={(user) => {
-            setCurrentUser(user);
-            setIsLoggedIn(true);
-          }} 
+          onLoginSuccess={handleLoginSuccess} 
         />
       ) : (
         <div className="flex min-h-screen bg-slate-50 relative">
@@ -227,7 +266,7 @@ const App = () => {
                           newList[idx] = { ...newList[idx], [language]: name };
                           setSeriesList(newList);
                       }}
-                      currentAppState={{ products, seriesList, shipments, testers, testerGroups, users, language, showAiInsights, maxHistorySteps, customLogoUrl, globalStatusLightSize, dashboardColumns, cardAspectRatio, chartColorStyle, analyticsTooltipScale, analyticsTooltipPosition }}
+                      currentAppState={{ products, seriesList, shipments, testers, testerGroups, users, auditLogs, language, showAiInsights, maxHistorySteps, customLogoUrl, globalStatusLightSize, dashboardColumns, cardAspectRatio, chartColorStyle, analyticsTooltipScale, analyticsTooltipPosition }}
                       onLoadProject={(state) => {
                           if (state.products) setProducts(state.products);
                           if (state.seriesList) setSeriesList(state.seriesList);
@@ -235,6 +274,7 @@ const App = () => {
                           if (state.testers) setTesters(state.testers);
                           if (state.testerGroups) setTesterGroups(state.testerGroups);
                           if (state.users) setUsers(state.users);
+                          if (state.auditLogs) setAuditLogs(state.auditLogs);
                           if (state.customLogoUrl) setCustomLogoUrl(state.customLogoUrl);
                           if (state.globalStatusLightSize) setGlobalStatusLightSize(state.globalStatusLightSize);
                           if (state.dashboardColumns) setDashboardColumns(state.dashboardColumns);
@@ -254,6 +294,7 @@ const App = () => {
                       onAddUser={(u) => setUsers([...users, { ...u, id: Date.now().toString() }])}
                       onUpdateUser={(u) => setUsers(users.map(old => old.id === u.id ? u : old))}
                       onDeleteUser={(id) => setUsers(users.filter(u => u.id !== id))}
+                      onDeleteAuditLogs={() => setAuditLogs([])}
                       onSyncCloud={handleSyncToCloud} onLogout={handleLogout} syncStatus={syncStatus}
                       onResetDashboard={handleResetShipments}
                     />

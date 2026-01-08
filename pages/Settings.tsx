@@ -1,7 +1,7 @@
 
 import React, { useState, useRef, useContext, useEffect, useMemo } from 'react';
-import { Plus, X, Save, Download, Upload, AlertTriangle, CheckCircle, Pencil, History, Sparkles, Shield, User, Trash2, Eye, EyeOff, Key, Database, HardDrive, Info, Cloud, LogOut, Loader2, Link as LinkIcon, Activity, Layers, Image as ImageIcon, RotateCcw, Settings2, LayoutGrid, Maximize, Palette, MousePointer2 } from 'lucide-react';
-import { AppState, LocalizedString, UserAccount } from '../types';
+import { Plus, X, Save, Download, Upload, AlertTriangle, CheckCircle, Pencil, History, Sparkles, Shield, User, Trash2, Eye, EyeOff, Key, Database, HardDrive, Info, Cloud, LogOut, Loader2, Link as LinkIcon, Activity, Layers, Image as ImageIcon, RotateCcw, Settings2, LayoutGrid, Maximize, Palette, MousePointer2, ClipboardList, Clock } from 'lucide-react';
+import { AppState, LocalizedString, UserAccount, AuditLog } from '../types';
 import { LanguageContext } from '../App';
 import { api } from '../services/api';
 
@@ -24,6 +24,7 @@ interface SettingsProps {
   onAddUser: (user: Omit<UserAccount, 'id'>) => void;
   onUpdateUser: (user: UserAccount) => void;
   onDeleteUser: (id: string) => void;
+  onDeleteAuditLogs: () => void;
   onSyncCloud: () => Promise<void>;
   onLogout: () => void;
   syncStatus: 'idle' | 'saving' | 'success' | 'error';
@@ -35,7 +36,7 @@ const Settings: React.FC<SettingsProps> = ({
   currentAppState, onLoadProject, onUpdateMaxHistory, onToggleAiInsights,
   onUpdateLogo, onUpdateStatusLightSize, onUpdateDashboardColumns, onUpdateCardAspectRatio, onUpdateChartColorStyle, 
   onUpdateAnalyticsTooltipScale, onUpdateAnalyticsTooltipPosition,
-  onAddUser, onUpdateUser, onDeleteUser, onSyncCloud, onLogout, syncStatus, onResetDashboard
+  onAddUser, onUpdateUser, onDeleteUser, onDeleteAuditLogs, onSyncCloud, onLogout, syncStatus, onResetDashboard
 }) => {
   const { t, language } = useContext(LanguageContext);
   const [newSeriesName, setNewSeriesName] = useState('');
@@ -110,6 +111,17 @@ const Settings: React.FC<SettingsProps> = ({
     showNotification('專案已導出至本地', 'success');
   };
 
+  const handleExportLogs = () => {
+    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(currentAppState.auditLogs || [], null, 2));
+    const downloadAnchorNode = document.createElement('a');
+    downloadAnchorNode.setAttribute("href", dataStr);
+    downloadAnchorNode.setAttribute("download", `login-audit-logs-${new Date().toISOString().split('T')[0]}.json`);
+    document.body.appendChild(downloadAnchorNode);
+    downloadAnchorNode.click();
+    downloadAnchorNode.remove();
+    showNotification('登入日誌已導出', 'success');
+  };
+
   const handleAddSeries = async () => {
     if (!newSeriesName.trim()) return;
     setIsSubmitting(true);
@@ -177,6 +189,9 @@ const Settings: React.FC<SettingsProps> = ({
     { label: 'BTM-R', value: 'BOTTOM_RIGHT' },
     { label: 'FOLLOW', value: 'FOLLOW' },
   ];
+
+  // Audit Logs (Reverse chronologically)
+  const auditLogs = useMemo(() => [...(currentAppState.auditLogs || [])].reverse(), [currentAppState.auditLogs]);
 
   return (
     <div className="p-8 max-w-5xl mx-auto animate-fade-in space-y-8">
@@ -325,6 +340,63 @@ const Settings: React.FC<SettingsProps> = ({
                         <td className="px-6 py-4 text-right"><div className="flex items-center justify-end gap-1"><button onClick={() => { setEditingUser(user); setIsUserModalOpen(true); }} className="p-2 text-slate-400 hover:text-intenza-600 transition-colors rounded-lg hover:bg-white"><Pencil size={16} /></button><button onClick={() => { if(window.confirm(`確定要刪除用戶 ${user.username}？`)) onDeleteUser(user.id); }} className="p-2 text-slate-400 hover:text-red-600 transition-colors rounded-lg hover:bg-white"><Trash2 size={16} /></button></div></td>
                       </tr>
                     ))}
+                  </tbody>
+                </table>
+             </div>
+          </section>
+
+          {/* NEW SECTION: ACCOUNT SESSION TRACKING LOGS */}
+          <section className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+             <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+                <div className="flex items-center gap-2">
+                    <ClipboardList className="text-indigo-600" size={20} />
+                    <h2 className="text-xl font-bold text-slate-900">帳號登入登出時間追蹤</h2>
+                </div>
+                <div className="flex gap-2">
+                    <button onClick={handleExportLogs} className="bg-white border border-slate-200 text-slate-600 px-4 py-1.5 rounded-lg text-sm font-bold flex items-center gap-2 hover:bg-slate-50 transition-colors">
+                        <Download size={16} /> 導出日誌
+                    </button>
+                    <button onClick={() => { if(window.confirm('確定要清空所有追蹤日誌嗎？此動作無法復原。')) onDeleteAuditLogs(); }} className="bg-white border border-red-100 text-red-500 px-4 py-1.5 rounded-lg text-sm font-bold flex items-center gap-2 hover:bg-red-50 transition-colors">
+                        <Trash2 size={16} /> 清空記錄
+                    </button>
+                </div>
+             </div>
+             <div className="overflow-x-auto max-h-[400px] custom-scrollbar">
+                <table className="w-full text-left relative">
+                  <thead className="bg-slate-50 text-slate-500 text-[10px] font-bold uppercase tracking-wider sticky top-0 z-10 shadow-sm">
+                    <tr>
+                        <th className="px-6 py-4">帳號名稱</th>
+                        <th className="px-6 py-4">登入時間</th>
+                        <th className="px-6 py-4">登出時間</th>
+                        <th className="px-6 py-4">在線時長</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 bg-white">
+                    {auditLogs.length > 0 ? auditLogs.map((log) => (
+                      <tr key={log.id} className="hover:bg-slate-50 transition-colors">
+                        <td className="px-6 py-4">
+                            <div className="flex items-center gap-3">
+                                <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                                <span className="font-bold text-slate-700">{log.username}</span>
+                            </div>
+                        </td>
+                        <td className="px-6 py-4 text-xs text-slate-600 font-medium">{log.loginTime}</td>
+                        <td className="px-6 py-4 text-xs text-slate-400 font-medium italic">
+                            {log.logoutTime || <span className="text-indigo-500 font-black flex items-center gap-1"><Clock size={10} /> Active Session</span>}
+                        </td>
+                        <td className="px-6 py-4">
+                            {log.durationMinutes !== undefined ? (
+                                <span className="px-2 py-1 bg-slate-100 rounded-md text-[10px] font-black text-slate-600 uppercase tracking-tighter">
+                                    {log.durationMinutes} Minutes
+                                </span>
+                            ) : '-'}
+                        </td>
+                      </tr>
+                    )) : (
+                        <tr>
+                            <td colSpan={4} className="px-6 py-12 text-center text-slate-400 italic">目前尚無活動日誌錄。</td>
+                        </tr>
+                    )}
                   </tbody>
                 </table>
              </div>

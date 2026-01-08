@@ -174,6 +174,14 @@ export interface ShipmentData {
 export type ChartViewType = 'PIE' | 'BAR';
 export type DrillLevel = 'CATEGORY' | 'SERIES' | 'SKU' | 'VERSION' | 'BUYER' | 'COUNTRY' | 'CUSTOMER';
 
+export interface AuditLog {
+  id: string;
+  username: string;
+  loginTime: string;
+  logoutTime?: string;
+  durationMinutes?: number;
+}
+
 export interface AppState {
   products: ProductModel[];
   seriesList: LocalizedString[];
@@ -181,6 +189,7 @@ export interface AppState {
   testers: Tester[]; 
   testerGroups?: TesterGroup[];
   users: UserAccount[];
+  auditLogs?: AuditLog[];
   language: Language;
   maxHistorySteps?: number;
   showAiInsights?: boolean;
