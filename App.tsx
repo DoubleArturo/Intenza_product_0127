@@ -63,6 +63,14 @@ const App = () => {
   const isSyncingRef = useRef(false);
   const initialLoadDone = useRef(false);
 
+  // Ref to track the latest state for the window-close handler
+  const latestStateRef = useRef<AppState | null>(null);
+  useEffect(() => {
+    latestStateRef.current = {
+      products, seriesList, shipments, testers, testerGroups, users, auditLogs, language, showAiInsights, maxHistorySteps, customLogoUrl, globalStatusLightSize, dashboardColumns, cardAspectRatio, chartColorStyle, analyticsTooltipScale, analyticsTooltipPosition
+    };
+  }, [products, seriesList, shipments, testers, testerGroups, users, auditLogs, language, showAiInsights, maxHistorySteps, customLogoUrl, globalStatusLightSize, dashboardColumns, cardAspectRatio, chartColorStyle, analyticsTooltipScale, analyticsTooltipPosition]);
+
   const t = useCallback((str: any) => {
     if (!str) return '';
     if (typeof str === 'string') return str;
@@ -116,7 +124,6 @@ const App = () => {
       });
       
       // Wait a tiny bit for state to settle then attempt a final sync before closing session
-      // Since handleSyncToCloud checks isLoggedIn, we must sync while still logged in
       setTimeout(() => {
         setIsLoggedIn(false);
         setCurrentUser(null);
@@ -126,6 +133,47 @@ const App = () => {
       setCurrentUser(null);
     }
   }, [currentUser]);
+
+  // Handle automatic logout when browser tab/window is closed
+  useEffect(() => {
+    const handleBrowserClose = () => {
+      if (!isLoggedIn || !currentUser || !latestStateRef.current) return;
+
+      const currentState = latestStateRef.current;
+      const logs = [...(currentState.auditLogs || [])];
+      const lastIndex = [...logs].reverse().findIndex(l => l.username === currentUser.username && !l.logoutTime);
+      
+      if (lastIndex !== -1) {
+        const actualIndex = logs.length - 1 - lastIndex;
+        const now = new Date();
+        const loginDate = new Date(logs[actualIndex].loginTime);
+        const diffMs = now.getTime() - loginDate.getTime();
+        const diffMins = Math.max(1, Math.round(diffMs / 60000));
+        
+        logs[actualIndex] = {
+          ...logs[actualIndex],
+          logoutTime: now.toLocaleString(),
+          durationMinutes: diffMins
+        };
+
+        const finalState: AppState = {
+          ...currentState,
+          auditLogs: logs
+        };
+
+        // Use keepalive fetch to ensure the sync completes even as tab closes
+        fetch('/api/workspace', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(finalState),
+          keepalive: true
+        });
+      }
+    };
+
+    window.addEventListener('beforeunload', handleBrowserClose);
+    return () => window.removeEventListener('beforeunload', handleBrowserClose);
+  }, [isLoggedIn, currentUser]);
 
   const handleLoginSuccess = useCallback((user: any) => {
     const newLog: AuditLog = {
