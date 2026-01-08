@@ -200,6 +200,7 @@ export interface AppState {
   chartColorStyle?: 'COLORFUL' | 'MONOCHROME' | 'SLATE';
   analyticsTooltipScale?: number;
   analyticsTooltipPosition?: 'TOP_LEFT' | 'TOP_RIGHT' | 'BOTTOM_LEFT' | 'BOTTOM_RIGHT' | 'FOLLOW';
+  evaluationModalYOffset?: number;
 }
 
 export interface Tester {

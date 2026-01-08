@@ -1,6 +1,6 @@
 
 import React, { useState, useRef, useContext, useEffect, useMemo } from 'react';
-import { Plus, X, Save, Download, Upload, AlertTriangle, CheckCircle, Pencil, History, Sparkles, Shield, User, Trash2, Eye, EyeOff, Key, Database, HardDrive, Info, Cloud, LogOut, Loader2, Link as LinkIcon, Activity, Layers, Image as ImageIcon, RotateCcw, Settings2, LayoutGrid, Maximize, Palette, MousePointer2, ClipboardList, Clock, Search, ChevronRight, Filter, UserRound } from 'lucide-react';
+import { Plus, X, Save, Download, Upload, AlertTriangle, CheckCircle, Pencil, History, Sparkles, Shield, User, Trash2, Eye, EyeOff, Key, Database, HardDrive, Info, Cloud, LogOut, Loader2, Link as LinkIcon, Activity, Layers, ImageIcon, RotateCcw, Settings2, LayoutGrid, Maximize, Palette, MousePointer2, ClipboardList, Clock, Search, ChevronRight, Filter, UserRound, ArrowDown } from 'lucide-react';
 import { AppState, LocalizedString, UserAccount, AuditLog } from '../types';
 import { LanguageContext } from '../App';
 import { api } from '../services/api';
@@ -21,6 +21,7 @@ interface SettingsProps {
   onUpdateChartColorStyle: (style: 'COLORFUL' | 'MONOCHROME' | 'SLATE') => void;
   onUpdateAnalyticsTooltipScale?: (scale: number) => void;
   onUpdateAnalyticsTooltipPosition?: (pos: 'TOP_LEFT' | 'TOP_RIGHT' | 'BOTTOM_LEFT' | 'BOTTOM_RIGHT' | 'FOLLOW') => void;
+  onUpdateEvaluationModalYOffset?: (offset: number) => void;
   onAddUser: (user: Omit<UserAccount, 'id'>) => void;
   onUpdateUser: (user: UserAccount) => void;
   onDeleteUser: (id: string) => void;
@@ -35,7 +36,7 @@ const Settings: React.FC<SettingsProps> = ({
   seriesList, onAddSeries, onUpdateSeriesList, onRenameSeries, 
   currentAppState, onLoadProject, onUpdateMaxHistory, onToggleAiInsights,
   onUpdateLogo, onUpdateStatusLightSize, onUpdateDashboardColumns, onUpdateCardAspectRatio, onUpdateChartColorStyle, 
-  onUpdateAnalyticsTooltipScale, onUpdateAnalyticsTooltipPosition,
+  onUpdateAnalyticsTooltipScale, onUpdateAnalyticsTooltipPosition, onUpdateEvaluationModalYOffset,
   onAddUser, onUpdateUser, onDeleteUser, onDeleteAuditLogs, onSyncCloud, onLogout, syncStatus, onResetDashboard
 }) => {
   const { t, language } = useContext(LanguageContext);
@@ -224,7 +225,7 @@ const Settings: React.FC<SettingsProps> = ({
         <div className="lg:col-span-2 space-y-8">
           <section className="bg-white rounded-2xl border border-slate-200 p-8 shadow-sm">
              <div className="flex items-center gap-2 mb-6">
-                 <ImageIcon className="text-intenza-600" size={20} />
+                 <Settings2 className="text-intenza-600" size={20} />
                  <h2 className="text-xl font-bold text-slate-900">品牌視覺配置 (Login Logo)</h2>
              </div>
              <div className="flex flex-col md:flex-row gap-8 items-center">
@@ -302,23 +303,22 @@ const Settings: React.FC<SettingsProps> = ({
 
                 <div className="pt-6 border-t border-slate-100 space-y-6">
                    <div className="flex items-center gap-2 text-slate-900">
-                      <MousePointer2 className="text-intenza-600" size={18} />
-                      <h3 className="text-sm font-black uppercase tracking-widest">Analytics Tooltip Settings</h3>
+                      <Settings2 className="text-intenza-600" size={18} />
+                      <h3 className="text-sm font-black uppercase tracking-widest">Global Layout & Precision</h3>
                    </div>
                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                       <div>
-                         <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Tooltip Scale Factor</label>
+                         <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 flex items-center gap-2"><ArrowDown size={14} /> Evaluation Dialog Y-Offset (px)</label>
                          <div className="flex items-center gap-4">
-                            <input type="range" min="1" max="4" step="0.5" value={currentAppState.analyticsTooltipScale || 2} onChange={(e) => onUpdateAnalyticsTooltipScale?.(Number(e.target.value))} className="flex-1 accent-slate-900" />
-                            <span className="text-xs font-black font-mono bg-slate-100 px-3 py-1 rounded-lg">{(currentAppState.analyticsTooltipScale || 2).toFixed(1)}x</span>
+                            <input type="range" min="0" max="600" step="10" value={currentAppState.evaluationModalYOffset || 100} onChange={(e) => onUpdateEvaluationModalYOffset?.(Number(e.target.value))} className="flex-1 accent-intenza-600" />
+                            <span className="text-xs font-black font-mono bg-slate-100 px-3 py-1 rounded-lg">{(currentAppState.evaluationModalYOffset || 100)}px</span>
                          </div>
                       </div>
                       <div>
-                         <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Tooltip Position</label>
-                         <div className="grid grid-cols-5 gap-1">
-                            {tooltipPositions.map(pos => (
-                               <button key={pos.value} type="button" onClick={() => onUpdateAnalyticsTooltipPosition?.(pos.value as any)} className={`py-2 text-[8px] font-bold border transition-all rounded-lg ${currentAppState.analyticsTooltipPosition === pos.value ? 'bg-slate-900 text-white border-slate-900' : 'bg-white text-slate-500 border-slate-100 hover:border-slate-200'}`}>{pos.label}</button>
-                            ))}
+                         <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 flex items-center gap-2"><MousePointer2 size={14} /> Analytics Tooltip Scale</label>
+                         <div className="flex items-center gap-4">
+                            <input type="range" min="1" max="4" step="0.5" value={currentAppState.analyticsTooltipScale || 2} onChange={(e) => onUpdateAnalyticsTooltipScale?.(Number(e.target.value))} className="flex-1 accent-slate-900" />
+                            <span className="text-xs font-black font-mono bg-slate-100 px-3 py-1 rounded-lg">{(currentAppState.analyticsTooltipScale || 2).toFixed(1)}x</span>
                          </div>
                       </div>
                    </div>
