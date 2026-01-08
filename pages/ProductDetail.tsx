@@ -969,12 +969,18 @@ const ErgoSection = ({ product, testers, testerGroups, onUpdateProduct, highligh
           </button>
 
           {!isFeedbackPanelOpen ? (
-            /* COLLAPSED STATE: SHOW LABEL AND COUNT */
+            /* COLLAPSED STATE: SHOW LABEL AND COUNT OR PLUS IF EMPTY */
             <div 
               onClick={() => setIsFeedbackPanelOpen(true)}
               className="flex-1 flex flex-col items-center py-8 cursor-pointer hover:bg-slate-50 transition-all group"
             >
-              <MessageSquare size={20} className="text-slate-400 group-hover:text-intenza-600 mb-6 transition-colors" />
+              {product.customerFeedback.length === 0 && !isViewer ? (
+                /* SHOW PLUS ICON TO GUIDE USER WHEN EMPTY */
+                <Plus size={20} className="text-intenza-600 mb-6 transition-transform group-hover:scale-125" />
+              ) : (
+                <MessageSquare size={20} className="text-slate-400 group-hover:text-intenza-600 mb-6 transition-colors" />
+              )}
+              
               <div className="flex-1 flex items-center justify-center">
                 <span className="text-[10px] font-black text-slate-300 group-hover:text-slate-500 uppercase tracking-[0.3em] rotate-90 whitespace-nowrap transition-colors">
                   Customer Feedback
@@ -1019,9 +1025,12 @@ const ErgoSection = ({ product, testers, testerGroups, onUpdateProduct, highligh
                             />
                         ))
                     ) : (
-                        /* IMPROVED EMPTY STATE */
-                        <div className="h-full flex flex-col items-center justify-center text-center px-4 py-12">
-                            <div className="w-20 h-20 bg-white rounded-3xl border border-slate-100 flex items-center justify-center text-slate-200 mb-6 shadow-sm">
+                        /* IMPROVED EMPTY STATE - ENTIRE AREA CLICKABLE */
+                        <div 
+                          onClick={() => !isViewer && setFeedbackModalState({ isOpen: true, feedback: null })}
+                          className={`h-full flex flex-col items-center justify-center text-center px-4 py-12 transition-all rounded-3xl border-2 border-dashed border-transparent ${!isViewer ? 'cursor-pointer hover:bg-white hover:border-slate-200 group/empty' : ''}`}
+                        >
+                            <div className="w-20 h-20 bg-white rounded-3xl border border-slate-100 flex items-center justify-center text-slate-200 mb-6 shadow-sm group-hover/empty:scale-110 transition-transform">
                                 <MessageSquare size={40} />
                             </div>
                             <h4 className="text-slate-900 font-bold text-lg mb-2">No Feedback Yet</h4>
@@ -1029,13 +1038,10 @@ const ErgoSection = ({ product, testers, testerGroups, onUpdateProduct, highligh
                               Collect field complaints or market observations here to link them to design changes.
                             </p>
                             {!isViewer && (
-                                <button 
-                                    onClick={() => setFeedbackModalState({ isOpen: true, feedback: null })} 
-                                    className="px-6 py-3 bg-slate-900 text-white rounded-2xl text-xs font-black uppercase tracking-widest shadow-xl shadow-slate-900/20 hover:bg-slate-800 transition-all flex items-center gap-2"
-                                >
+                                <div className="px-6 py-3 bg-slate-900 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-xl shadow-slate-900/20 group-hover/empty:bg-intenza-600 transition-all flex items-center gap-2">
                                     <Plus size={18} strokeWidth={3} />
                                     Add Your First Entry
-                                </button>
+                                </div>
                             )}
                         </div>
                     )}
@@ -1172,7 +1178,7 @@ const EcoModal = ({ isOpen, onClose, onSave, eco, productVersions, product }: an
     const [isUp, setIsUp] = useState(false);
     const fileRef = useRef<HTMLInputElement>(null);
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm"><div className="bg-white rounded-2xl w-full max-w-xl overflow-hidden flex flex-col max-h-[90vh]">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm animate-fade-in"><div className="bg-white rounded-2xl w-full max-w-xl overflow-hidden flex flex-col max-h-[90vh]">
             <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-white sticky top-0 z-10"><h2 className="text-xl font-bold">{eco ? 'Edit ECO' : 'Add New ECO'}</h2><button onClick={onClose} className="p-2 hover:bg-slate-100 rounded-full"><X size={20}/></button></div>
             <form onSubmit={(e) => {e.preventDefault(); onSave(formData);}} className="p-6 space-y-4 overflow-y-auto">
                 <div className="grid grid-cols-2 gap-4">
@@ -1203,7 +1209,7 @@ const TestModal = ({ isOpen, onClose, onSave, test, productVersions }: any) => {
     const [custom, setCustom] = useState(!opts.some(o => o.en === formData.testName.en));
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm"><div className="bg-white rounded-2xl w-full max-w-xl overflow-hidden flex flex-col max-h-[90vh]">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm animate-fade-in"><div className="bg-white rounded-2xl w-full max-w-xl overflow-hidden flex flex-col max-h-[90vh]">
             <div className="p-6 border-b flex justify-between items-center"><h2 className="text-xl font-bold">Edit Test Record</h2><button onClick={onClose}><X/></button></div>
             <form onSubmit={e => {e.preventDefault(); onSave(formData);}} className="p-6 space-y-4 overflow-y-auto">
                 <div className="grid grid-cols-2 gap-4">
@@ -1224,7 +1230,7 @@ const TestModal = ({ isOpen, onClose, onSave, test, productVersions }: any) => {
 };
 
 const NoShipmentModal = ({ onClose, version }: any) => (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm"><div className="bg-white rounded-2xl w-full max-w-sm p-8 text-center"><Ship size={48} className="mx-auto mb-4 text-amber-500"/><h3 className="text-lg font-bold mb-2">No Market Data</h3><p className="text-sm text-slate-500 mb-6">Version {version} has no recorded shipments.</p><button onClick={onClose} className="w-full py-2 bg-slate-900 text-white rounded-lg">Close</button></div></div>
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm animate-fade-in"><div className="bg-white rounded-2xl w-full max-w-sm p-8 text-center"><Ship size={48} className="mx-auto mb-4 text-amber-500"/><h3 className="text-lg font-bold mb-2">No Market Data</h3><p className="text-sm text-slate-500 mb-6">Version {version} has no recorded shipments.</p><button onClick={onClose} className="w-full py-2 bg-slate-900 text-white rounded-lg">Close</button></div></div>
 );
 
 const StartEvaluationModal = ({ onClose, onStartProject, allTesters, testerGroups = [], project, yOffset }: any) => {
@@ -1321,21 +1327,21 @@ const StartEvaluationModal = ({ onClose, onStartProject, allTesters, testerGroup
 const AddTaskModal = ({ onClose, onSave }: any) => {
     const [n, setN] = useState('');
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm"><div className="bg-white rounded-2xl w-full max-w-sm p-6"><h3 className="font-bold mb-4">Add Task</h3><input type="text" value={n} onChange={e=>setN(e.target.value)} className="w-full p-2 border rounded-xl mb-4 focus:ring-2 focus:ring-slate-200 outline-none"/><button onClick={()=>onSave(n)} className="w-full py-3 bg-slate-900 text-white rounded-xl font-bold">Add Task</button><button onClick={onClose} className="w-full py-2 mt-2 text-slate-400 font-medium">Cancel</button></div></div>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm animate-fade-in"><div className="bg-white rounded-2xl w-full max-w-sm p-6"><h3 className="font-bold mb-4">Add Task</h3><input type="text" value={n} onChange={e=>setN(e.target.value)} className="w-full p-2 border rounded-xl mb-4 focus:ring-2 focus:ring-slate-200 outline-none"/><button onClick={()=>onSave(n)} className="w-full py-3 bg-slate-900 text-white rounded-xl font-bold">Add Task</button><button onClick={onClose} className="w-full py-2 mt-2 text-slate-400 font-medium">Cancel</button></div></div>
     );
 };
 
 const SetTaskResultsModal = ({ onClose, onSave, project, testers }: any) => {
     const [ids, setIds] = useState<string[]>([]);
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm"><div className="bg-white rounded-[2rem] w-full max-w-md p-8 shadow-2xl animate-slide-up"><h3 className="text-xl font-black text-slate-900 mb-6 uppercase tracking-tight">Set Quick Results</h3><div className="space-y-3 mb-8 max-h-[40vh] overflow-y-auto custom-scrollbar pr-2">{testers.filter((t:any)=>project.testerIds.includes(t.id)).map((t:any)=><div key={t.id} className="flex items-center justify-between p-3 bg-slate-50 rounded-2xl border border-slate-100"><span className="font-bold text-slate-700">{t.name}</span><div className="flex gap-1.5"><button onClick={()=>setIds([...ids.filter(i=>i!==t.id),t.id])} className={`px-4 py-1.5 rounded-xl text-[10px] font-black uppercase transition-all ${ids.includes(t.id)?'bg-emerald-500 text-white shadow-lg shadow-emerald-500/20':'bg-white text-slate-400 border border-slate-200 hover:border-emerald-300'}`}>PASS</button><button onClick={()=>setIds(ids.filter(i=>i!==t.id))} className={`px-4 py-1.5 rounded-xl text-[10px] font-black uppercase transition-all ${!ids.includes(t.id)?'bg-rose-500 text-white shadow-lg shadow-rose-500/20':'bg-white text-slate-400 border border-slate-200 hover:border-rose-300'}`}>NG</button></div></div>)}</div><button onClick={()=>onSave(ids)} className="w-full py-4 bg-slate-900 text-white rounded-2xl font-black uppercase tracking-widest hover:bg-slate-800 transition-all shadow-xl shadow-slate-900/20">Confirm Results</button></div></div>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm animate-fade-in"><div className="bg-white rounded-[2rem] w-full max-w-md p-8 shadow-2xl animate-slide-up"><h3 className="text-xl font-black text-slate-900 mb-6 uppercase tracking-tight">Set Quick Results</h3><div className="space-y-3 mb-8 max-h-[40vh] overflow-y-auto custom-scrollbar pr-2">{testers.filter((t:any)=>project.testerIds.includes(t.id)).map((t:any)=><div key={t.id} className="flex items-center justify-between p-3 bg-slate-50 rounded-2xl border border-slate-100"><span className="font-bold text-slate-700">{t.name}</span><div className="flex gap-1.5"><button onClick={()=>setIds([...ids.filter(i=>i!==t.id),t.id])} className={`px-4 py-1.5 rounded-xl text-[10px] font-black uppercase transition-all ${ids.includes(t.id)?'bg-emerald-500 text-white shadow-lg shadow-emerald-500/20':'bg-white text-slate-400 border border-slate-200 hover:border-emerald-300'}`}>PASS</button><button onClick={()=>setIds(ids.filter(i=>i!==t.id))} className={`px-4 py-1.5 rounded-xl text-[10px] font-black uppercase transition-all ${!ids.includes(t.id)?'bg-rose-500 text-white shadow-lg shadow-rose-500/20':'bg-white text-slate-400 border border-slate-200 hover:border-rose-300'}`}>NG</button></div></div>)}</div><button onClick={()=>onSave(ids)} className="w-full py-4 bg-slate-900 text-white rounded-2xl font-black uppercase tracking-widest hover:bg-slate-800 transition-all shadow-xl shadow-slate-900/20">Confirm Results</button></div></div>
     );
 };
 
 const SetPassNgModal = ({ onClose, onSet, existingReason }: any) => {
     const [r, setR] = useState(existingReason?.reason?.en || '');
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm"><div className="bg-white rounded-3xl w-full max-w-sm p-8 shadow-2xl animate-slide-up"><h3 className="text-xl font-black text-slate-900 mb-4 uppercase tracking-tight">Set NG Reason</h3><textarea value={r} onChange={e=>setR(e.target.value)} className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-2 focus:ring-intenza-500/20 outline-none text-slate-900 font-medium mb-6 resize-none" rows={4} placeholder="Describe the issue observed... "/><button onClick={()=>onSet({en:r,zh:r},false,[],'ISSUE')} className="w-full py-4 bg-slate-900 text-white rounded-2xl font-black uppercase tracking-widest hover:bg-slate-800 transition-all">Save Reason</button></div></div>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm animate-fade-in"><div className="bg-white rounded-3xl w-full max-w-sm p-8 shadow-2xl animate-slide-up"><h3 className="text-xl font-black text-slate-900 mb-4 uppercase tracking-tight">Set NG Reason</h3><textarea value={r} onChange={e=>setR(e.target.value)} className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-2 focus:ring-intenza-500/20 outline-none text-slate-900 font-medium mb-6 resize-none" rows={4} placeholder="Describe the issue observed... "/><button onClick={()=>onSet({en:r,zh:r},false,[],'ISSUE')} className="w-full py-4 bg-slate-900 text-white rounded-2xl font-black uppercase tracking-widest hover:bg-slate-800 transition-all">Save Reason</button></div></div>
     );
 };
 
