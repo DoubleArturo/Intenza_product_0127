@@ -11,7 +11,11 @@ export const MOCK_TESTERS: Tester[] = [
     imageUrl: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?ixlib=rb-1.2.1&auto=format&fit=crop&w=400&q=80',
     height: 165,
     experienceYears: 4,
-    rating: 5
+    rating: 5,
+    bio: {
+      en: "Master of Sports Science - NTNU\n4 years Professional Fitness Instructor\nHuman Factors Certification (HFES)\nSpecialist in Lower Limb Biomechanics",
+      zh: "運動科學碩士 - 國立台灣師範大學\n4年專業健身教練經驗\n人因工程學會認證專家\n下肢生物力學分析專家"
+    }
   },
   {
     id: 't2',
@@ -20,7 +24,11 @@ export const MOCK_TESTERS: Tester[] = [
     imageUrl: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?ixlib=rb-1.2.1&auto=format&fit=crop&w=400&q=80',
     height: 182,
     experienceYears: 2,
-    rating: 4
+    rating: 4,
+    bio: {
+      en: "B.S. in Mechanical Engineering\nAmateur Triathlete\nFocus on ergonomic grip comfort\n2 years QA testing experience",
+      zh: "機械工程學士\n業餘鐵人三項選手\n專注於握把人體工學舒適度\n2年品質保證測試經驗"
+    }
   },
   {
     id: 't3',
@@ -29,7 +37,11 @@ export const MOCK_TESTERS: Tester[] = [
     imageUrl: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?ixlib=rb-1.2.1&auto=format&fit=crop&w=400&q=80',
     height: 158,
     experienceYears: 6,
-    rating: 5
+    rating: 5,
+    bio: {
+      en: "Doctor of Physical Therapy\nCertified Ergonomist\n6 years Clinical Experience in Sports Rehab\nExpert in seated equipment posture",
+      zh: "物理治療博士\n認證人因工程師\n6年運動康復臨床經驗\n坐姿器材姿勢分析專家"
+    }
   },
   {
     id: 't4',
@@ -38,7 +50,11 @@ export const MOCK_TESTERS: Tester[] = [
     imageUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?ixlib=rb-1.2.1&auto=format&fit=crop&w=400&q=80',
     height: 175,
     experienceYears: 1,
-    rating: 3
+    rating: 3,
+    bio: {
+      en: "Gym Enthusiast\n1 year Fitness Equipment Beta Tester\nProvides valuable subjective user feedback\nAvid runner",
+      zh: "健身愛好者\n1年健身器材測試員\n提供具價值的用戶主觀回饋\n長跑愛好者"
+    }
   }
 ];
 
@@ -119,7 +135,6 @@ export const MOCK_PRODUCTS: ProductModel[] = [
   }
 ];
 
-// Added missing mandatory properties (deliveryNo, item, pi, pn, description, sku, sn, category, series) to match ShipmentData interface
 export const MOCK_SHIPMENTS: ShipmentData[] = [
   { 
     id: 's1', 

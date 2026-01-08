@@ -522,6 +522,9 @@ const TesterCard: React.FC<{ tester: Tester, userRole?: string, aspectRatioClass
   const { t } = useContext(LanguageContext);
   const cardAction = selectionMode ? onSelect : (!isViewer ? onEdit : () => {});
 
+  // Parse bio into an itemized list for clear display
+  const bioLines = t(tester.bio).split('\n').filter(line => line.trim() !== '');
+
   return (
     <div 
       className={`group bg-white rounded-[2rem] border-2 transition-all duration-300 overflow-hidden flex flex-col relative ${isSelected ? 'border-intenza-500 shadow-xl ring-2 ring-intenza-500/20' : 'border-slate-100 shadow-sm hover:shadow-2xl hover:shadow-slate-200/60 hover:border-slate-200'} ${isViewer && !selectionMode ? 'cursor-default' : 'cursor-pointer hover:-translate-y-1'}`} 
@@ -543,27 +546,41 @@ const TesterCard: React.FC<{ tester: Tester, userRole?: string, aspectRatioClass
             </div>
         )}
 
-        {/* Detailed Experience Overlay on Hover */}
-        <div className="absolute inset-0 bg-slate-900/95 backdrop-blur-md p-6 opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-20 flex flex-col pointer-events-none">
-            <div className="flex items-center gap-2 mb-4 border-b border-white/10 pb-3">
+        {/* Detailed Experience Overlay on Hover - Refined Itemized List */}
+        <div className="absolute inset-0 bg-slate-900/98 backdrop-blur-xl p-8 opacity-0 group-hover:opacity-100 transition-all duration-500 z-20 flex flex-col translate-y-4 group-hover:translate-y-0">
+            <div className="flex items-center gap-2 mb-6 border-b border-white/10 pb-4">
                 <GraduationCap size={18} className="text-intenza-500" />
-                <span className="text-xs font-black uppercase tracking-[0.2em] text-white">Subject Experience</span>
+                <span className="text-xs font-black uppercase tracking-[0.2em] text-white">Academic & Career Profile</span>
             </div>
-            <div className="flex-1 overflow-y-auto custom-scrollbar pr-1">
-                {tester.bio?.en || tester.bio?.zh ? (
-                    <p className="text-sm text-slate-300 leading-relaxed font-medium">
-                        {t(tester.bio)}
-                    </p>
+            <div className="flex-1 overflow-y-auto custom-scrollbar pr-3 pointer-events-auto">
+                {bioLines.length > 0 ? (
+                    <ul className="space-y-4">
+                        {bioLines.map((line, idx) => {
+                            // Clean common bullet characters if they exist in raw text
+                            const cleanLine = line.replace(/^[\s\d\.\-\*•]+/, '').trim();
+                            return (
+                                <li key={idx} className="flex items-start gap-3">
+                                    <div className="mt-1.5 w-1.5 h-1.5 rounded-full bg-intenza-500 shrink-0 shadow-[0_0_8px_rgba(246,62,50,0.6)]" />
+                                    <span className="text-sm text-slate-100 leading-relaxed font-medium">
+                                        {cleanLine}
+                                    </span>
+                                </li>
+                            );
+                        })}
+                    </ul>
                 ) : (
-                    <p className="text-xs text-slate-500 italic uppercase tracking-wider mt-4">No academic or professional records provided.</p>
+                    <div className="h-full flex flex-col items-center justify-center text-center opacity-40">
+                         <Info size={32} className="text-slate-500 mb-2" />
+                         <p className="text-xs text-slate-400 italic uppercase tracking-wider font-bold">Comprehensive profile documentation pending.</p>
+                    </div>
                 )}
             </div>
-            <div className="mt-6 pt-4 border-t border-white/10 flex justify-between items-center">
+            <div className="mt-6 pt-5 border-t border-white/10 flex justify-between items-end pointer-events-none">
                 <div className="flex flex-col">
-                    <span className="text-[8px] font-black text-slate-500 uppercase">Verification History</span>
-                    <span className="text-[10px] font-bold text-slate-400">Total Projects: 12</span>
+                    <span className="text-[8px] font-black text-slate-500 uppercase tracking-widest mb-1">Subject Registry Status</span>
+                    <span className="text-[10px] font-bold text-emerald-400 flex items-center gap-1"><CheckCircle size={10} /> Verified Expert Subject</span>
                 </div>
-                <Info size={14} className="text-slate-600" />
+                <div className="text-[10px] font-black text-slate-600 bg-white/5 px-2 py-1 rounded uppercase tracking-tighter">Intenza QA Div.</div>
             </div>
         </div>
 
@@ -607,7 +624,7 @@ const TesterCard: React.FC<{ tester: Tester, userRole?: string, aspectRatioClass
 
         {tester.bio?.en && (
             <p className="text-xs text-slate-400 line-clamp-2 italic mb-6 leading-relaxed flex-1 font-medium">
-               "{t(tester.bio)}"
+               "{t(tester.bio).split('\n')[0]}..."
             </p>
         )}
         
