@@ -62,7 +62,7 @@ const ProductDetail: React.FC<ProductDetailProps> = ({ products, shipments = [],
   const [isFeedbackPanelOpen, setIsFeedbackPanelOpen] = useState(false);
 
   // Lightbox state
-  const [lightboxState, setLightboxState] = useState<{isOpen: boolean, ecoId?: string, imgUrl?: string, imgIndex?: number} | null>(null);
+  const [lightboxState, setLightboxState] = useState<{isOpen: boolean, ecoId?: string, testId?: string, imgUrl?: string, imgIndex?: number} | null>(null);
 
   const isViewer = userRole === 'viewer';
 
@@ -160,22 +160,34 @@ const ProductDetail: React.FC<ProductDetailProps> = ({ products, shipments = [],
       handleCloseEcoModal();
   };
 
-  const handleUpdateImageCaption = async (ecoId: string, imgIndex: number, caption: string) => {
+  const handleUpdateImageCaption = async (id: string, imgIndex: number, caption: string, type: 'eco' | 'test') => {
     if (isViewer) return;
     const now = new Date();
     const timestamp = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
     
-    const updatedHistory = product.designHistory.map(eco => {
-        if (eco.id === ecoId) {
-            const captions = [...(eco as any).imageCaptions || []];
-            // Fill gaps if any
-            while (captions.length <= imgIndex) captions.push('');
-            captions[imgIndex] = caption;
-            return { ...eco, imageCaptions: captions, updatedAt: timestamp };
-        }
-        return eco;
-    });
-    await onUpdateProduct({ ...product, designHistory: updatedHistory });
+    if (type === 'eco') {
+        const updatedHistory = product.designHistory.map(eco => {
+            if (eco.id === id) {
+                const captions = [...(eco as any).imageCaptions || []];
+                while (captions.length <= imgIndex) captions.push('');
+                captions[imgIndex] = caption;
+                return { ...eco, imageCaptions: captions, updatedAt: timestamp };
+            }
+            return eco;
+        });
+        await onUpdateProduct({ ...product, designHistory: updatedHistory });
+    } else {
+        const updatedTests = product.durabilityTests.map(test => {
+            if (test.id === id) {
+                const captions = [...(test as any).attachmentCaptions || []];
+                while (captions.length <= imgIndex) captions.push('');
+                captions[imgIndex] = caption;
+                return { ...test, attachmentCaptions: captions, updatedDate: timestamp.split(' ')[0] };
+            }
+            return test;
+        });
+        await onUpdateProduct({ ...product, durabilityTests: updatedTests });
+    }
   };
 
   const handleDeleteEco = (ecoId: string) => {
@@ -323,7 +335,7 @@ const ProductDetail: React.FC<ProductDetailProps> = ({ products, shipments = [],
                     />
                 </div>
              )}
-             {activeTab === 'LIFE' && <LifeSection product={product} userRole={userRole} onAddTest={() => handleOpenTestModal()} onEditTest={handleOpenTestModal} onDeleteTest={handleDeleteTest} />}
+             {activeTab === 'LIFE' && <LifeSection product={product} userRole={userRole} onAddTest={() => handleOpenTestModal()} onEditTest={handleOpenTestModal} onDeleteTest={handleDeleteTest} onOpenLightbox={(testId: string, url: string, idx: number) => setLightboxState({isOpen: true, testId, imgUrl: url, imgIndex: idx})} />}
           </div>
           <div className="space-y-6 sticky top-40">
              {showAiInsights && <GeminiInsight context={`Analyzing product quality for ${t(product.modelName)} (${product.sku}). Active tab: ${activeTab}`} data={product} />}
@@ -386,8 +398,17 @@ const ProductDetail: React.FC<ProductDetailProps> = ({ products, shipments = [],
         <ImageLightbox 
             imgUrl={lightboxState.imgUrl!} 
             onClose={() => setLightboxState(null)} 
-            caption={(product.designHistory.find(e => e.id === lightboxState.ecoId) as any)?.imageCaptions?.[lightboxState.imgIndex!] || ''}
-            onSaveCaption={(caption: string) => handleUpdateImageCaption(lightboxState.ecoId!, lightboxState.imgIndex!, caption)}
+            caption={
+              lightboxState.ecoId 
+                ? (product.designHistory.find(e => e.id === lightboxState.ecoId) as any)?.imageCaptions?.[lightboxState.imgIndex!] || ''
+                : (product.durabilityTests.find(t => t.id === lightboxState.testId) as any)?.attachmentCaptions?.[lightboxState.imgIndex!] || ''
+            }
+            onSaveCaption={(caption: string) => handleUpdateImageCaption(
+                lightboxState.ecoId || lightboxState.testId!, 
+                lightboxState.imgIndex!, 
+                caption,
+                lightboxState.ecoId ? 'eco' : 'test'
+            )}
             isViewer={isViewer}
         />
       )}
@@ -433,7 +454,7 @@ const ngDecisionTranslations: { [key in NgDecisionStatus]: string } = {
     [NgDecisionStatus.IDEA]: 'LOGGED AS IDEA'
 };
 
-const LifeSection = ({ product, userRole, onAddTest, onEditTest, onDeleteTest }: any) => {
+const LifeSection = ({ product, userRole, onAddTest, onEditTest, onDeleteTest, onOpenLightbox }: any) => {
   const { t } = useContext(LanguageContext);
   const isViewer = userRole === 'viewer';
   return (
@@ -477,7 +498,16 @@ const LifeSection = ({ product, userRole, onAddTest, onEditTest, onDeleteTest }:
             {test.attachmentUrls && test.attachmentUrls.length > 0 && (
                 <div className="flex gap-1 mb-2">
                     {test.attachmentUrls.map((url, i) => (
-                        <div key={i} className="w-6 h-6 rounded border border-slate-100 overflow-hidden"><img src={url} className="w-full h-full object-cover" /></div>
+                        <div 
+                          key={i} 
+                          onClick={() => onOpenLightbox(test.id, url, i)}
+                          className="w-8 h-8 rounded border border-slate-100 overflow-hidden cursor-pointer hover:scale-110 transition-transform relative group/thumb"
+                        >
+                            <img src={url} className="w-full h-full object-cover" />
+                            <div className="absolute inset-0 bg-black/20 opacity-0 group-hover/thumb:opacity-100 flex items-center justify-center">
+                                <Maximize2 size={10} className="text-white" />
+                            </div>
+                        </div>
                     ))}
                 </div>
             )}
@@ -489,7 +519,7 @@ const LifeSection = ({ product, userRole, onAddTest, onEditTest, onDeleteTest }:
                         <span className="text-xs font-black uppercase tracking-widest text-slate-900">Details / Notes</span>
                     </div>
                 </div>
-                <div className="flex-1 overflow-y-auto custom-scrollbar pr-1">
+                <div className="flex-1 overflow-y-auto custom-scrollbar pr-1 pointer-events-auto">
                     {test.details?.en || test.details?.zh ? (
                         <p className="text-sm text-slate-700 leading-relaxed font-medium">{t(test.details)}</p>
                     ) : (
@@ -497,9 +527,14 @@ const LifeSection = ({ product, userRole, onAddTest, onEditTest, onDeleteTest }:
                     )}
                 </div>
                 {test.attachmentUrls && test.attachmentUrls.length > 0 && (
-                    <div className="mt-4 flex gap-2 overflow-x-auto pb-2">
+                    <div className="mt-4 flex gap-2 overflow-x-auto pb-2 pointer-events-auto">
                         {test.attachmentUrls.map((url, i) => (
-                            <img key={i} src={url} className="h-16 w-16 rounded-lg object-cover border border-slate-200 shadow-sm" />
+                            <div key={i} className="relative group/overlay-img flex-shrink-0" onClick={() => onOpenLightbox(test.id, url, i)}>
+                                <img src={url} className="h-16 w-16 rounded-lg object-cover border border-slate-200 shadow-sm cursor-pointer" />
+                                <div className="absolute inset-0 bg-black/20 opacity-0 group-hover/overlay-img:opacity-100 rounded-lg flex items-center justify-center transition-opacity">
+                                    <Maximize2 size={14} className="text-white" />
+                                </div>
+                            </div>
                         ))}
                     </div>
                 )}
@@ -1206,7 +1241,7 @@ const TestModal = ({ isOpen, onClose, onSave, test, productVersions }: any) => {
     const [isUp, setIsUp] = useState(false);
     const fileRef = useRef<HTMLInputElement>(null);
     const opts = [{ en: 'Durability Test', zh: '耐久測試' }, { en: 'Salt Spray Test', zh: '鹽霧測試' }, { en: 'Packaging Test', zh: '包裝測試' }, { en: 'Other Custom Test', zh: '其他自訂測試' }];
-    const [formData, setFormData] = useState<any>(test || { category: 'Mechanical', testName: opts[0], version: '', score: 0, status: TestStatus.PENDING, details: { en: '', zh: '' }, attachmentUrls: [] });
+    const [formData, setFormData] = useState<any>(test || { category: 'Mechanical', testName: opts[0], version: '', score: 0, status: TestStatus.PENDING, details: { en: '', zh: '' }, attachmentUrls: [], attachmentCaptions: [] });
     const [custom, setCustom] = useState(!opts.some(o => o.en === formData.testName.en));
 
     return (
@@ -1223,7 +1258,7 @@ const TestModal = ({ isOpen, onClose, onSave, test, productVersions }: any) => {
                     <div><label className="text-xs font-bold text-slate-500">Progress: {formData.score}%</label><input type="range" min="0" max="100" value={formData.score} onChange={e=>setFormData({...formData,score:Number(e.target.value)})} className="w-full"/></div>
                 </div>
                 <div><label className="text-xs font-bold text-slate-500">Details</label><textarea value={formData.details.en} onChange={e=>setFormData({...formData,details:{en:e.target.value,zh:e.target.value}})} className="w-full p-2 border rounded-lg" rows={3}/></div>
-                <div className="pt-2"><label className="text-xs font-bold text-slate-500">Photos</label><div className="grid grid-cols-4 gap-2">{(formData.attachmentUrls||[]).map((u:any,i:any)=><img key={i} src={u} className="aspect-square object-cover rounded border"/>)}<button type="button" onClick={()=>fileRef.current?.click()} className="aspect-square border-2 border-dashed rounded flex items-center justify-center">{isUp?<Loader2 className="animate-spin"/>:<Plus/>}</button><input ref={fileRef} type="file" multiple accept="image/*" className="hidden" onChange={async e=>{const fs=e.target.files; if(!fs)return; setIsUp(true); try{const urls=await Promise.all(Array.from(fs).map(f=>api.uploadImage(f as File))); setFormData({...formData,attachmentUrls:[...(formData.attachmentUrls||[]),...urls]});}finally{setIsUp(false);}}}/></div></div>
+                <div className="pt-2"><label className="text-xs font-bold text-slate-500">Photos</label><div className="grid grid-cols-4 gap-2">{(formData.attachmentUrls||[]).map((u:any,i:any)=><img key={i} src={u} className="aspect-square object-cover rounded border"/>)}<button type="button" onClick={()=>fileRef.current?.click()} className="aspect-square border-2 border-dashed rounded flex items-center justify-center">{isUp?<Loader2 className="animate-spin"/>:<Plus/>}</button><input ref={fileRef} type="file" multiple accept="image/*" className="hidden" onChange={async e=>{const fs=e.target.files; if(!fs)return; setIsUp(true); try{const urls=await Promise.all(Array.from(fs).map(f=>api.uploadImage(f as File))); setFormData({...formData,attachmentUrls:[...(formData.attachmentUrls||[]),...urls], attachmentCaptions: [...(formData.attachmentCaptions||[]), ...urls.map(()=>'')]});}finally{setIsUp(false);}}}/></div></div>
                 <div className="flex gap-2 pt-4"><button type="button" onClick={onClose} className="flex-1 py-3 text-slate-500">Cancel</button><button type="submit" className="flex-1 py-3 bg-slate-900 text-white rounded-xl">Save</button></div>
             </form>
         </div></div>
