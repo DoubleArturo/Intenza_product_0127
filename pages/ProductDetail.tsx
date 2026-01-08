@@ -1,4 +1,3 @@
-
 import React, { useState, useMemo, useEffect, useContext, useRef } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { 
@@ -185,7 +184,7 @@ const ProductDetail: React.FC<ProductDetailProps> = ({ products, shipments = [],
     }
   };
 
-  // Test Handlers
+  // Test Handlers (Fixing missing handlers for Life/Durability section)
   const handleOpenTestModal = (test: TestResult | null = null) => {
     if (isViewer) return;
     setEditingTest(test);
@@ -805,7 +804,7 @@ const ImageLightbox = ({ imgUrl, onClose, caption, onSaveCaption, isViewer }: an
     const [isEditing, setIsEditing] = useState(false);
 
     return (
-        <div className="fixed inset-0 z-[110] flex items-center justify-center p-8 bg-slate-950/95 backdrop-blur-xl animate-fade-in">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-8 bg-slate-950/95 backdrop-blur-xl animate-fade-in">
             <button onClick={onClose} className="absolute top-8 right-8 p-3 bg-white/10 hover:bg-white/20 text-white rounded-full transition-colors z-20"><X size={32}/></button>
             
             <div className="w-full h-full flex flex-col items-center justify-center gap-8">
@@ -973,7 +972,7 @@ const ErgoSection = ({ product, testers, testerGroups, onUpdateProduct, highligh
       {isStartEvaluationModalOpen && <StartEvaluationModal onClose={() => setStartEvaluationModalOpen(false)} onStartProject={(name: any, ids: any) => { if(editingProject) { onUpdateProduct({...product, ergoProjects: product.ergoProjects.map((p: any) => p.id === editingProject.id ? {...p, name, testerIds: ids} : p)}); } else { onUpdateProduct({...product, ergoProjects: [...product.ergoProjects, {id: `proj-${Date.now()}`, name, date: new Date().toISOString().split('T')[0], testerIds: ids, overallStatus: 'PENDING', tasks: {'Resistance profile':[], 'Experience':[], 'Stroke':[], 'Other Suggestion':[]}, uniqueNgReasons: {}}]}); } setStartEvaluationModalOpen(false); }} allTesters={testers} testerGroups={testerGroups} project={editingProject} />}
       {addTaskModalState.isOpen && <AddTaskModal onClose={() => setAddTaskModalState({isOpen:false})} onSave={(name: any) => { const {projectId, category} = addTaskModalState.context; onUpdateProduct({...product, ergoProjects: product.ergoProjects.map((p: any) => p.id === projectId ? {...p, tasks: {...p.tasks, [category]: [...p.tasks[category], {id: `t-${Date.now()}`, name: {en: name, zh: name}, passTesterIds: [], ngReasons: []}]}} : p)}); setAddTaskModalState({isOpen:false}); }} />}
       {taskResultModalState.isOpen && <SetTaskResultsModal onClose={() => setTaskResultModalState({isOpen:false})} onSave={(ids: any) => { const {projectId, category, taskId} = taskResultModalState.context; onUpdateProduct({...product, ergoProjects: product.ergoProjects.map((p: any) => p.id === projectId ? {...p, tasks: {...p.tasks, [category]: p.tasks[category].map((t: any) => t.id === taskId ? {...t, passTesterIds: ids, ngReasons: p.testerIds.filter((tid: any) => !ids.includes(tid)).map((tid: any) => t.ngReasons.find((r: any) => r.testerId === tid) || {testerId: tid, reason: {en: '', zh: ''}, decisionStatus: 'PENDING'})} : t)}} : p)}); setTaskResultModalState({isOpen:false}); }} context={taskResultModalState.context} project={product.ergoProjects.find((p: any) => p.id === taskResultModalState.context.projectId)} testers={testers} />}
-      {ngReasonModalState.isOpen && <SetPassNgModal onClose={() => setNgReasonModalState({isOpen:false})} onSet={(reason: any, i: any, atts: any, type: any) => { const {projectId, category, taskId, testerId} = ngReasonModalState.context; onUpdateProduct({...product, ergoProjects: product.ergoProjects.map((p: any) => p.id === projectId ? {...p, tasks: {...p.tasks, [category]: p.tasks[category].map((t: any) => t.id === taskId ? {...t, ngReasons: t.ngReasons.map((ng: any) => ng.testerId === testerId ? {...ng, reason, attachmentUrls: atts, decisionStatus: type === 'IDEA' ? 'IDEA' : ng.decisionStatus} : ng)} : t)}} : p)}); setNgReasonModalState({isOpen:false}); }} existingReason={product.ergoProjects.find((p: any) => p.id === ngReasonModalState.context.projectId)?.tasks[ngReasonModalState.context.category].find((t: any) => t.id === ngReasonModalState.context.taskId)?.ngReasons.find((ng: any) => ng.testerId === ngReasonModalState.context.testerId)} />}
+      {ngReasonModalState.isOpen && <SetPassNgModal onClose={() => setNgReasonModalState({isOpen:false})} onSet={(reason: any, isNew: any, atts: any, type: any) => { const {projectId, category, taskId, testerId} = ngReasonModalState.context; onUpdateProduct({...product, ergoProjects: product.ergoProjects.map((p: any) => p.id === projectId ? {...p, tasks: {...p.tasks, [category]: p.tasks[category].map((t: any) => t.id === taskId ? {...t, ngReasons: t.ngReasons.map((ng: any) => ng.testerId === testerId ? {...ng, reason, attachmentUrls: atts, decisionStatus: type === 'IDEA' ? 'IDEA' : ng.decisionStatus} : ng)} : t)}} : p)}); setNgReasonModalState({isOpen:false}); }} existingReason={product.ergoProjects.find((p: any) => p.id === ngReasonModalState.context.projectId)?.tasks[ngReasonModalState.context.category].find((t: any) => t.id === ngReasonModalState.context.taskId)?.ngReasons.find((ng: any) => ng.testerId === ngReasonModalState.context.testerId)} />}
       
       {/* IMPROVED DECISION MODALS WITH BIDIRECTIONAL SYNC */}
       {statusModalState.isOpen && (
@@ -1098,27 +1097,25 @@ const EcoModal = ({ isOpen, onClose, onSave, eco, productVersions, product }: an
     const [isUp, setIsUp] = useState(false);
     const fileRef = useRef<HTMLInputElement>(null);
     return (
-        <div className="fixed inset-0 z-[120] flex justify-center items-start overflow-y-auto p-4 md:p-8 bg-slate-900/50 backdrop-blur-sm animate-fade-in">
-            <div className="bg-white rounded-2xl w-full max-w-xl overflow-hidden flex flex-col my-auto shadow-2xl">
-                <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-white sticky top-0 z-10"><h2 className="text-xl font-bold">{eco ? 'Edit ECO' : 'Add New ECO'}</h2><button onClick={onClose} className="p-2 hover:bg-slate-100 rounded-full"><X size={20}/></button></div>
-                <form onSubmit={(e) => {e.preventDefault(); onSave(formData);}} className="p-6 space-y-4 overflow-y-auto">
-                    <div className="grid grid-cols-2 gap-4">
-                        <div><label className="block text-xs font-bold text-slate-500 uppercase mb-1">ECO Number</label><input type="text" value={formData.ecoNumber} onChange={e => setFormData({...formData, ecoNumber: e.target.value})} className="w-full px-4 py-2 bg-slate-50 border rounded-lg focus:ring-2 outline-none"/></div>
-                        <div><label className="block text-xs font-bold text-slate-500 uppercase mb-1">Version</label><input type="text" list="v-list" value={formData.version} onChange={e => setFormData({...formData, version: e.target.value})} className="w-full px-4 py-2 bg-slate-50 border rounded-lg"/><datalist id="v-list">{productVersions.map((v: string) => <option key={v} value={v} />)}</datalist></div>
-                    </div>
-                    <div><label className="block text-xs font-bold text-slate-500 uppercase mb-1">Description</label><textarea value={formData.description.en} onChange={e => setFormData({...formData, description: {en: e.target.value, zh: e.target.value}})} className="w-full px-4 py-2 bg-slate-50 border rounded-lg" rows={3}/></div>
-                    <div className="grid grid-cols-2 gap-4">
-                        <div><label className="block text-xs font-bold text-slate-500 uppercase mb-1">Status</label><select value={formData.status} onChange={e => setFormData({...formData, status: e.target.value as EcoStatus})} className="w-full px-4 py-2 bg-slate-50 border rounded-lg">{Object.values(EcoStatus).map(s => <option key={s} value={s}>{s}</option>)}</select></div>
-                        <div><label className="block text-xs font-bold text-slate-500 uppercase mb-1">Date</label><input type="date" value={formData.date} onChange={e => setFormData({...formData, date: e.target.value})} className="w-full px-4 py-2 bg-slate-50 border rounded-lg"/></div>
-                    </div>
-                    <div className="pt-4 border-t"><label className="block text-xs font-bold text-slate-500 uppercase mb-3">Media</label><div className="grid grid-cols-4 gap-3">{(formData.imageUrls || []).map((url: string, i: number) => <div key={i} className="relative aspect-square rounded-lg overflow-hidden border bg-slate-100 group">
-                        {isVideo(url)?<div className="w-full h-full flex items-center justify-center"><Video size={20}/></div>:<img src={url} className="w-full h-full object-cover"/>}
-                        <button type="button" onClick={() => setFormData({...formData, imageUrls: formData.imageUrls.filter((_:any,idx:number)=>idx!==i), imageCaptions: (formData.imageCaptions||[]).filter((_:any,idx:number)=>idx!==i)})} className="absolute top-1 right-1 p-1 bg-black/50 text-white rounded-full opacity-0 group-hover:opacity-100"><X size={10}/></button>
-                    </div>)}<button type="button" onClick={() => fileRef.current?.click()} className="aspect-square border-2 border-dashed rounded-lg flex flex-col items-center justify-center text-slate-400 bg-slate-50">{isUp?<Loader2 className="animate-spin"/>:<Plus/>}</button><input ref={fileRef} type="file" multiple accept="image/*,video/*" className="hidden" onChange={async e => {const fs=e.target.files; if(!fs) return; setIsUp(true); try{const urls=await Promise.all(Array.from(fs).map(f=>api.uploadImage(f as File))); setFormData({...formData, imageUrls:[...(formData.imageUrls||[]),...urls], imageCaptions: [...(formData.imageCaptions||[]), ...urls.map(()=>'')]});}finally{setIsUp(false);}}}/></div></div>
-                    <div className="flex gap-3 pt-6"><button type="button" onClick={onClose} className="flex-1 py-3 font-bold text-slate-500">Cancel</button><button type="submit" className="flex-1 py-3 bg-slate-900 text-white font-bold rounded-xl">Save ECO</button></div>
-                </form>
-            </div>
-        </div>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm"><div className="bg-white rounded-2xl w-full max-w-xl overflow-hidden flex flex-col max-h-[90vh]">
+            <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-white sticky top-0 z-10"><h2 className="text-xl font-bold">{eco ? 'Edit ECO' : 'Add New ECO'}</h2><button onClick={onClose} className="p-2 hover:bg-slate-100 rounded-full"><X size={20}/></button></div>
+            <form onSubmit={(e) => {e.preventDefault(); onSave(formData);}} className="p-6 space-y-4 overflow-y-auto">
+                <div className="grid grid-cols-2 gap-4">
+                    <div><label className="block text-xs font-bold text-slate-500 uppercase mb-1">ECO Number</label><input type="text" value={formData.ecoNumber} onChange={e => setFormData({...formData, ecoNumber: e.target.value})} className="w-full px-4 py-2 bg-slate-50 border rounded-lg focus:ring-2 outline-none"/></div>
+                    <div><label className="block text-xs font-bold text-slate-500 uppercase mb-1">Version</label><input type="text" list="v-list" value={formData.version} onChange={e => setFormData({...formData, version: e.target.value})} className="w-full px-4 py-2 bg-slate-50 border rounded-lg"/><datalist id="v-list">{productVersions.map((v: string) => <option key={v} value={v} />)}</datalist></div>
+                </div>
+                <div><label className="block text-xs font-bold text-slate-500 uppercase mb-1">Description</label><textarea value={formData.description.en} onChange={e => setFormData({...formData, description: {en: e.target.value, zh: e.target.value}})} className="w-full px-4 py-2 bg-slate-50 border rounded-lg" rows={3}/></div>
+                <div className="grid grid-cols-2 gap-4">
+                    <div><label className="block text-xs font-bold text-slate-500 uppercase mb-1">Status</label><select value={formData.status} onChange={e => setFormData({...formData, status: e.target.value as EcoStatus})} className="w-full px-4 py-2 bg-slate-50 border rounded-lg">{Object.values(EcoStatus).map(s => <option key={s} value={s}>{s}</option>)}</select></div>
+                    <div><label className="block text-xs font-bold text-slate-500 uppercase mb-1">Date</label><input type="date" value={formData.date} onChange={e => setFormData({...formData, date: e.target.value})} className="w-full px-4 py-2 bg-slate-50 border rounded-lg"/></div>
+                </div>
+                <div className="pt-4 border-t"><label className="block text-xs font-bold text-slate-500 uppercase mb-3">Media</label><div className="grid grid-cols-4 gap-3">{(formData.imageUrls || []).map((url: string, i: number) => <div key={i} className="relative aspect-square rounded-lg overflow-hidden border bg-slate-100 group">
+                    {isVideo(url)?<div className="w-full h-full flex items-center justify-center"><Video size={20}/></div>:<img src={url} className="w-full h-full object-cover"/>}
+                    <button type="button" onClick={() => setFormData({...formData, imageUrls: formData.imageUrls.filter((_:any,idx:number)=>idx!==i), imageCaptions: (formData.imageCaptions||[]).filter((_:any,idx:number)=>idx!==i)})} className="absolute top-1 right-1 p-1 bg-black/50 text-white rounded-full opacity-0 group-hover:opacity-100"><X size={10}/></button>
+                </div>)}<button type="button" onClick={() => fileRef.current?.click()} className="aspect-square border-2 border-dashed rounded-lg flex flex-col items-center justify-center text-slate-400 bg-slate-50">{isUp?<Loader2 className="animate-spin"/>:<Plus/>}</button><input ref={fileRef} type="file" multiple accept="image/*,video/*" className="hidden" onChange={async e => {const fs=e.target.files; if(!fs) return; setIsUp(true); try{const urls=await Promise.all(Array.from(fs).map(f=>api.uploadImage(f as File))); setFormData({...formData, imageUrls:[...(formData.imageUrls||[]),...urls], imageCaptions: [...(formData.imageCaptions||[]), ...urls.map(()=>'')]});}finally{setIsUp(false);}}}/></div></div>
+                <div className="flex gap-3 pt-6"><button type="button" onClick={onClose} className="flex-1 py-3 font-bold text-slate-500">Cancel</button><button type="submit" className="flex-1 py-3 bg-slate-900 text-white font-bold rounded-xl">Save ECO</button></div>
+            </form>
+        </div></div>
     );
 };
 
@@ -1131,30 +1128,28 @@ const TestModal = ({ isOpen, onClose, onSave, test, productVersions }: any) => {
     const [custom, setCustom] = useState(!opts.some(o => o.en === formData.testName.en));
 
     return (
-        <div className="fixed inset-0 z-[120] flex justify-center items-start overflow-y-auto p-4 md:p-8 bg-slate-900/50 backdrop-blur-sm animate-fade-in">
-            <div className="bg-white rounded-2xl w-full max-w-xl overflow-hidden flex flex-col my-auto shadow-2xl">
-                <div className="p-6 border-b flex justify-between items-center"><h2 className="text-xl font-bold">Edit Test Record</h2><button onClick={onClose}><X/></button></div>
-                <form onSubmit={e => {e.preventDefault(); onSave(formData);}} className="p-6 space-y-4 overflow-y-auto">
-                    <div className="grid grid-cols-2 gap-4">
-                        <div><label className="text-xs font-bold text-slate-500">Test Item</label><select value={custom ? 'Other Custom Test' : formData.testName.en} onChange={e => { if(e.target.value==='Other Custom Test'){ setCustom(true); setFormData({...formData, testName:{en:'',zh:''}}); }else{ setCustom(false); const s=opts.find(o=>o.en===e.target.value); if(s)setFormData({...formData,testName:s}); } }} className="w-full p-2 border rounded-lg">{opts.map(o => <option key={o.en} value={o.en}>{language==='en'?o.en:o.zh}</option>)}</select></div>
-                        <div><label className="text-xs font-bold text-slate-500">Version</label><input type="text" list="dl" value={formData.version} onChange={e => setFormData({...formData,version:e.target.value})} className="w-full p-2 border rounded-lg"/><datalist id="dl">{productVersions.map((v:any)=><option key={v} value={v}/>)}</datalist></div>
-                    </div>
-                    {custom && <input type="text" placeholder="Custom name" value={formData.testName.en} onChange={e=>setFormData({...formData,testName:{en:e.target.value,zh:e.target.value}})} className="w-full p-2 border rounded-lg"/>}
-                    <div className="grid grid-cols-2 gap-4">
-                        <div><label className="text-xs font-bold text-slate-500">Status</label><select value={formData.status} onChange={e=>setFormData({...formData,status:e.target.value})} className="w-full p-2 border rounded-lg">{Object.values(TestStatus).map(s=><option key={s} value={s}>{s}</option>)}</select></div>
-                        <div><label className="text-xs font-bold text-slate-500">Progress: {formData.score}%</label><input type="range" min="0" max="100" value={formData.score} onChange={e=>setFormData({...formData,score:Number(e.target.value)})} className="w-full"/></div>
-                    </div>
-                    <div><label className="text-xs font-bold text-slate-500">Details</label><textarea value={formData.details.en} onChange={e=>setFormData({...formData,details:{en:e.target.value,zh:e.target.value}})} className="w-full p-2 border rounded-lg" rows={3}/></div>
-                    <div className="pt-2"><label className="text-xs font-bold text-slate-500">Photos</label><div className="grid grid-cols-4 gap-2">{(formData.attachmentUrls||[]).map((u:any,i:any)=><img key={i} src={u} className="aspect-square object-cover rounded border"/>)}<button type="button" onClick={()=>fileRef.current?.click()} className="aspect-square border-2 border-dashed rounded flex items-center justify-center">{isUp?<Loader2 className="animate-spin"/>:<Plus/>}</button><input ref={fileRef} type="file" multiple accept="image/*" className="hidden" onChange={async e=>{const fs=e.target.files; if(!fs)return; setIsUp(true); try{const urls=await Promise.all(Array.from(fs).map(f=>api.uploadImage(f as File))); setFormData({...formData,attachmentUrls:[...(formData.attachmentUrls||[]),...urls]});}finally{setIsUp(false);}}}/></div></div>
-                    <div className="flex gap-2 pt-4"><button type="button" onClick={onClose} className="flex-1 py-3 text-slate-500">Cancel</button><button type="submit" className="flex-1 py-3 bg-slate-900 text-white rounded-xl">Save</button></div>
-                </form>
-            </div>
-        </div>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm"><div className="bg-white rounded-2xl w-full max-w-xl overflow-hidden flex flex-col max-h-[90vh]">
+            <div className="p-6 border-b flex justify-between items-center"><h2 className="text-xl font-bold">Edit Test Record</h2><button onClick={onClose}><X/></button></div>
+            <form onSubmit={e => {e.preventDefault(); onSave(formData);}} className="p-6 space-y-4 overflow-y-auto">
+                <div className="grid grid-cols-2 gap-4">
+                    <div><label className="text-xs font-bold text-slate-500">Test Item</label><select value={custom ? 'Other Custom Test' : formData.testName.en} onChange={e => { if(e.target.value==='Other Custom Test'){ setCustom(true); setFormData({...formData, testName:{en:'',zh:''}}); }else{ setCustom(false); const s=opts.find(o=>o.en===e.target.value); if(s)setFormData({...formData,testName:s}); } }} className="w-full p-2 border rounded-lg">{opts.map(o => <option key={o.en} value={o.en}>{language==='en'?o.en:o.zh}</option>)}</select></div>
+                    <div><label className="text-xs font-bold text-slate-500">Version</label><input type="text" list="dl" value={formData.version} onChange={e => setFormData({...formData,version:e.target.value})} className="w-full p-2 border rounded-lg"/><datalist id="dl">{productVersions.map((v:any)=><option key={v} value={v}/>)}</datalist></div>
+                </div>
+                {custom && <input type="text" placeholder="Custom name" value={formData.testName.en} onChange={e=>setFormData({...formData,testName:{en:e.target.value,zh:e.target.value}})} className="w-full p-2 border rounded-lg"/>}
+                <div className="grid grid-cols-2 gap-4">
+                    <div><label className="text-xs font-bold text-slate-500">Status</label><select value={formData.status} onChange={e=>setFormData({...formData,status:e.target.value})} className="w-full p-2 border rounded-lg">{Object.values(TestStatus).map(s=><option key={s} value={s}>{s}</option>)}</select></div>
+                    <div><label className="text-xs font-bold text-slate-500">Progress: {formData.score}%</label><input type="range" min="0" max="100" value={formData.score} onChange={e=>setFormData({...formData,score:Number(e.target.value)})} className="w-full"/></div>
+                </div>
+                <div><label className="text-xs font-bold text-slate-500">Details</label><textarea value={formData.details.en} onChange={e=>setFormData({...formData,details:{en:e.target.value,zh:e.target.value}})} className="w-full p-2 border rounded-lg" rows={3}/></div>
+                <div className="pt-2"><label className="text-xs font-bold text-slate-500">Photos</label><div className="grid grid-cols-4 gap-2">{(formData.attachmentUrls||[]).map((u:any,i:any)=><img key={i} src={u} className="aspect-square object-cover rounded border"/>)}<button type="button" onClick={()=>fileRef.current?.click()} className="aspect-square border-2 border-dashed rounded flex items-center justify-center">{isUp?<Loader2 className="animate-spin"/>:<Plus/>}</button><input ref={fileRef} type="file" multiple accept="image/*" className="hidden" onChange={async e=>{const fs=e.target.files; if(!fs)return; setIsUp(true); try{const urls=await Promise.all(Array.from(fs).map(f=>api.uploadImage(f as File))); setFormData({...formData,attachmentUrls:[...(formData.attachmentUrls||[]),...urls]});}finally{setIsUp(false);}}}/></div></div>
+                <div className="flex gap-2 pt-4"><button type="button" onClick={onClose} className="flex-1 py-3 text-slate-500">Cancel</button><button type="submit" className="flex-1 py-3 bg-slate-900 text-white rounded-xl">Save</button></div>
+            </form>
+        </div></div>
     );
 };
 
 const NoShipmentModal = ({ onClose, version }: any) => (
-    <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm"><div className="bg-white rounded-2xl w-full max-w-sm p-8 text-center shadow-2xl"><Ship size={48} className="mx-auto mb-4 text-amber-500"/><h3 className="text-lg font-bold mb-2">No Market Data</h3><p className="text-sm text-slate-500 mb-6">Version {version} has no recorded shipments.</p><button onClick={onClose} className="w-full py-2 bg-slate-900 text-white rounded-lg">Close</button></div></div>
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm"><div className="bg-white rounded-2xl w-full max-w-sm p-8 text-center"><Ship size={48} className="mx-auto mb-4 text-amber-500"/><h3 className="text-lg font-bold mb-2">No Market Data</h3><p className="text-sm text-slate-500 mb-6">Version {version} has no recorded shipments.</p><button onClick={onClose} className="w-full py-2 bg-slate-900 text-white rounded-lg">Close</button></div></div>
 );
 
 const StartEvaluationModal = ({ onClose, onStartProject, allTesters, testerGroups = [], project }: any) => {
@@ -1171,90 +1166,58 @@ const StartEvaluationModal = ({ onClose, onStartProject, allTesters, testerGroup
     };
 
     return (
-        <div className="fixed inset-0 z-[99999] flex justify-center items-end p-0 bg-slate-950/85 backdrop-blur-2xl animate-fade-in overflow-hidden">
-            <div className="bg-white rounded-t-[3.5rem] rounded-b-none w-[99vw] h-[98vh] max-w-[2200px] shadow-[0_32px_128px_rgba(0,0,0,0.4)] flex flex-col border border-white/20 overflow-hidden relative animate-slide-up">
-                {/* Fixed Header - Elevated styling */}
-                <div className="p-8 md:p-10 border-b border-slate-100 flex justify-between items-center bg-white shrink-0">
-                    <div className="flex items-center gap-6">
-                        <div className="w-16 h-16 bg-slate-900 rounded-[1.5rem] flex items-center justify-center text-white shadow-2xl">
-                           <Activity size={32} />
-                        </div>
-                        <div>
-                            <h2 className="text-4xl font-black text-slate-900 tracking-tighter">{project ? 'Project Reconstruction' : 'Initialize Performance Audit'}</h2>
-                            <p className="text-slate-400 text-sm font-bold uppercase tracking-[0.2em] mt-1 opacity-70">Human factors baseline & cohort identification engine</p>
-                        </div>
-                    </div>
-                    <button onClick={onClose} className="p-5 hover:bg-slate-100 rounded-[2rem] transition-all text-slate-300 hover:text-slate-900 hover:rotate-90"><X size={48} strokeWidth={2.5} /></button>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm animate-fade-in">
+            <div className="bg-white rounded-3xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[90vh] shadow-2xl">
+                <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-white sticky top-0 z-10">
+                    <h2 className="text-xl font-black text-slate-900">{project ? 'Edit Project' : 'New Evaluation Project'}</h2>
+                    <button onClick={onClose} className="p-2 hover:bg-slate-100 rounded-full transition-colors"><X size={20}/></button>
                 </div>
                 
-                {/* Ultra-Dense Scrollable Body */}
-                <div className="p-10 md:p-12 space-y-12 overflow-y-auto flex-1 custom-scrollbar bg-slate-50/10">
-                    <div className="flex flex-col lg:flex-row gap-12">
-                        <div className="flex-1">
-                            <label className="block text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] mb-4">Verification Identity</label>
-                            <input type="text" placeholder="Project name / Internal audit ID..." value={name} onChange={e=>setName(e.target.value)} className="w-full p-8 bg-white border-2 border-slate-100 rounded-[2.5rem] shadow-xl focus:ring-12 focus:ring-intenza-500/5 focus:border-intenza-600 outline-none font-black text-3xl transition-all"/>
-                        </div>
-
-                        {testerGroups.length > 0 && (
-                            <div className="lg:w-1/3">
-                                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] mb-4 flex items-center gap-2"><Users2 size={12}/> Quick-Access Presets</label>
-                                <div className="flex flex-wrap gap-2.5">
-                                    {testerGroups.map(g => (
-                                        <button key={g.id} onClick={() => handleApplyGroup(g.id)} className="flex items-center gap-3 px-6 py-3 bg-white border border-slate-200 rounded-full text-xs font-black text-slate-700 hover:border-indigo-500 hover:text-indigo-600 transition-all hover:shadow-lg">
-                                            <span className="w-2 h-2 rounded-full bg-indigo-500" />
-                                            {t(g.name)}
-                                            <span className="opacity-40 font-mono">[{g.testerIds.length}]</span>
-                                        </button>
-                                    ))}
-                                </div>
-                            </div>
-                        )}
+                <div className="p-6 space-y-6 overflow-y-auto flex-1 custom-scrollbar">
+                    <div>
+                        <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Project Name</label>
+                        <input type="text" placeholder="Enter evaluation project title..." value={name} onChange={e=>setName(e.target.value)} className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-intenza-500/20 focus:border-intenza-600 outline-none font-bold"/>
                     </div>
 
-                    <div className="border-t-2 border-slate-50 pt-12">
-                        <div className="flex flex-col md:flex-row md:items-end justify-between gap-10 mb-12">
-                            <div className="flex items-center gap-5">
-                                <div className="p-3.5 bg-intenza-50 rounded-3xl text-intenza-600 shadow-sm"><User size={28} strokeWidth={2.5} /></div>
-                                <div>
-                                    <h3 className="text-sm font-black text-slate-400 uppercase tracking-[0.4em]">Candidate Selection Hub</h3>
-                                    <div className="text-3xl font-black text-slate-900 mt-1">{ids.length} <span className="text-slate-200 uppercase text-xl ml-1 tracking-widest">Active Enrollments</span></div>
-                                </div>
+                    {testerGroups.length > 0 && (
+                        <div>
+                            <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Quick Import Groups</label>
+                            <div className="flex flex-wrap gap-2">
+                                {testerGroups.map(g => (
+                                    <button key={g.id} onClick={() => handleApplyGroup(g.id)} className="flex items-center gap-2 px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-bold text-slate-600 hover:bg-slate-50 hover:border-slate-300 transition-all">
+                                        <Users2 size={12} className="text-indigo-500" />
+                                        {t(g.name)} ({g.testerIds.length})
+                                    </button>
+                                ))}
                             </div>
-                            <div className="relative w-full md:w-[600px]">
-                                <Search size={32} className="absolute left-8 top-1/2 -translate-y-1/2 text-slate-300" />
-                                <input type="text" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} placeholder="Filter subjects by name, height, or gender..." className="w-full pl-20 pr-10 py-7 bg-white border-2 border-slate-100 rounded-[2.5rem] text-xl font-bold shadow-2xl focus:border-intenza-600 outline-none transition-all placeholder:text-slate-200" />
+                        </div>
+                    )}
+
+                    <div>
+                        <div className="flex items-center justify-between mb-3">
+                            <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest">Select Testers ({ids.length})</label>
+                            <div className="relative w-48">
+                                <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                                <input type="text" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} placeholder="Find subject..." className="w-full pl-9 pr-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs focus:border-intenza-600 outline-none" />
                             </div>
                         </div>
                         
-                        {/* Final High-Density Grid */}
-                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 2xl:grid-cols-10 3xl:grid-cols-12 4xl:grid-cols-14 gap-5 pb-12">
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                             {filteredTesters.map((tester: Tester) => {
                                 const isSelected = ids.includes(tester.id);
                                 return (
                                     <div 
                                         key={tester.id} 
                                         onClick={() => isSelected ? setIds(ids.filter(i => i !== tester.id)) : setIds([...ids, tester.id])}
-                                        className={`relative group cursor-pointer transition-all duration-500 rounded-[2.5rem] border-2 overflow-hidden bg-white ${isSelected ? 'border-intenza-600 ring-[16px] ring-intenza-500/5 shadow-3xl -translate-y-3' : 'border-slate-100 hover:border-slate-300 hover:-translate-y-1.5'}`}
+                                        className={`relative group cursor-pointer transition-all duration-300 rounded-2xl border-2 overflow-hidden ${isSelected ? 'border-intenza-600 ring-4 ring-intenza-500/10' : 'border-slate-100 hover:border-slate-200'}`}
                                     >
-                                        <div className="aspect-[3/4] bg-slate-100 relative overflow-hidden">
-                                            <img src={tester.imageUrl} className={`w-full h-full object-cover transition-all duration-1000 ${isSelected ? 'scale-110 blur-[1px]' : 'grayscale-[0.8] group-hover:grayscale-0 group-hover:scale-105'}`} alt={tester.name} />
-                                            {isSelected && (
-                                                <div className="absolute inset-0 bg-intenza-600/40 backdrop-blur-sm flex items-center justify-center animate-fade-in">
-                                                    <CheckCircle size={72} className="text-white drop-shadow-[0_0_32px_rgba(255,255,255,0.8)]" strokeWidth={3} />
-                                                </div>
-                                            )}
-                                            <div className="absolute bottom-4 inset-x-4 flex justify-between items-center z-10">
-                                                <span className="px-3 py-1 rounded-full bg-black/60 backdrop-blur-md text-[8px] font-black text-white uppercase tracking-widest">{tester.gender}</span>
-                                                <span className="px-2 py-1 rounded-md bg-white/20 backdrop-blur-md text-[8px] font-bold text-white border border-white/20">{tester.height}cm</span>
-                                            </div>
+                                        <div className="aspect-square bg-slate-100">
+                                            <img src={tester.imageUrl} className="w-full h-full object-cover grayscale-[0.5] group-hover:grayscale-0 transition-all" alt={tester.name} />
+                                            {isSelected && <div className="absolute inset-0 bg-intenza-600/20 backdrop-blur-[1px] flex items-center justify-center"><CheckCircle size={32} className="text-white drop-shadow-lg" strokeWidth={3} /></div>}
                                         </div>
-                                        <div className="p-5 border-t border-slate-50">
-                                            <div className="text-xs font-black text-slate-900 truncate uppercase tracking-tighter">{tester.name}</div>
-                                            <div className="flex gap-1 mt-2">
-                                               {[...Array(5)].map((_, i) => (
-                                                  <div key={i} className={`w-1 h-1 rounded-full ${i < tester.rating ? 'bg-amber-400' : 'bg-slate-200'}`} />
-                                               ))}
-                                            </div>
+                                        <div className="p-2 bg-white">
+                                            <div className="text-[10px] font-black text-slate-800 truncate">{tester.name}</div>
+                                            <div className="text-[8px] font-bold text-slate-400 uppercase">{tester.height}cm • {tester.gender}</div>
                                         </div>
                                     </div>
                                 );
@@ -1263,30 +1226,14 @@ const StartEvaluationModal = ({ onClose, onStartProject, allTesters, testerGroup
                     </div>
                 </div>
 
-                {/* Sticky High-Impact Footer */}
-                <div className="p-10 md:p-12 border-t-4 border-slate-900 bg-white shrink-0 flex flex-col md:flex-row justify-between items-center gap-12 shadow-[0_-24px_80px_rgba(0,0,0,0.15)] z-20">
-                    <div className="flex gap-16">
-                        <div className="flex flex-col">
-                            <span className="text-[11px] font-black text-slate-300 uppercase tracking-[0.4em] mb-2">Registry Size</span>
-                            <span className="text-5xl font-black text-slate-900 tabular-nums">{ids.length}<span className="text-slate-200 text-2xl ml-2 tracking-normal">subjects</span></span>
-                        </div>
-                        <div className="h-20 w-px bg-slate-100 hidden md:block" />
-                        <div className="flex flex-col">
-                            <span className="text-[11px] font-black text-slate-300 uppercase tracking-[0.4em] mb-2">Auto-Provisioning</span>
-                            <span className="text-5xl font-black text-slate-900 tabular-nums">4<span className="text-slate-200 text-2xl ml-2 tracking-normal">domains</span></span>
-                        </div>
-                    </div>
-                    <div className="flex gap-6 w-full md:w-auto">
-                        <button onClick={onClose} className="flex-1 md:flex-none px-16 py-8 text-slate-400 font-black uppercase tracking-[0.5em] hover:bg-slate-50 hover:text-slate-900 rounded-[2.5rem] transition-all border-2 border-transparent hover:border-slate-200">Cancel</button>
-                        <button 
-                            onClick={()=>onStartProject({en:name,zh:name},ids)} 
-                            disabled={!name || ids.length === 0}
-                            className="flex-1 md:flex-none px-32 py-8 bg-slate-900 text-white rounded-[3rem] font-black uppercase tracking-[0.6em] hover:bg-intenza-600 transition-all shadow-[0_24px_64px_rgba(0,0,0,0.3)] hover:shadow-intenza-500/40 active:scale-[0.97] disabled:opacity-30 disabled:grayscale disabled:cursor-not-allowed flex items-center justify-center gap-6"
-                        >
-                            <PlayCircle size={40} strokeWidth={2.5} />
-                            {project ? 'Sync Configuration' : 'Launch Audit'}
-                        </button>
-                    </div>
+                <div className="p-6 border-t border-slate-100 bg-white sticky bottom-0">
+                    <button 
+                        onClick={()=>onStartProject({en:name,zh:name},ids)} 
+                        disabled={!name || ids.length === 0}
+                        className="w-full py-4 bg-slate-900 text-white rounded-2xl font-black uppercase tracking-widest hover:bg-slate-800 transition-all shadow-xl shadow-slate-900/20 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                        {project ? 'Update Evaluation' : 'Launch Evaluation Project'}
+                    </button>
                 </div>
             </div>
         </div>
@@ -1296,21 +1243,21 @@ const StartEvaluationModal = ({ onClose, onStartProject, allTesters, testerGroup
 const AddTaskModal = ({ onClose, onSave }: any) => {
     const [n, setN] = useState('');
     return (
-        <div className="fixed inset-0 z-[100001] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md animate-fade-in"><div className="bg-white rounded-[2.5rem] w-full max-w-md p-8 shadow-2xl"><h3 className="text-xl font-black mb-6 uppercase tracking-tight">Add Testing Domain</h3><input type="text" value={n} onChange={e=>setN(e.target.value)} placeholder="Enter task name..." className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl mb-6 focus:ring-4 focus:ring-slate-100 outline-none font-bold"/><button onClick={()=>onSave(n)} className="w-full py-5 bg-slate-900 text-white rounded-[1.5rem] font-black uppercase tracking-widest hover:bg-slate-800 transition-all">Create Task</button><button onClick={onClose} className="w-full py-4 mt-2 text-slate-400 font-bold uppercase text-xs tracking-widest hover:text-slate-600">Cancel</button></div></div>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm"><div className="bg-white rounded-2xl w-full max-w-sm p-6"><h3 className="font-bold mb-4">Add Task</h3><input type="text" value={n} onChange={e=>setN(e.target.value)} className="w-full p-2 border rounded-xl mb-4 focus:ring-2 focus:ring-slate-200 outline-none"/><button onClick={()=>onSave(n)} className="w-full py-3 bg-slate-900 text-white rounded-xl font-bold">Add Task</button><button onClick={onClose} className="w-full py-2 mt-2 text-slate-400 font-medium">Cancel</button></div></div>
     );
 };
 
 const SetTaskResultsModal = ({ onClose, onSave, project, testers }: any) => {
     const [ids, setIds] = useState<string[]>([]);
     return (
-        <div className="fixed inset-0 z-[100001] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md animate-fade-in"><div className="bg-white rounded-[3rem] w-full max-w-lg p-10 shadow-2xl animate-slide-up"><h3 className="text-2xl font-black text-slate-900 mb-8 uppercase tracking-tight">Assign Results Batch</h3><div className="space-y-4 mb-10 max-h-[50vh] overflow-y-auto custom-scrollbar pr-4">{testers.filter((t:any)=>project.testerIds.includes(t.id)).map((t:any)=><div key={t.id} className="flex items-center justify-between p-5 bg-slate-50 rounded-[2rem] border border-slate-100"><span className="font-black text-slate-700 uppercase tracking-tight">{t.name}</span><div className="flex gap-2"><button onClick={()=>setIds([...ids.filter(i=>i!==t.id),t.id])} className={`px-6 py-2.5 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all ${ids.includes(t.id)?'bg-emerald-500 text-white shadow-xl shadow-emerald-500/30':'bg-white text-slate-400 border border-slate-200 hover:border-emerald-300'}`}>PASS</button><button onClick={()=>setIds(ids.filter(i=>i!==t.id))} className={`px-6 py-2.5 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all ${!ids.includes(t.id)?'bg-rose-500 text-white shadow-xl shadow-rose-500/30':'bg-white text-slate-400 border border-slate-200 hover:border-rose-300'}`}>NG</button></div></div>)}</div><button onClick={()=>onSave(ids)} className="w-full py-6 bg-slate-900 text-white rounded-[2rem] font-black uppercase tracking-[0.2em] hover:bg-slate-800 transition-all shadow-2xl shadow-slate-900/30">Confirm Batch Entry</button></div></div>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm"><div className="bg-white rounded-[2rem] w-full max-w-md p-8 shadow-2xl animate-slide-up"><h3 className="text-xl font-black text-slate-900 mb-6 uppercase tracking-tight">Set Quick Results</h3><div className="space-y-3 mb-8 max-h-[40vh] overflow-y-auto custom-scrollbar pr-2">{testers.filter((t:any)=>project.testerIds.includes(t.id)).map((t:any)=><div key={t.id} className="flex items-center justify-between p-3 bg-slate-50 rounded-2xl border border-slate-100"><span className="font-bold text-slate-700">{t.name}</span><div className="flex gap-1.5"><button onClick={()=>setIds([...ids.filter(i=>i!==t.id),t.id])} className={`px-4 py-1.5 rounded-xl text-[10px] font-black uppercase transition-all ${ids.includes(t.id)?'bg-emerald-500 text-white shadow-lg shadow-emerald-500/20':'bg-white text-slate-400 border border-slate-200 hover:border-emerald-300'}`}>PASS</button><button onClick={()=>setIds(ids.filter(i=>i!==t.id))} className={`px-4 py-1.5 rounded-xl text-[10px] font-black uppercase transition-all ${!ids.includes(t.id)?'bg-rose-500 text-white shadow-lg shadow-rose-500/20':'bg-white text-slate-400 border border-slate-200 hover:border-rose-300'}`}>NG</button></div></div>)}</div><button onClick={()=>onSave(ids)} className="w-full py-4 bg-slate-900 text-white rounded-2xl font-black uppercase tracking-widest hover:bg-slate-800 transition-all shadow-xl shadow-slate-900/20">Confirm Results</button></div></div>
     );
 };
 
 const SetPassNgModal = ({ onClose, onSet, existingReason }: any) => {
     const [r, setR] = useState(existingReason?.reason?.en || '');
     return (
-        <div className="fixed inset-0 z-[100001] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md animate-fade-in"><div className="bg-white rounded-[3rem] w-full max-w-md p-10 shadow-2xl animate-slide-up"><h3 className="text-2xl font-black text-slate-900 mb-6 uppercase tracking-tight">Record NG Detail</h3><textarea value={r} onChange={e=>setR(e.target.value)} className="w-full p-6 bg-slate-50 border border-slate-200 rounded-[2rem] focus:ring-8 focus:ring-intenza-500/5 outline-none text-slate-900 font-bold mb-8 resize-none shadow-inner" rows={5} placeholder="Describe the mechanical or ergonomic observation... "/><button onClick={()=>onSet({en:r,zh:r},false,[],'ISSUE')} className="w-full py-6 bg-slate-900 text-white rounded-[2rem] font-black uppercase tracking-[0.2em] hover:bg-slate-800 transition-all shadow-xl shadow-slate-900/30">Save Observation</button></div></div>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm"><div className="bg-white rounded-3xl w-full max-w-sm p-8 shadow-2xl animate-slide-up"><h3 className="text-xl font-black text-slate-900 mb-4 uppercase tracking-tight">Set NG Reason</h3><textarea value={r} onChange={e=>setR(e.target.value)} className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-2 focus:ring-intenza-500/20 outline-none text-slate-900 font-medium mb-6 resize-none" rows={4} placeholder="Describe the issue observed... "/><button onClick={()=>onSet({en:r,zh:r},false,[],'ISSUE')} className="w-full py-4 bg-slate-900 text-white rounded-2xl font-black uppercase tracking-widest hover:bg-slate-800 transition-all">Save Reason</button></div></div>
     );
 };
 
@@ -1333,36 +1280,36 @@ const StatusDecisionModal = ({ onClose, onSetStatus, onLinkEco, onCreateEco, act
     };
 
     return (
-        <div className="fixed inset-0 z-[100001] flex items-center justify-center p-4 bg-slate-900/70 backdrop-blur-lg animate-fade-in">
-            <div className="bg-white rounded-[3rem] w-full max-w-sm overflow-hidden shadow-[0_32px_80px_rgba(0,0,0,0.5)] border border-white/20">
-                <div className="p-8 border-b border-slate-100 flex justify-between items-center bg-white">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md animate-fade-in">
+            <div className="bg-white rounded-[2rem] w-full max-w-sm overflow-hidden shadow-2xl">
+                <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-white">
                     <h2 className="text-xl font-black text-slate-900 uppercase tracking-tight">Manage Decision</h2>
-                    <button onClick={onClose} className="p-3 hover:bg-slate-100 rounded-full transition-colors"><X size={20}/></button>
+                    <button onClick={onClose} className="p-2 hover:bg-slate-100 rounded-full transition-colors"><X size={20}/></button>
                 </div>
                 
                 {view === 'MAIN' ? (
-                    <div className="p-8 space-y-4">
+                    <div className="p-6 space-y-3">
                         <button 
                             onClick={() => setView('SELECT_V')} 
-                            className="w-full py-4.5 bg-intenza-600 text-white rounded-[1.5rem] font-black uppercase tracking-widest hover:bg-intenza-700 transition-all shadow-2xl shadow-intenza-600/30 flex items-center justify-center gap-3"
+                            className="w-full py-3.5 bg-intenza-600 text-white rounded-xl font-bold hover:bg-intenza-700 transition-all shadow-lg shadow-intenza-600/20 flex items-center justify-center gap-2"
                         >
-                            <Plus size={20} /> Address via New ECO
+                            <Plus size={18} /> Address via New ECO
                         </button>
                         <button 
                             onClick={() => setView('LINK')} 
-                            className="w-full py-4.5 bg-slate-50 border border-slate-200 text-slate-700 rounded-[1.5rem] font-black uppercase tracking-widest hover:bg-slate-100 transition-all flex items-center justify-center gap-3"
+                            className="w-full py-3.5 bg-slate-50 border border-slate-200 text-slate-700 rounded-xl font-bold hover:bg-slate-100 transition-all flex items-center justify-center gap-2"
                         >
-                            <LinkIcon size={20} /> Link Existing ECO
+                            <LinkIcon size={18} /> Link Existing ECO
                         </button>
                         
-                        <div className="pt-8 border-t border-slate-100">
-                            <label className="block text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] mb-5 text-center">Fast Track Status</label>
+                        <div className="pt-6 border-t border-slate-100">
+                            <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4 text-center">Set Status Directly</label>
                             <div className="flex gap-2">
                                 {(['PENDING', 'DISCUSSION', 'IGNORED'] as const).map(s => (
                                     <button 
                                         key={s} 
                                         onClick={() => onSetStatus(s)} 
-                                        className={`flex-1 py-3 text-[10px] font-black border-2 rounded-2xl transition-all uppercase tracking-widest ${getActiveStyle(s)}`}
+                                        className={`flex-1 py-2 text-[10px] font-black border rounded-xl transition-all uppercase tracking-widest ${getActiveStyle(s)}`}
                                     >
                                         {s}
                                     </button>
@@ -1371,34 +1318,34 @@ const StatusDecisionModal = ({ onClose, onSetStatus, onLinkEco, onCreateEco, act
                         </div>
                     </div>
                 ) : view === 'LINK' ? (
-                    <div className="p-8 space-y-3 max-h-[450px] overflow-y-auto custom-scrollbar">
-                        <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest mb-4">Select Open ECO</h3>
+                    <div className="p-6 space-y-2 max-h-[400px] overflow-y-auto custom-scrollbar">
+                        <h3 className="text-xs font-black text-slate-400 uppercase mb-3">Select Active ECO</h3>
                         {activeEcos.length > 0 ? activeEcos.map((e: any) => (
                             <button 
                                 key={e.id} 
                                 onClick={() => onLinkEco(e.id)} 
-                                className="w-full text-left p-5 border-2 border-slate-50 rounded-[1.5rem] hover:bg-slate-50 hover:border-intenza-300 transition-all group flex items-center justify-between"
+                                className="w-full text-left p-4 border border-slate-100 rounded-2xl hover:bg-slate-50 hover:border-intenza-300 transition-all group flex items-center justify-between"
                             >
                                 <div>
-                                    <div className="text-base font-black text-slate-900">{e.ecoNumber}</div>
-                                    <div className="text-[11px] font-bold text-slate-400 uppercase tracking-widest">{e.version}</div>
+                                    <div className="text-sm font-black text-slate-900">{e.ecoNumber}</div>
+                                    <div className="text-[10px] font-bold text-slate-400">{e.version}</div>
                                 </div>
-                                <ChevronRight size={20} className="text-slate-200 group-hover:text-intenza-500 group-hover:translate-x-1 transition-all" />
+                                <ChevronRight size={16} className="text-slate-300 group-hover:text-intenza-500" />
                             </button>
                         )) : (
-                            <div className="text-center py-12 text-slate-400 italic text-sm bg-slate-50 rounded-3xl">No active ECO pipelines.</div>
+                            <div className="text-center py-8 text-slate-400 italic text-sm">No active ECOs found.</div>
                         )}
-                        <button onClick={() => setView('MAIN')} className="w-full py-4 text-slate-400 font-black uppercase tracking-widest text-[10px] hover:text-slate-900 transition-colors">Back to Options</button>
+                        <button onClick={() => setView('MAIN')} className="w-full py-3 text-slate-500 font-bold hover:underline">Back</button>
                     </div>
                 ) : (
-                    <div className="p-8 space-y-4">
-                        <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest mb-6">Target Batch Version</h3>
-                        <div className="grid grid-cols-2 gap-3">
+                    <div className="p-6 space-y-2">
+                        <h3 className="text-xs font-black text-slate-400 uppercase mb-4">Target Production Version</h3>
+                        <div className="grid grid-cols-2 gap-2">
                             {versions.map((vr: any) => (
                                 <button 
                                     key={vr} 
                                     onClick={() => setV(vr)} 
-                                    className={`py-4 px-3 border-2 rounded-2xl text-xs font-black transition-all ${v === vr ? 'bg-slate-900 text-white border-slate-900 shadow-xl' : 'bg-slate-50 text-slate-600 border-slate-100'}`}
+                                    className={`py-3 px-2 border rounded-xl text-xs font-bold transition-all ${v === vr ? 'bg-slate-900 text-white border-slate-900 shadow-lg shadow-slate-900/10' : 'bg-slate-50 text-slate-600 border-slate-200'}`}
                                 >
                                     {vr}
                                 </button>
@@ -1406,11 +1353,11 @@ const StatusDecisionModal = ({ onClose, onSetStatus, onLinkEco, onCreateEco, act
                         </div>
                         <button 
                             onClick={() => onCreateEco(v)} 
-                            className="w-full py-5 bg-intenza-600 text-white rounded-[1.5rem] font-black uppercase tracking-[0.2em] mt-8 shadow-2xl shadow-intenza-600/30 hover:bg-intenza-700 active:scale-[0.98] transition-all"
+                            className="w-full py-4 bg-intenza-600 text-white rounded-2xl font-black uppercase tracking-widest mt-6 shadow-xl shadow-intenza-600/20 hover:bg-intenza-700 active:scale-[0.98] transition-all"
                         >
-                            Initialize ECO
+                            Confirm & Create
                         </button>
-                        <button onClick={() => setView('MAIN')} className="w-full py-4 text-slate-400 font-black uppercase tracking-widest text-[10px] hover:text-slate-900 transition-colors">Go Back</button>
+                        <button onClick={() => setView('MAIN')} className="w-full py-2 text-slate-400 font-bold hover:underline">Cancel</button>
                     </div>
                 )}
             </div>
@@ -1421,7 +1368,7 @@ const StatusDecisionModal = ({ onClose, onSetStatus, onLinkEco, onCreateEco, act
 const FeedbackModal = ({ onClose, onSave, feedback }: any) => {
     const [d, setD] = useState(feedback || { content: {en:'',zh:''}, source: '', category: 'Experience', date: new Date().toISOString().split('T')[0] });
     return (
-        <div className="fixed inset-0 z-[100001] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md animate-fade-in"><div className="bg-white rounded-[2.5rem] w-full max-w-md p-8 shadow-2xl"><h2 className="font-black text-xl mb-6 uppercase tracking-tight">Record Customer Voice</h2><input type="text" placeholder="Reporting Source (e.g. Anytime Fitness)" value={d.source} onChange={e=>setD({...d,source:e.target.value})} className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl mb-4 font-bold"/><textarea placeholder="Describe the feedback in detail..." value={d.content.en} onChange={e=>setD({...d,content:{en:e.target.value,zh:e.target.value}})} className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl mb-6 font-medium resize-none shadow-inner" rows={4}/><button onClick={()=>onSave(d)} className="w-full py-5 bg-slate-900 text-white rounded-[1.5rem] font-black uppercase tracking-widest shadow-xl">Commit Feedback</button></div></div>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm"><div className="bg-white rounded-2xl w-full max-w-md p-6"><h2 className="font-bold mb-4">Feedback</h2><input type="text" placeholder="Source" value={d.source} onChange={e=>setD({...d,source:e.target.value})} className="w-full p-2 border rounded mb-2"/><textarea placeholder="Content" value={d.content.en} onChange={e=>setD({...d,content:{en:e.target.value,zh:e.target.value}})} className="w-full p-2 border rounded mb-4" rows={3}/><button onClick={()=>onSave(d)} className="w-full py-2 bg-slate-900 text-white rounded">Save</button></div></div>
     );
 };
 
@@ -1440,36 +1387,36 @@ const FeedbackStatusDecisionModal = ({ onClose, onUpdateStatus, onLinkEco, onCre
     };
 
     return (
-        <div className="fixed inset-0 z-[100001] flex items-center justify-center p-4 bg-slate-900/70 backdrop-blur-lg animate-fade-in">
-            <div className="bg-white rounded-[3rem] w-full max-w-sm overflow-hidden shadow-[0_32px_80px_rgba(0,0,0,0.5)] border border-white/20">
-                <div className="p-8 border-b border-slate-100 flex justify-between items-center bg-white">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md animate-fade-in">
+            <div className="bg-white rounded-[2rem] w-full max-w-sm overflow-hidden shadow-2xl">
+                <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-white">
                     <h2 className="text-xl font-black text-slate-900 uppercase tracking-tight">Manage Feedback</h2>
-                    <button onClick={onClose} className="p-3 hover:bg-slate-100 rounded-full transition-colors"><X size={20}/></button>
+                    <button onClick={onClose} className="p-2 hover:bg-slate-100 rounded-full transition-colors"><X size={20}/></button>
                 </div>
                 
                 {view === 'MAIN' ? (
-                    <div className="p-8 space-y-4">
+                    <div className="p-6 space-y-3">
                         <button 
                             onClick={() => setView('SELECT_V')} 
-                            className="w-full py-4.5 bg-intenza-600 text-white rounded-[1.5rem] font-black uppercase tracking-widest hover:bg-intenza-700 transition-all shadow-2xl shadow-intenza-600/30 flex items-center justify-center gap-3"
+                            className="w-full py-3.5 bg-intenza-600 text-white rounded-xl font-bold hover:bg-intenza-700 transition-all shadow-lg shadow-intenza-600/20 flex items-center justify-center gap-2"
                         >
-                            <Plus size={20} /> Convert to ECO
+                            <Plus size={18} /> Address via New ECO
                         </button>
                         <button 
                             onClick={() => setView('LINK')} 
-                            className="w-full py-4.5 bg-slate-50 border border-slate-200 text-slate-700 rounded-[1.5rem] font-black uppercase tracking-widest hover:bg-slate-100 transition-all flex items-center justify-center gap-3"
+                            className="w-full py-3.5 bg-slate-50 border border-slate-200 text-slate-700 rounded-xl font-bold hover:bg-slate-100 transition-all flex items-center justify-center gap-2"
                         >
-                            <LinkIcon size={20} /> Attach to ECO
+                            <LinkIcon size={18} /> Link Existing ECO
                         </button>
                         
-                        <div className="pt-8 border-t border-slate-100">
-                            <label className="block text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] mb-5 text-center">Fast Track Status</label>
+                        <div className="pt-6 border-t border-slate-100">
+                            <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4 text-center">Set Status Directly</label>
                             <div className="flex gap-2">
                                 {(['PENDING', 'DISCUSSION', 'IGNORED'] as const).map(s => (
                                     <button 
                                         key={s} 
                                         onClick={() => onUpdateStatus(feedback.id, s)} 
-                                        className={`flex-1 py-3 text-[10px] font-black border-2 rounded-2xl transition-all uppercase tracking-widest ${getActiveStyle(s)}`}
+                                        className={`flex-1 py-2 text-[10px] font-black border rounded-xl transition-all uppercase tracking-widest ${getActiveStyle(s)}`}
                                     >
                                         {s}
                                     </button>
@@ -1478,34 +1425,34 @@ const FeedbackStatusDecisionModal = ({ onClose, onUpdateStatus, onLinkEco, onCre
                         </div>
                     </div>
                 ) : view === 'LINK' ? (
-                    <div className="p-8 space-y-3 max-h-[450px] overflow-y-auto custom-scrollbar">
-                        <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest mb-4">Select Target ECO</h3>
+                    <div className="p-6 space-y-2 max-h-[400px] overflow-y-auto custom-scrollbar">
+                        <h3 className="text-xs font-black text-slate-400 uppercase mb-3">Select Active ECO</h3>
                         {activeEcos.length > 0 ? activeEcos.map((e: any) => (
                             <button 
                                 key={e.id} 
                                 onClick={() => onLinkEco(e.id)} 
-                                className="w-full text-left p-5 border-2 border-slate-50 rounded-[1.5rem] hover:bg-slate-50 hover:border-intenza-300 transition-all group flex items-center justify-between"
+                                className="w-full text-left p-4 border border-slate-100 rounded-2xl hover:bg-slate-50 hover:border-intenza-300 transition-all group flex items-center justify-between"
                             >
                                 <div>
-                                    <div className="text-base font-black text-slate-900">{e.ecoNumber}</div>
-                                    <div className="text-[11px] font-bold text-slate-400 uppercase tracking-widest">{e.version}</div>
+                                    <div className="text-sm font-black text-slate-900">{e.ecoNumber}</div>
+                                    <div className="text-[10px] font-bold text-slate-400">{e.version}</div>
                                 </div>
-                                <ChevronRight size={20} className="text-slate-200 group-hover:text-intenza-500 group-hover:translate-x-1 transition-all" />
+                                <ChevronRight size={16} className="text-slate-300 group-hover:text-intenza-500" />
                             </button>
                         )) : (
-                            <div className="text-center py-12 text-slate-400 italic text-sm bg-slate-50 rounded-3xl">No available ECO pipelines.</div>
+                            <div className="text-center py-8 text-slate-400 italic text-sm">No active ECOs found.</div>
                         )}
-                        <button onClick={() => setView('MAIN')} className="w-full py-4 text-slate-400 font-black uppercase tracking-widest text-[10px] hover:text-slate-900 transition-colors">Go Back</button>
+                        <button onClick={() => setView('MAIN')} className="w-full py-3 text-slate-500 font-bold hover:underline">Back</button>
                     </div>
                 ) : (
-                    <div className="p-8 space-y-4">
-                        <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest mb-6">Target Batch Version</h3>
-                        <div className="grid grid-cols-2 gap-3">
+                    <div className="p-6 space-y-2">
+                        <h3 className="text-xs font-black text-slate-400 uppercase mb-4">Target Production Version</h3>
+                        <div className="grid grid-cols-2 gap-2">
                             {versions.map((vr: any) => (
                                 <button 
                                     key={vr} 
                                     onClick={() => setV(vr)} 
-                                    className={`py-4 px-3 border-2 rounded-2xl text-xs font-black transition-all ${v === vr ? 'bg-slate-900 text-white border-slate-900 shadow-xl' : 'bg-slate-50 text-slate-600 border-slate-100'}`}
+                                    className={`py-3 px-2 border rounded-xl text-xs font-bold transition-all ${v === vr ? 'bg-slate-900 text-white border-slate-900 shadow-lg shadow-slate-900/10' : 'bg-slate-50 text-slate-600 border-slate-200'}`}
                                 >
                                     {vr}
                                 </button>
@@ -1513,11 +1460,11 @@ const FeedbackStatusDecisionModal = ({ onClose, onUpdateStatus, onLinkEco, onCre
                         </div>
                         <button 
                             onClick={() => onCreateEco(v)} 
-                            className="w-full py-5 bg-intenza-600 text-white rounded-[1.5rem] font-black uppercase tracking-[0.2em] mt-8 shadow-2xl shadow-intenza-600/30 hover:bg-intenza-700 active:scale-[0.98] transition-all"
+                            className="w-full py-4 bg-intenza-600 text-white rounded-2xl font-black uppercase tracking-widest mt-6 shadow-xl shadow-intenza-600/20 hover:bg-intenza-700 active:scale-[0.98] transition-all"
                         >
-                            Confirm ECO
+                            Confirm & Create
                         </button>
-                        <button onClick={() => setView('MAIN')} className="w-full py-4 text-slate-400 font-black uppercase tracking-widest text-[10px] hover:text-slate-900 transition-colors">Go Back</button>
+                        <button onClick={() => setView('MAIN')} className="w-full py-2 text-slate-400 font-bold hover:underline">Cancel</button>
                     </div>
                 )}
             </div>
