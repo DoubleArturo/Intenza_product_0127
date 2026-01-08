@@ -55,14 +55,14 @@ const Sidebar: React.FC<SidebarProps> = ({ onLogout, userRole, onPush, onPull, s
         <NavLink to="/analytics" className={linkClass}>
           <div className="flex-shrink-0"><BarChart2 size={22} /></div>
           <span className={`font-medium transition-opacity duration-300 ${isExpanded ? 'opacity-100' : 'opacity-0 hidden'}`}>
-            {t({ en: 'Product Dashboard', zh: '產品儀表板' })}
+            {t({ en: 'Product Info. Dashboard', zh: '產品資訊儀表板' })}
           </span>
         </NavLink>
 
         <NavLink to="/" className={linkClass}>
           <div className="flex-shrink-0"><LayoutDashboard size={22} /></div>
           <span className={`font-medium transition-opacity duration-300 ${isExpanded ? 'opacity-100' : 'opacity-0 hidden'}`}>
-            {t({ en: 'Product Design', zh: '產品設計' })}
+            {t({ en: 'Product Design Status', zh: '產品設計狀態' })}
           </span>
         </NavLink>
       </nav>

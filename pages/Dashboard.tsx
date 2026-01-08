@@ -253,7 +253,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
     <div className="p-8 w-full mx-auto relative">
       <header className="mb-8 flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-200 pb-8">
         <div>
-          <h1 className="text-4xl font-black text-slate-900 tracking-tight">{t({ en: 'Product Portfolio', zh: '產品組合'})}</h1>
+          <h1 className="text-4xl font-black text-slate-900 tracking-tight">{t({ en: 'Product Design Status', zh: '產品設計狀態'})}</h1>
           <p className="text-slate-500 mt-2 font-medium">{t({ en: 'Manage design quality across all series.', zh: '管理所有系列的設計品質。'})}</p>
         </div>
         {!isViewer && !isUploader && (

@@ -345,7 +345,7 @@ const Analytics: React.FC<AnalyticsProps> = ({
     <div className="p-8 w-full min-h-screen bg-slate-50/30">
       <header className="mb-10 flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-200 pb-8">
         <div>
-          <h1 className="text-4xl font-black text-slate-900 tracking-tight">Product Dashboard</h1>
+          <h1 className="text-4xl font-black text-slate-900 tracking-tight">Product Info. Dashboard</h1>
           <p className="text-slate-500 mt-2 font-medium">Quality metrics and shipment analytics at a glance.</p>
         </div>
         {canImport && (
@@ -353,7 +353,7 @@ const Analytics: React.FC<AnalyticsProps> = ({
             <button onClick={() => fileInputRef.current?.click()} className="flex items-center gap-2 bg-white border-2 border-slate-100 text-slate-700 px-6 py-3 rounded-2xl font-black text-sm shadow-sm hover:border-slate-900 transition-all active:scale-95">
               <FileSpreadsheet size={20} className="text-emerald-500" /> Import Data
             </button>
-            <input ref={fileInputRef} type="file" accept=".xlsx,.xls" className="hidden" onChange={handleFileUpload} />
+            <input type="file" ref={fileInputRef} accept=".xlsx,.xls" className="hidden" onChange={handleFileUpload} />
           </div>
         )}
       </header>
