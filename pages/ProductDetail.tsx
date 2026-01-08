@@ -1171,68 +1171,69 @@ const StartEvaluationModal = ({ onClose, onStartProject, allTesters, testerGroup
     };
 
     return (
-        <div className="fixed inset-0 z-[120] flex justify-center items-start overflow-y-auto p-4 md:p-8 bg-slate-900/50 backdrop-blur-sm animate-fade-in">
-            <div className="bg-white rounded-3xl w-full max-w-7xl overflow-hidden flex flex-col my-auto shadow-2xl h-[92vh]">
-                <div className="p-8 border-b border-slate-100 flex justify-between items-center bg-white sticky top-0 z-10">
+        <div className="fixed inset-0 z-[120] flex justify-center items-center p-4 md:p-8 bg-slate-900/60 backdrop-blur-sm animate-fade-in overflow-hidden">
+            <div className="bg-white rounded-[2.5rem] w-[95vw] max-w-[1800px] h-[92vh] overflow-hidden flex flex-col shadow-2xl border border-white/20">
+                <div className="p-8 border-b border-slate-100 flex justify-between items-center bg-white shrink-0">
                     <div>
-                        <h2 className="text-2xl font-black text-slate-900">{project ? 'Edit Project' : 'Launch New Evaluation Project'}</h2>
-                        <p className="text-slate-400 text-xs font-bold uppercase tracking-widest mt-1">Configure verification scope and test group</p>
+                        <h2 className="text-3xl font-black text-slate-900 tracking-tight">{project ? 'Edit Project Definition' : 'Launch New Evaluation Project'}</h2>
+                        <p className="text-slate-400 text-sm font-bold uppercase tracking-widest mt-1">Configure verification scope and test cohort baseline</p>
                     </div>
-                    <button onClick={onClose} className="p-3 hover:bg-slate-100 rounded-full transition-colors"><X size={24} strokeWidth={3} /></button>
+                    <button onClick={onClose} className="p-4 hover:bg-slate-100 rounded-2xl transition-colors"><X size={32} strokeWidth={3} /></button>
                 </div>
                 
-                <div className="p-8 space-y-10 overflow-y-auto flex-1 custom-scrollbar bg-slate-50/30">
-                    <div className="max-w-3xl">
-                        <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Project Title</label>
-                        <input type="text" placeholder="Enter evaluation project title (e.g., Q1 Ergo Audit)..." value={name} onChange={e=>setName(e.target.value)} className="w-full p-4 bg-white border border-slate-200 rounded-2xl shadow-sm focus:ring-4 focus:ring-intenza-500/10 focus:border-intenza-600 outline-none font-bold text-lg"/>
+                <div className="p-10 space-y-12 overflow-y-auto flex-1 custom-scrollbar bg-slate-50/20">
+                    <div className="max-w-4xl">
+                        <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-3">Project Title & Identification</label>
+                        <input type="text" placeholder="Enter evaluation project title (e.g., Q1 Ergo Audit - Resistance Profile)..." value={name} onChange={e=>setName(e.target.value)} className="w-full p-5 bg-white border border-slate-200 rounded-2xl shadow-sm focus:ring-4 focus:ring-intenza-500/10 focus:border-intenza-600 outline-none font-bold text-xl"/>
                     </div>
 
                     {testerGroups.length > 0 && (
-                        <div>
-                            <div className="flex items-center gap-2 mb-4">
-                                <Users2 size={16} className="text-indigo-500" />
-                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Quick Import Predefined Groups</label>
+                        <div className="max-w-6xl">
+                            <div className="flex items-center gap-3 mb-5">
+                                <div className="p-2 bg-indigo-50 rounded-xl"><Users2 size={20} className="text-indigo-600" /></div>
+                                <label className="text-xs font-black text-slate-400 uppercase tracking-widest">Quick Import Cohort Pre-sets</label>
                             </div>
-                            <div className="flex flex-wrap gap-3">
+                            <div className="flex flex-wrap gap-4">
                                 {testerGroups.map(g => (
-                                    <button key={g.id} onClick={() => handleApplyGroup(g.id)} className="flex items-center gap-3 px-5 py-3 bg-white border border-slate-200 rounded-2xl text-sm font-bold text-slate-700 hover:border-indigo-400 hover:shadow-md transition-all">
-                                        <Users2 size={14} className="text-indigo-500" />
-                                        {t(g.name)} <span className="ml-1 opacity-40 font-mono">({g.testerIds.length})</span>
+                                    <button key={g.id} onClick={() => handleApplyGroup(g.id)} className="flex items-center gap-4 px-6 py-4 bg-white border border-slate-200 rounded-3xl text-base font-black text-slate-700 hover:border-indigo-400 hover:shadow-xl transition-all group/btn">
+                                        <Users2 size={18} className="text-indigo-500 group-hover/btn:scale-110 transition-transform" />
+                                        <span>{t(g.name)}</span>
+                                        <span className="ml-2 px-3 py-1 bg-slate-100 rounded-full text-xs font-mono text-slate-500">{g.testerIds.length}</span>
                                     </button>
                                 ))}
                             </div>
                         </div>
                     )}
 
-                    <div className="border-t border-slate-100 pt-10">
-                        <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-6">
-                            <div className="flex items-center gap-2">
-                                <User size={16} className="text-intenza-600" />
-                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Select Individual Subjects ({ids.length})</label>
+                    <div className="border-t border-slate-100 pt-12">
+                        <div className="flex flex-col md:flex-row md:items-end justify-between gap-8 mb-8">
+                            <div className="flex items-center gap-3">
+                                <div className="p-2 bg-intenza-50 rounded-xl"><User size={20} className="text-intenza-600" /></div>
+                                <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest">Select Subject Cohort ({ids.length} Active)</h3>
                             </div>
-                            <div className="relative w-full md:w-80">
-                                <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
-                                <input type="text" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} placeholder="Filter subjects by name..." className="w-full pl-12 pr-4 py-3 bg-white border border-slate-200 rounded-xl text-sm font-bold shadow-sm focus:border-intenza-600 outline-none" />
+                            <div className="relative w-full md:w-96">
+                                <Search size={22} className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-400" />
+                                <input type="text" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} placeholder="Search subjects by name or attribute..." className="w-full pl-14 pr-6 py-4 bg-white border border-slate-200 rounded-2xl text-base font-bold shadow-sm focus:border-intenza-600 outline-none" />
                             </div>
                         </div>
                         
-                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-7 gap-6">
+                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 gap-6 pb-12">
                             {filteredTesters.map((tester: Tester) => {
                                 const isSelected = ids.includes(tester.id);
                                 return (
                                     <div 
                                         key={tester.id} 
                                         onClick={() => isSelected ? setIds(ids.filter(i => i !== tester.id)) : setIds([...ids, tester.id])}
-                                        className={`relative group cursor-pointer transition-all duration-300 rounded-[2rem] border-2 overflow-hidden bg-white ${isSelected ? 'border-intenza-600 ring-8 ring-intenza-500/5 shadow-xl' : 'border-slate-100 hover:border-slate-200'}`}
+                                        className={`relative group cursor-pointer transition-all duration-300 rounded-[2.5rem] border-2 overflow-hidden bg-white ${isSelected ? 'border-intenza-600 ring-8 ring-intenza-500/5 shadow-2xl -translate-y-1' : 'border-slate-100 hover:border-slate-200 hover:-translate-y-0.5'}`}
                                     >
                                         <div className="aspect-[3/4] bg-slate-100 relative overflow-hidden">
                                             <img src={tester.imageUrl} className={`w-full h-full object-cover transition-all duration-700 ${isSelected ? 'grayscale-0' : 'grayscale-[0.5] group-hover:grayscale-0'}`} alt={tester.name} />
-                                            {isSelected && <div className="absolute inset-0 bg-intenza-600/20 backdrop-blur-[1px] flex items-center justify-center"><CheckCircle size={40} className="text-white drop-shadow-2xl" strokeWidth={3} /></div>}
-                                            <div className="absolute bottom-2 left-2 px-2 py-0.5 rounded-full bg-black/40 backdrop-blur-md text-[8px] font-black text-white uppercase tracking-tighter">{tester.gender}</div>
+                                            {isSelected && <div className="absolute inset-0 bg-intenza-600/20 backdrop-blur-[1.5px] flex items-center justify-center"><CheckCircle size={48} className="text-white drop-shadow-2xl" strokeWidth={3} /></div>}
+                                            <div className="absolute bottom-3 left-3 px-3 py-1 rounded-full bg-black/40 backdrop-blur-md text-[10px] font-black text-white uppercase tracking-widest">{tester.gender}</div>
                                         </div>
-                                        <div className="p-4">
-                                            <div className="text-xs font-black text-slate-800 truncate uppercase">{tester.name}</div>
-                                            <div className="text-[10px] font-bold text-slate-300 mt-0.5">{tester.height}cm • {tester.experienceYears}y Exp</div>
+                                        <div className="p-5">
+                                            <div className="text-sm font-black text-slate-900 truncate uppercase tracking-tight">{tester.name}</div>
+                                            <div className="text-[11px] font-bold text-slate-300 mt-1 uppercase tracking-tighter">{tester.height}cm • {tester.experienceYears}y exp</div>
                                         </div>
                                     </div>
                                 );
@@ -1241,18 +1242,29 @@ const StartEvaluationModal = ({ onClose, onStartProject, allTesters, testerGroup
                     </div>
                 </div>
 
-                <div className="p-8 border-t border-slate-100 bg-white sticky bottom-0 flex justify-between items-center shadow-[0_-4px_20px_rgba(0,0,0,0.02)]">
-                    <div className="hidden sm:flex flex-col">
-                        <span className="text-[9px] font-black text-slate-300 uppercase tracking-widest">Active Selection</span>
-                        <span className="text-sm font-black text-slate-900">{ids.length} subjects will be assigned to tasks</span>
+                <div className="p-10 border-t border-slate-100 bg-white shrink-0 flex justify-between items-center shadow-[0_-8px_40px_rgba(0,0,0,0.04)]">
+                    <div className="flex gap-10">
+                        <div className="flex flex-col">
+                            <span className="text-[10px] font-black text-slate-300 uppercase tracking-widest mb-1">Target Cohort</span>
+                            <span className="text-xl font-black text-slate-900">{ids.length} <span className="text-slate-400 font-bold text-sm">Testers selected</span></span>
+                        </div>
+                        <div className="h-full w-px bg-slate-100 mx-2" />
+                        <div className="flex flex-col">
+                            <span className="text-[10px] font-black text-slate-300 uppercase tracking-widest mb-1">Impact Scope</span>
+                            <span className="text-xl font-black text-slate-900">4 <span className="text-slate-400 font-bold text-sm">Categories auto-provisioned</span></span>
+                        </div>
                     </div>
-                    <button 
-                        onClick={()=>onStartProject({en:name,zh:name},ids)} 
-                        disabled={!name || ids.length === 0}
-                        className="w-full sm:w-auto px-12 py-5 bg-slate-900 text-white rounded-2xl font-black uppercase tracking-[0.2em] hover:bg-slate-800 transition-all shadow-2xl shadow-slate-900/20 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                        {project ? 'Update Project Baseline' : 'Launch Verification Project'}
-                    </button>
+                    <div className="flex gap-4">
+                        <button onClick={onClose} className="px-10 py-5 text-slate-400 font-black uppercase tracking-[0.2em] hover:bg-slate-50 rounded-2xl transition-all">Cancel</button>
+                        <button 
+                            onClick={()=>onStartProject({en:name,zh:name},ids)} 
+                            disabled={!name || ids.length === 0}
+                            className="px-16 py-5 bg-slate-900 text-white rounded-3xl font-black uppercase tracking-[0.3em] hover:bg-slate-800 transition-all shadow-2xl shadow-slate-900/30 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-3"
+                        >
+                            <PlayCircle size={24} />
+                            {project ? 'Commit Baseline Update' : 'Initialize Project'}
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -1387,7 +1399,7 @@ const StatusDecisionModal = ({ onClose, onSetStatus, onLinkEco, onCreateEco, act
 const FeedbackModal = ({ onClose, onSave, feedback }: any) => {
     const [d, setD] = useState(feedback || { content: {en:'',zh:''}, source: '', category: 'Experience', date: new Date().toISOString().split('T')[0] });
     return (
-        <div className="fixed inset-0 z-[130] flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm animate-fade-in"><div className="bg-white rounded-2xl w-full max-w-md p-6 shadow-2xl"><h2 className="font-bold mb-4">Feedback</h2><input type="text" placeholder="Source" value={d.source} onChange={e=>setD({...d,source:e.target.value})} className="w-full p-2 border rounded mb-2"/><textarea placeholder="Content" value={d.content.en} onChange={e=>setD({...d,content:{en:e.target.value,zh:e.target.value}})} className="w-full p-2 border rounded mb-4" rows={3}/><button onClick={()=>onSave(d)} className="w-full py-2 bg-slate-900 text-white rounded">Save</button></div></div>
+        <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm animate-fade-in"><div className="bg-white rounded-2xl w-full max-w-md p-6 shadow-2xl"><h2 className="font-bold mb-4">Feedback</h2><input type="text" placeholder="Source" value={d.source} onChange={e=>setD({...d,source:e.target.value})} className="w-full p-2 border rounded mb-2"/><textarea placeholder="Content" value={d.content.en} onChange={e=>setD({...d,content:{en:e.target.value,zh:e.target.value}})} className="w-full p-2 border rounded mb-4" rows={3}/><button onClick={()=>onSave(d)} className="w-full py-2 bg-slate-900 text-white rounded">Save</button></div></div>
     );
 };
 
@@ -1406,7 +1418,7 @@ const FeedbackStatusDecisionModal = ({ onClose, onUpdateStatus, onLinkEco, onCre
     };
 
     return (
-        <div className="fixed inset-0 z-[130] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md animate-fade-in">
+        <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md animate-fade-in">
             <div className="bg-white rounded-[2rem] w-full max-w-sm overflow-hidden shadow-2xl">
                 <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-white">
                     <h2 className="text-xl font-black text-slate-900 uppercase tracking-tight">Manage Feedback</h2>
