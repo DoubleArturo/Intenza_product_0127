@@ -1,7 +1,8 @@
+
 import React, { useState, useMemo, useEffect, useContext, useRef } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
-import { ArrowLeft, GitCommit, UserCheck, Activity, AlertTriangle, CheckCircle, Clock, Calendar, Layers, Users, Plus, X, Pencil, Trash2, Upload, MessageSquare, ChevronsRight, ChevronsLeft, Tag, FileText, User, Database, Mars, Venus, Link as LinkIcon, Search, ClipboardList, ListPlus, Check, ChevronDown, RefreshCw, HelpCircle, BarChart3, AlertCircle, PlayCircle, Loader2, StickyNote, Lightbulb, Paperclip, Video, Image as ImageIcon, Save, Star, Info, Ship } from 'lucide-react';
-import { ProductModel, TestStatus, DesignChange, LocalizedString, TestResult, EcoStatus, ErgoFeedback, ErgoProject, Tester, ErgoProjectCategory, NgReason, ProjectOverallStatus, Gender, NgDecisionStatus, EvaluationTask, ShipmentData } from '../types';
+import { ArrowLeft, GitCommit, UserCheck, Activity, AlertTriangle, CheckCircle, Clock, Calendar, Layers, Users, Plus, X, Pencil, Trash2, Upload, MessageSquare, ChevronsRight, ChevronsLeft, Tag, FileText, User, Database, Mars, Venus, Link as LinkIcon, Search, ClipboardList, ListPlus, Check, ChevronDown, RefreshCw, HelpCircle, BarChart3, AlertCircle, PlayCircle, Loader2, StickyNote, Lightbulb, Paperclip, Video, Image as ImageIcon, Save, Star, Info, Ship, Users2 } from 'lucide-react';
+import { ProductModel, TestStatus, DesignChange, LocalizedString, TestResult, EcoStatus, ErgoFeedback, ErgoProject, Tester, ErgoProjectCategory, NgReason, ProjectOverallStatus, Gender, NgDecisionStatus, EvaluationTask, ShipmentData, TesterGroup } from '../types';
 import GeminiInsight from '../components/GeminiInsight';
 import { LanguageContext } from '../App';
 import { api } from '../services/api';
@@ -23,13 +24,14 @@ interface ProductDetailProps {
   products: ProductModel[];
   shipments: ShipmentData[];
   testers: Tester[];
+  testerGroups?: TesterGroup[];
   userRole?: 'admin' | 'user' | 'uploader' | 'viewer';
   onUpdateProduct: (p: ProductModel) => Promise<void>;
   showAiInsights: boolean;
 }
 
 // Main Product Detail Page Component
-const ProductDetail: React.FC<ProductDetailProps> = ({ products, shipments = [], testers = [], userRole, onUpdateProduct, showAiInsights }) => {
+const ProductDetail: React.FC<ProductDetailProps> = ({ products, shipments = [], testers = [], testerGroups = [], userRole, onUpdateProduct, showAiInsights }) => {
   const { id } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
@@ -259,6 +261,7 @@ const ProductDetail: React.FC<ProductDetailProps> = ({ products, shipments = [],
                     <ErgoSection 
                         product={product} 
                         testers={testers} 
+                        testerGroups={testerGroups}
                         onUpdateProduct={onUpdateProduct} 
                         highlightedFeedback={highlightedFeedback} 
                         isFeedbackPanelOpen={isFeedbackPanelOpen}
@@ -660,7 +663,7 @@ const DesignSection = ({ product, shipments, userRole, onAddEco, onEditEco, onDe
   );
 };
 
-const ErgoSection = ({ product, testers, onUpdateProduct, highlightedFeedback, isFeedbackPanelOpen, setIsFeedbackPanelOpen, userRole }: any) => {
+const ErgoSection = ({ product, testers, testerGroups, onUpdateProduct, highlightedFeedback, isFeedbackPanelOpen, setIsFeedbackPanelOpen, userRole }: any) => {
   const { t, language } = useContext(LanguageContext);
   const isViewer = userRole === 'viewer';
   const [isStartEvaluationModalOpen, setStartEvaluationModalOpen] = useState(false);
@@ -704,7 +707,7 @@ const ErgoSection = ({ product, testers, onUpdateProduct, highlightedFeedback, i
           )}
         </div>
       </div>
-      {isStartEvaluationModalOpen && <StartEvaluationModal onClose={() => setStartEvaluationModalOpen(false)} onStartProject={(name: any, ids: any) => { if(editingProject) { onUpdateProduct({...product, ergoProjects: product.ergoProjects.map((p: any) => p.id === editingProject.id ? {...p, name, testerIds: ids} : p)}); } else { onUpdateProduct({...product, ergoProjects: [...product.ergoProjects, {id: `proj-${Date.now()}`, name, date: new Date().toISOString().split('T')[0], testerIds: ids, overallStatus: 'PENDING', tasks: {'Resistance profile':[], 'Experience':[], 'Stroke':[], 'Other Suggestion':[]}, uniqueNgReasons: {}}]}); } setStartEvaluationModalOpen(false); }} allTesters={testers} project={editingProject} />}
+      {isStartEvaluationModalOpen && <StartEvaluationModal onClose={() => setStartEvaluationModalOpen(false)} onStartProject={(name: any, ids: any) => { if(editingProject) { onUpdateProduct({...product, ergoProjects: product.ergoProjects.map((p: any) => p.id === editingProject.id ? {...p, name, testerIds: ids} : p)}); } else { onUpdateProduct({...product, ergoProjects: [...product.ergoProjects, {id: `proj-${Date.now()}`, name, date: new Date().toISOString().split('T')[0], testerIds: ids, overallStatus: 'PENDING', tasks: {'Resistance profile':[], 'Experience':[], 'Stroke':[], 'Other Suggestion':[]}, uniqueNgReasons: {}}]}); } setStartEvaluationModalOpen(false); }} allTesters={testers} testerGroups={testerGroups} project={editingProject} />}
       {addTaskModalState.isOpen && <AddTaskModal onClose={() => setAddTaskModalState({isOpen:false})} onSave={(name: any) => { const {projectId, category} = addTaskModalState.context; onUpdateProduct({...product, ergoProjects: product.ergoProjects.map((p: any) => p.id === projectId ? {...p, tasks: {...p.tasks, [category]: [...p.tasks[category], {id: `t-${Date.now()}`, name: {en: name, zh: name}, passTesterIds: [], ngReasons: []}]}} : p)}); setAddTaskModalState({isOpen:false}); }} />}
       {taskResultModalState.isOpen && <SetTaskResultsModal onClose={() => setTaskResultModalState({isOpen:false})} onSave={(ids: any) => { const {projectId, category, taskId} = taskResultModalState.context; onUpdateProduct({...product, ergoProjects: product.ergoProjects.map((p: any) => p.id === projectId ? {...p, tasks: {...p.tasks, [category]: p.tasks[category].map((t: any) => t.id === taskId ? {...t, passTesterIds: ids, ngReasons: p.testerIds.filter((tid: any) => !ids.includes(tid)).map((tid: any) => t.ngReasons.find((r: any) => r.testerId === tid) || {testerId: tid, reason: {en: '', zh: ''}, decisionStatus: 'PENDING'})} : t)}} : p)}); setTaskResultModalState({isOpen:false}); }} context={taskResultModalState.context} project={product.ergoProjects.find((p: any) => p.id === taskResultModalState.context.projectId)} testers={testers} />}
       {ngReasonModalState.isOpen && <SetPassNgModal onClose={() => setNgReasonModalState({isOpen:false})} onSet={(reason: any, isNew: any, atts: any, type: any) => { const {projectId, category, taskId, testerId} = ngReasonModalState.context; onUpdateProduct({...product, ergoProjects: product.ergoProjects.map((p: any) => p.id === projectId ? {...p, tasks: {...p.tasks, [category]: p.tasks[category].map((t: any) => t.id === taskId ? {...t, ngReasons: t.ngReasons.map((ng: any) => ng.testerId === testerId ? {...ng, reason, attachmentUrls: atts, decisionStatus: type === 'IDEA' ? 'IDEA' : ng.decisionStatus} : ng)} : t)}} : p)}); setNgReasonModalState({isOpen:false}); }} existingReason={product.ergoProjects.find((p: any) => p.id === ngReasonModalState.context.projectId)?.tasks[ngReasonModalState.context.category].find((t: any) => t.id === ngReasonModalState.context.taskId)?.ngReasons.find((ng: any) => ng.testerId === ngReasonModalState.context.testerId)} />}
@@ -774,16 +777,91 @@ const NoShipmentModal = ({ onClose, version }: any) => (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm"><div className="bg-white rounded-2xl w-full max-w-sm p-8 text-center"><Ship size={48} className="mx-auto mb-4 text-amber-500"/><h3 className="text-lg font-bold mb-2">No Market Data</h3><p className="text-sm text-slate-500 mb-6">Version {version} has no recorded shipments.</p><button onClick={onClose} className="w-full py-2 bg-slate-900 text-white rounded-lg">Close</button></div></div>
 );
 
-const StartEvaluationModal = ({ onClose, onStartProject, allTesters, project }: any) => {
+const StartEvaluationModal = ({ onClose, onStartProject, allTesters, testerGroups = [], project }: any) => {
+    const { t } = useContext(LanguageContext);
     const [name, setName] = useState(project ? project.name.en : '');
     const [ids, setIds] = useState<string[]>(project ? project.testerIds : []);
+    const [searchTerm, setSearchTerm] = useState('');
+
+    const filteredTesters = allTesters.filter((tr: Tester) => tr.name.toLowerCase().includes(searchTerm.toLowerCase()));
+
+    const handleApplyGroup = (groupId: string) => {
+        const group = testerGroups.find(g => g.id === groupId);
+        if (group) setIds(Array.from(new Set([...ids, ...group.testerIds])));
+    };
+
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm"><div className="bg-white rounded-2xl w-full max-w-md p-6">
-            <h2 className="text-xl font-bold mb-4">{project ? 'Edit Project' : 'Start Evaluation'}</h2>
-            <input type="text" placeholder="Project Name" value={name} onChange={e=>setName(e.target.value)} className="w-full p-2 border rounded-lg mb-4"/>
-            <div className="max-h-40 overflow-y-auto mb-4 border p-2 rounded">{allTesters.map((t:any)=><label key={t.id} className="flex items-center gap-2 text-sm"><input type="checkbox" checked={ids.includes(t.id)} onChange={e=>e.target.checked?setIds([...ids,t.id]):setIds(ids.filter(i=>i!==t.id))}/>{t.name}</label>)}</div>
-            <button onClick={()=>onStartProject({en:name,zh:name},ids)} className="w-full py-3 bg-slate-900 text-white rounded-xl">Launch</button>
-        </div></div>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm animate-fade-in">
+            <div className="bg-white rounded-3xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[90vh] shadow-2xl">
+                <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-white sticky top-0 z-10">
+                    <h2 className="text-xl font-black text-slate-900">{project ? 'Edit Project' : 'New Evaluation Project'}</h2>
+                    <button onClick={onClose} className="p-2 hover:bg-slate-100 rounded-full transition-colors"><X size={20}/></button>
+                </div>
+                
+                <div className="p-6 space-y-6 overflow-y-auto flex-1 custom-scrollbar">
+                    <div>
+                        <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Project Name</label>
+                        <input type="text" placeholder="Enter evaluation project title..." value={name} onChange={e=>setName(e.target.value)} className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-intenza-500/20 focus:border-intenza-600 outline-none font-bold"/>
+                    </div>
+
+                    {testerGroups.length > 0 && (
+                        <div>
+                            <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Quick Import Groups</label>
+                            <div className="flex flex-wrap gap-2">
+                                {testerGroups.map(g => (
+                                    <button key={g.id} onClick={() => handleApplyGroup(g.id)} className="flex items-center gap-2 px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-bold text-slate-600 hover:bg-slate-50 hover:border-slate-300 transition-all">
+                                        <Users2 size={12} className="text-indigo-500" />
+                                        {t(g.name)} ({g.testerIds.length})
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+
+                    <div>
+                        <div className="flex items-center justify-between mb-3">
+                            <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest">Select Testers ({ids.length})</label>
+                            <div className="relative w-48">
+                                <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                                <input type="text" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} placeholder="Find subject..." className="w-full pl-9 pr-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs focus:border-intenza-600 outline-none" />
+                            </div>
+                        </div>
+                        
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                            {filteredTesters.map((tester: Tester) => {
+                                const isSelected = ids.includes(tester.id);
+                                return (
+                                    <div 
+                                        key={tester.id} 
+                                        onClick={() => isSelected ? setIds(ids.filter(i => i !== tester.id)) : setIds([...ids, tester.id])}
+                                        className={`relative group cursor-pointer transition-all duration-300 rounded-2xl border-2 overflow-hidden ${isSelected ? 'border-intenza-600 ring-4 ring-intenza-500/10' : 'border-slate-100 hover:border-slate-200'}`}
+                                    >
+                                        <div className="aspect-square bg-slate-100">
+                                            <img src={tester.imageUrl} className="w-full h-full object-cover grayscale-[0.5] group-hover:grayscale-0 transition-all" alt={tester.name} />
+                                            {isSelected && <div className="absolute inset-0 bg-intenza-600/20 backdrop-blur-[1px] flex items-center justify-center"><CheckCircle size={32} className="text-white drop-shadow-lg" strokeWidth={3} /></div>}
+                                        </div>
+                                        <div className="p-2 bg-white">
+                                            <div className="text-[10px] font-black text-slate-800 truncate">{tester.name}</div>
+                                            <div className="text-[8px] font-bold text-slate-400 uppercase">{tester.height}cm • {tester.gender}</div>
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    </div>
+                </div>
+
+                <div className="p-6 border-t border-slate-100 bg-white sticky bottom-0">
+                    <button 
+                        onClick={()=>onStartProject({en:name,zh:name},ids)} 
+                        disabled={!name || ids.length === 0}
+                        className="w-full py-4 bg-slate-900 text-white rounded-2xl font-black uppercase tracking-widest hover:bg-slate-800 transition-all shadow-xl shadow-slate-900/20 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                        {project ? 'Update Evaluation' : 'Launch Evaluation Project'}
+                    </button>
+                </div>
+            </div>
+        </div>
     );
 };
 

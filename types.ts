@@ -179,6 +179,7 @@ export interface AppState {
   seriesList: LocalizedString[];
   shipments: ShipmentData[];
   testers: Tester[]; 
+  testerGroups?: TesterGroup[];
   users: UserAccount[];
   language: Language;
   maxHistorySteps?: number;
@@ -200,4 +201,11 @@ export interface Tester {
   height: number;
   experienceYears: number;
   rating: number;
+  bio?: LocalizedString; // For Education/Work Experience
+}
+
+export interface TesterGroup {
+  id: string;
+  name: LocalizedString;
+  testerIds: string[];
 }

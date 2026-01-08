@@ -2,7 +2,7 @@
 import React, { useState, createContext, useCallback, useEffect, lazy, Suspense, useRef } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { MOCK_PRODUCTS, MOCK_SHIPMENTS, MOCK_TESTERS } from './services/mockData';
-import { ProductModel, Language, LocalizedString, Tester, ShipmentData, DEFAULT_SERIES, UserAccount, AppState } from './types';
+import { ProductModel, Language, LocalizedString, Tester, ShipmentData, DEFAULT_SERIES, UserAccount, AppState, TesterGroup } from './types';
 import { api } from './services/api';
 import { Cloud, CloudCheck, CloudOff, Loader2, CheckCircle, AlertCircle } from 'lucide-react';
 
@@ -44,6 +44,7 @@ const App = () => {
   const [seriesList, setSeriesList] = useState<LocalizedString[]>(DEFAULT_SERIES);
   const [shipments, setShipments] = useState<ShipmentData[]>(MOCK_SHIPMENTS);
   const [testers, setTesters] = useState<Tester[]>(MOCK_TESTERS);
+  const [testerGroups, setTesterGroups] = useState<TesterGroup[]>([]);
   const [users, setUsers] = useState<UserAccount[]>([]);
   const [showAiInsights, setShowAiInsights] = useState(false); 
   const [maxHistorySteps, setMaxHistorySteps] = useState(10);
@@ -79,7 +80,7 @@ const App = () => {
     setSyncStatus('saving');
     
     const state: AppState = {
-      products, seriesList, shipments, testers, users, language, showAiInsights, maxHistorySteps, customLogoUrl, globalStatusLightSize, dashboardColumns, cardAspectRatio, chartColorStyle, analyticsTooltipScale, analyticsTooltipPosition
+      products, seriesList, shipments, testers, testerGroups, users, language, showAiInsights, maxHistorySteps, customLogoUrl, globalStatusLightSize, dashboardColumns, cardAspectRatio, chartColorStyle, analyticsTooltipScale, analyticsTooltipPosition
     };
 
     try {
@@ -94,7 +95,7 @@ const App = () => {
       setErrorDetail(error.message || 'Connection Error');
       isSyncingRef.current = false;
     }
-  }, [products, seriesList, shipments, testers, users, language, showAiInsights, maxHistorySteps, customLogoUrl, globalStatusLightSize, dashboardColumns, cardAspectRatio, chartColorStyle, analyticsTooltipScale, analyticsTooltipPosition, isLoggedIn, currentUser]);
+  }, [products, seriesList, shipments, testers, testerGroups, users, language, showAiInsights, maxHistorySteps, customLogoUrl, globalStatusLightSize, dashboardColumns, cardAspectRatio, chartColorStyle, analyticsTooltipScale, analyticsTooltipPosition, isLoggedIn, currentUser]);
 
   const handleLoadFromCloud = useCallback(async () => {
     if (isSyncingRef.current) return;
@@ -108,6 +109,7 @@ const App = () => {
         if (cloudData.seriesList) setSeriesList(cloudData.seriesList);
         if (cloudData.shipments) setShipments(cloudData.shipments);
         if (cloudData.testers) setTesters(cloudData.testers);
+        if (cloudData.testerGroups) setTesterGroups(cloudData.testerGroups);
         if (cloudData.users) setUsers(cloudData.users);
         if (cloudData.language) setLanguage(cloudData.language);
         if (cloudData.showAiInsights !== undefined) setShowAiInsights(cloudData.showAiInsights);
@@ -160,7 +162,7 @@ const App = () => {
       const timer = setTimeout(() => handleSyncToCloud(true), 2000);
       return () => clearTimeout(timer);
     }
-  }, [users, seriesList, products, testers, shipments, customLogoUrl, globalStatusLightSize, dashboardColumns, cardAspectRatio, chartColorStyle, analyticsTooltipScale, analyticsTooltipPosition, isLoggedIn, handleSyncToCloud, currentUser]);
+  }, [users, seriesList, products, testers, testerGroups, shipments, customLogoUrl, globalStatusLightSize, dashboardColumns, cardAspectRatio, chartColorStyle, analyticsTooltipScale, analyticsTooltipPosition, isLoggedIn, handleSyncToCloud, currentUser]);
 
   return (
     <LanguageContext.Provider value={{ language, setLanguage, t }}>
@@ -208,7 +210,7 @@ const App = () => {
                   />
                 } />
                 <Route path="/product/:id" element={
-                  <ProductDetail products={products} shipments={shipments} testers={testers} userRole={currentUser?.role} onUpdateProduct={async (p) => setProducts(products.map(old => old.id === p.id ? p : old))} showAiInsights={showAiInsights} />
+                  <ProductDetail products={products} shipments={shipments} testers={testers} testerGroups={testerGroups} userRole={currentUser?.role} onUpdateProduct={async (p) => setProducts(products.map(old => old.id === p.id ? p : old))} showAiInsights={showAiInsights} />
                 } />
                 <Route path="/analytics" element={
                   <Analytics 
@@ -225,12 +227,13 @@ const App = () => {
                           newList[idx] = { ...newList[idx], [language]: name };
                           setSeriesList(newList);
                       }}
-                      currentAppState={{ products, seriesList, shipments, testers, users, language, showAiInsights, maxHistorySteps, customLogoUrl, globalStatusLightSize, dashboardColumns, cardAspectRatio, chartColorStyle, analyticsTooltipScale, analyticsTooltipPosition }}
+                      currentAppState={{ products, seriesList, shipments, testers, testerGroups, users, language, showAiInsights, maxHistorySteps, customLogoUrl, globalStatusLightSize, dashboardColumns, cardAspectRatio, chartColorStyle, analyticsTooltipScale, analyticsTooltipPosition }}
                       onLoadProject={(state) => {
                           if (state.products) setProducts(state.products);
                           if (state.seriesList) setSeriesList(state.seriesList);
                           if (state.shipments) setShipments(state.shipments);
                           if (state.testers) setTesters(state.testers);
+                          if (state.testerGroups) setTesterGroups(state.testerGroups);
                           if (state.users) setUsers(state.users);
                           if (state.customLogoUrl) setCustomLogoUrl(state.customLogoUrl);
                           if (state.globalStatusLightSize) setGlobalStatusLightSize(state.globalStatusLightSize);
@@ -257,7 +260,18 @@ const App = () => {
                   ) : <Navigate to="/" />
                 } />
                 <Route path="/testers" element={
-                  <TesterDatabase testers={testers} userRole={currentUser?.role} onAddTester={(t) => setTesters([...testers, { ...t, id: Date.now().toString() }])} onUpdateTester={(t) => setTesters(testers.map(old => old.id === t.id ? t : old))} onDeleteTester={(id) => setTesters(testers.filter(t => t.id !== id))} />
+                  <TesterDatabase 
+                    testers={testers} 
+                    testerGroups={testerGroups}
+                    cardAspectRatio={cardAspectRatio}
+                    userRole={currentUser?.role} 
+                    onAddTester={(t) => setTesters([...testers, { ...t, id: Date.now().toString() }])} 
+                    onUpdateTester={(t) => setTesters(testers.map(old => old.id === t.id ? t : old))} 
+                    onDeleteTester={(id) => setTesters(testers.filter(t => t.id !== id))}
+                    onAddGroup={(g) => setTesterGroups([...testerGroups, { ...g, id: Date.now().toString() }])}
+                    onUpdateGroup={(g) => setTesterGroups(testerGroups.map(old => old.id === g.id ? g : old))}
+                    onDeleteGroup={(id) => setTesterGroups(testerGroups.filter(g => g.id !== id))}
+                  />
                 } />
               </Routes>
             </Suspense>
