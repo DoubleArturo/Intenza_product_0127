@@ -1171,8 +1171,8 @@ const StartEvaluationModal = ({ onClose, onStartProject, allTesters, testerGroup
     };
 
     return (
-        <div className="fixed inset-0 z-[99999] flex justify-center items-center p-2 md:p-3 bg-slate-950/85 backdrop-blur-2xl animate-fade-in overflow-hidden">
-            <div className="bg-white rounded-[3.5rem] w-[99vw] h-[98vh] max-w-[2200px] shadow-[0_32px_128px_rgba(0,0,0,0.4)] flex flex-col border border-white/20 overflow-hidden relative scale-[0.99] animate-slide-up">
+        <div className="fixed inset-0 z-[99999] flex justify-center items-end p-0 bg-slate-950/85 backdrop-blur-2xl animate-fade-in overflow-hidden">
+            <div className="bg-white rounded-t-[3.5rem] rounded-b-none w-[99vw] h-[98vh] max-w-[2200px] shadow-[0_32px_128px_rgba(0,0,0,0.4)] flex flex-col border border-white/20 overflow-hidden relative animate-slide-up">
                 {/* Fixed Header - Elevated styling */}
                 <div className="p-8 md:p-10 border-b border-slate-100 flex justify-between items-center bg-white shrink-0">
                     <div className="flex items-center gap-6">
