@@ -886,14 +886,31 @@ const SetPassNgModal = ({ onClose, onSet, existingReason }: any) => {
     );
 };
 
-const StatusDecisionModal = ({ onClose, onSetStatus, onLinkEco, onCreateEco, activeEcos, versions, currentProductVersion }: any) => {
+const StatusDecisionModal = ({ onClose, onSetStatus, onLinkEco, onCreateEco, activeEcos, versions, currentProductVersion, context }: any) => {
     const [view, setView] = useState('MAIN');
     const [v, setV] = useState(currentProductVersion);
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md animate-fade-in"><div className="bg-white rounded-3xl w-full max-w-sm overflow-hidden">
             <div className="p-6 border-b flex justify-between"><h2>Manage Decision</h2><button onClick={onClose}><X/></button></div>
             {view==='MAIN' ? (
-                <div className="p-6 space-y-3"><button onClick={()=>setView('SELECT_V')} className="w-full py-3 bg-intenza-600 text-white rounded-xl">Start New ECO</button><button onClick={()=>setView('LINK')} className="w-full py-3 bg-slate-100 rounded-xl">Link Existing ECO</button></div>
+                <div className="p-6 space-y-3">
+                  <button onClick={()=>setView('SELECT_V')} className="w-full py-3 bg-intenza-600 text-white rounded-xl">Start New ECO</button>
+                  <button onClick={()=>setView('LINK')} className="w-full py-3 bg-slate-100 rounded-xl">Link Existing ECO</button>
+                  <div className="pt-4 border-t border-slate-100">
+                    <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 text-center">Set Status Directly</label>
+                    <div className="flex gap-2">
+                      {(['PENDING', 'DISCUSSION', 'IGNORED'] as const).map(s => (
+                        <button 
+                          key={s} 
+                          onClick={() => onSetStatus(s)} 
+                          className={`flex-1 py-2 text-[10px] font-bold border rounded-lg transition-all ${context.currentStatus === s ? 'bg-slate-900 text-white border-slate-900 shadow-md' : 'bg-white text-slate-500 border-slate-200 hover:border-slate-400'}`}
+                        >
+                          {s}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
             ) : view==='LINK' ? (
                 <div className="p-6 space-y-2">{activeEcos.map((e:any)=><button key={e.id} onClick={()=>onLinkEco(e.id)} className="w-full text-left p-3 border rounded-xl hover:bg-slate-50">{e.ecoNumber}</button>)}<button onClick={()=>setView('MAIN')} className="w-full py-2 text-slate-400">Back</button></div>
             ) : (
