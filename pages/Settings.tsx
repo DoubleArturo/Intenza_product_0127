@@ -1,6 +1,6 @@
 
 import React, { useState, useRef, useContext, useEffect, useMemo } from 'react';
-import { Plus, X, Save, Download, Upload, AlertTriangle, CheckCircle, Pencil, History, Sparkles, Shield, User, Trash2, Eye, EyeOff, Key, Database, HardDrive, Info, Cloud, LogOut, Loader2, Link as LinkIcon, Activity, Layers, Image as ImageIcon, RotateCcw, Settings2, LayoutGrid, Maximize, Palette, MousePointer2, ClipboardList, Clock } from 'lucide-react';
+import { Plus, X, Save, Download, Upload, AlertTriangle, CheckCircle, Pencil, History, Sparkles, Shield, User, Trash2, Eye, EyeOff, Key, Database, HardDrive, Info, Cloud, LogOut, Loader2, Link as LinkIcon, Activity, Layers, Image as ImageIcon, RotateCcw, Settings2, LayoutGrid, Maximize, Palette, MousePointer2, ClipboardList, Clock, Search, ChevronRight, Filter, UserRound } from 'lucide-react';
 import { AppState, LocalizedString, UserAccount, AuditLog } from '../types';
 import { LanguageContext } from '../App';
 import { api } from '../services/api';
@@ -41,11 +41,16 @@ const Settings: React.FC<SettingsProps> = ({
   const { t, language } = useContext(LanguageContext);
   const [newSeriesName, setNewSeriesName] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isTestingBlob, setIsTestingBlob] = useState(false);
   const [isUploadingLogo, setIsUploadingLogo] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const logoInputRef = useRef<HTMLInputElement>(null);
   const [notification, setNotification] = useState<{msg: string, type: 'success' | 'error'} | null>(null);
+
+  // Modals
+  const [isUserModalOpen, setIsUserModalOpen] = useState(false);
+  const [isLogBrowserOpen, setIsLogBrowserOpen] = useState(false);
+  const [editingUser, setEditingUser] = useState<UserAccount | null>(null);
+  const [showPasswordMap, setShowPasswordMap] = useState<Record<string, boolean>>({});
 
   const storageStats = useMemo(() => {
     const rowCount = 
@@ -171,10 +176,6 @@ const Settings: React.FC<SettingsProps> = ({
     return 'bg-indigo-500';
   };
 
-  const [isUserModalOpen, setIsUserModalOpen] = useState(false);
-  const [editingUser, setEditingUser] = useState<UserAccount | null>(null);
-  const [showPasswordMap, setShowPasswordMap] = useState<Record<string, boolean>>({});
-
   const aspectRatios = [
     { label: t({ en: 'Square (1:1)', zh: '方形 (1:1)' }), value: '1/1' },
     { label: t({ en: 'Portrait (3:4)', zh: '直式 (3:4)' }), value: '3/4' },
@@ -190,8 +191,10 @@ const Settings: React.FC<SettingsProps> = ({
     { label: 'FOLLOW', value: 'FOLLOW' },
   ];
 
-  // Audit Logs (Reverse chronologically)
-  const auditLogs = useMemo(() => [...(currentAppState.auditLogs || [])].reverse(), [currentAppState.auditLogs]);
+  // Logs derived stats
+  const logsCount = currentAppState.auditLogs?.length || 0;
+  const lastLog = logsCount > 0 ? (currentAppState.auditLogs || [])[(currentAppState.auditLogs || []).length - 1] : null;
+  const activeSessions = (currentAppState.auditLogs || []).filter(l => !l.logoutTime).length;
 
   return (
     <div className="p-8 max-w-5xl mx-auto animate-fade-in space-y-8">
@@ -345,61 +348,44 @@ const Settings: React.FC<SettingsProps> = ({
              </div>
           </section>
 
-          {/* NEW SECTION: ACCOUNT SESSION TRACKING LOGS */}
-          <section className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-             <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+          {/* REFACTORED: ACCOUNT SESSION TRACKING LOGS (Summary View) */}
+          <section className="bg-white rounded-2xl border border-slate-200 p-8 shadow-sm group">
+             <div className="flex items-center justify-between mb-8 pb-4 border-b border-slate-100">
                 <div className="flex items-center gap-2">
-                    <ClipboardList className="text-indigo-600" size={20} />
-                    <h2 className="text-xl font-bold text-slate-900">帳號登入登出時間追蹤</h2>
+                    <ClipboardList className="text-indigo-600" size={22} />
+                    <h2 className="text-xl font-black text-slate-900 tracking-tight uppercase">帳號活動追蹤記錄</h2>
                 </div>
                 <div className="flex gap-2">
-                    <button onClick={handleExportLogs} className="bg-white border border-slate-200 text-slate-600 px-4 py-1.5 rounded-lg text-sm font-bold flex items-center gap-2 hover:bg-slate-50 transition-colors">
-                        <Download size={16} /> 導出日誌
-                    </button>
-                    <button onClick={() => { if(window.confirm('確定要清空所有追蹤日誌嗎？此動作無法復原。')) onDeleteAuditLogs(); }} className="bg-white border border-red-100 text-red-500 px-4 py-1.5 rounded-lg text-sm font-bold flex items-center gap-2 hover:bg-red-50 transition-colors">
-                        <Trash2 size={16} /> 清空記錄
-                    </button>
+                    <button onClick={handleExportLogs} className="p-2 text-slate-400 hover:text-slate-900 transition-colors" title="Export CSV/JSON"><Download size={18} /></button>
                 </div>
              </div>
-             <div className="overflow-x-auto max-h-[400px] custom-scrollbar">
-                <table className="w-full text-left relative">
-                  <thead className="bg-slate-50 text-slate-500 text-[10px] font-bold uppercase tracking-wider sticky top-0 z-10 shadow-sm">
-                    <tr>
-                        <th className="px-6 py-4">帳號名稱</th>
-                        <th className="px-6 py-4">登入時間</th>
-                        <th className="px-6 py-4">登出時間</th>
-                        <th className="px-6 py-4">在線時長</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100 bg-white">
-                    {auditLogs.length > 0 ? auditLogs.map((log) => (
-                      <tr key={log.id} className="hover:bg-slate-50 transition-colors">
-                        <td className="px-6 py-4">
-                            <div className="flex items-center gap-3">
-                                <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                                <span className="font-bold text-slate-700">{log.username}</span>
-                            </div>
-                        </td>
-                        <td className="px-6 py-4 text-xs text-slate-600 font-medium">{log.loginTime}</td>
-                        <td className="px-6 py-4 text-xs text-slate-400 font-medium italic">
-                            {log.logoutTime || <span className="text-indigo-500 font-black flex items-center gap-1"><Clock size={10} /> Active Session</span>}
-                        </td>
-                        <td className="px-6 py-4">
-                            {log.durationMinutes !== undefined ? (
-                                <span className="px-2 py-1 bg-slate-100 rounded-md text-[10px] font-black text-slate-600 uppercase tracking-tighter">
-                                    {log.durationMinutes} Minutes
-                                </span>
-                            ) : '-'}
-                        </td>
-                      </tr>
-                    )) : (
-                        <tr>
-                            <td colSpan={4} className="px-6 py-12 text-center text-slate-400 italic">目前尚無活動日誌錄。</td>
-                        </tr>
-                    )}
-                  </tbody>
-                </table>
+
+             <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 mb-8">
+                <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
+                    <span className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Total Sessions</span>
+                    <span className="text-2xl font-black text-slate-900">{logsCount.toLocaleString()}</span>
+                </div>
+                <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
+                    <span className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Active Sessions</span>
+                    <div className="flex items-center gap-2">
+                        <div className={`w-2.5 h-2.5 rounded-full ${activeSessions > 0 ? 'bg-emerald-500 animate-pulse' : 'bg-slate-300'}`} />
+                        <span className="text-2xl font-black text-slate-900">{activeSessions}</span>
+                    </div>
+                </div>
+                <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
+                    <span className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Last Log Record</span>
+                    <span className="text-sm font-bold text-slate-700 block truncate">{lastLog ? `${lastLog.username} (${new Date(lastLog.loginTime).toLocaleDateString()})` : 'N/A'}</span>
+                </div>
              </div>
+
+             <button 
+                onClick={() => setIsLogBrowserOpen(true)}
+                className="w-full py-4 bg-indigo-50 hover:bg-indigo-100 border-2 border-dashed border-indigo-200 rounded-2xl flex items-center justify-center gap-3 transition-all text-indigo-600 font-black uppercase tracking-widest group/btn"
+             >
+                <Database size={20} className="group-hover/btn:scale-110 transition-transform" />
+                <span>點入瀏覽完整日誌歷史</span>
+                <ChevronRight size={18} />
+             </button>
           </section>
 
           <section className="bg-white rounded-2xl border border-slate-200 p-8 shadow-sm">
@@ -463,6 +449,16 @@ const Settings: React.FC<SettingsProps> = ({
           onSave={(data) => { if (editingUser) onUpdateUser({ ...editingUser, ...data } as any); else onAddUser(data as any); setIsUserModalOpen(false); }} user={editingUser}
         />
       )}
+
+      {isLogBrowserOpen && (
+          <AuditLogBrowserModal 
+            isOpen={isLogBrowserOpen}
+            onClose={() => setIsLogBrowserOpen(false)}
+            logs={currentAppState.auditLogs || []}
+            onDeleteAll={() => { if(window.confirm('確定要清空所有追蹤日誌嗎？此動作無法復原。')) { onDeleteAuditLogs(); setIsLogBrowserOpen(false); } }}
+            onExport={handleExportLogs}
+          />
+      )}
     </div>
   );
 };
@@ -496,6 +492,173 @@ const UserAccountModal: React.FC<{
       </div>
     </div>
   );
+};
+
+/**
+ * REFACTORED BROWSER MODAL FOR AUDIT LOGS
+ * Provides a dedicated interface for browsing, filtering, and managing session logs.
+ */
+const AuditLogBrowserModal: React.FC<{
+    isOpen: boolean;
+    onClose: () => void;
+    logs: AuditLog[];
+    onDeleteAll: () => void;
+    onExport: () => void;
+}> = ({ isOpen, onClose, logs, onDeleteAll, onExport }) => {
+    const [searchTerm, setSearchTerm] = useState('');
+    const [filterStatus, setFilterStatus] = useState<'ALL' | 'ACTIVE' | 'COMPLETED'>('ALL');
+
+    const filteredLogs = useMemo(() => {
+        return [...logs]
+            .reverse()
+            .filter(log => {
+                const matchesSearch = log.username.toLowerCase().includes(searchTerm.toLowerCase());
+                const matchesFilter = 
+                    filterStatus === 'ALL' || 
+                    (filterStatus === 'ACTIVE' && !log.logoutTime) || 
+                    (filterStatus === 'COMPLETED' && log.logoutTime);
+                return matchesSearch && matchesFilter;
+            });
+    }, [logs, searchTerm, filterStatus]);
+
+    // Fix: Calculate activeSessions within the modal scope to resolve 'Cannot find name' error
+    const activeSessions = useMemo(() => logs.filter(l => !l.logoutTime).length, [logs]);
+
+    if (!isOpen) return null;
+
+    return (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-0 md:p-8 bg-slate-900/60 backdrop-blur-md animate-fade-in">
+            <div className="bg-white md:rounded-[2.5rem] shadow-2xl w-full h-full max-w-6xl overflow-hidden flex flex-col animate-slide-up">
+                {/* Header */}
+                <header className="p-8 border-b border-slate-100 flex flex-col md:flex-row md:items-center justify-between gap-6 bg-white sticky top-0 z-10">
+                    <div>
+                        <div className="flex items-center gap-3 mb-1">
+                            <div className="p-2 bg-indigo-600 text-white rounded-xl shadow-lg shadow-indigo-600/20"><History size={24} /></div>
+                            <h2 className="text-3xl font-black text-slate-900 tracking-tight uppercase">完整帳號日誌歷史</h2>
+                        </div>
+                        <p className="text-slate-400 font-bold text-xs uppercase tracking-[0.2em]">{logs.length} Total Sessions Recorded</p>
+                    </div>
+                    
+                    <div className="flex items-center gap-4">
+                        <div className="flex gap-2">
+                            <button onClick={onExport} className="p-3 bg-slate-50 hover:bg-slate-100 text-slate-600 rounded-2xl transition-all border border-slate-100" title="Export Logs"><Download size={20}/></button>
+                            <button onClick={onDeleteAll} className="p-3 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded-2xl transition-all border border-rose-100" title="Purge History"><Trash2 size={20}/></button>
+                        </div>
+                        <div className="h-10 w-px bg-slate-100 hidden md:block mx-2" />
+                        <button onClick={onClose} className="p-3 bg-slate-900 text-white rounded-2xl hover:bg-slate-800 transition-all shadow-xl shadow-slate-900/20"><X size={24} strokeWidth={3} /></button>
+                    </div>
+                </header>
+
+                {/* Filter Bar */}
+                <div className="px-8 py-6 bg-slate-50/50 border-b border-slate-100 flex flex-col md:flex-row items-center gap-6">
+                    <div className="relative flex-1 w-full">
+                        <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
+                        <input 
+                            type="text" 
+                            placeholder="搜尋帳號名稱..." 
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                            className="w-full pl-12 pr-4 py-3 bg-white border-2 border-slate-100 rounded-2xl text-sm font-bold focus:border-indigo-500 outline-none transition-all shadow-sm"
+                        />
+                    </div>
+                    <div className="flex bg-white p-1.5 rounded-2xl shadow-sm border border-slate-100 shrink-0">
+                        {['ALL', 'ACTIVE', 'COMPLETED'].map((status) => (
+                            <button 
+                                key={status}
+                                onClick={() => setFilterStatus(status as any)}
+                                className={`px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${
+                                    filterStatus === status 
+                                    ? 'bg-indigo-600 text-white shadow-lg' 
+                                    : 'text-slate-400 hover:text-slate-600'
+                                }`}
+                            >
+                                {status}
+                            </button>
+                        ))}
+                    </div>
+                </div>
+
+                {/* Main Content Area */}
+                <div className="flex-1 overflow-hidden relative flex flex-col">
+                    <div className="flex-1 overflow-y-auto custom-scrollbar p-8">
+                        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                            {filteredLogs.length > 0 ? filteredLogs.map((log) => (
+                                <div key={log.id} className="bg-white rounded-3xl border-2 border-slate-50 p-6 hover:border-indigo-100 hover:shadow-xl hover:shadow-indigo-500/5 transition-all group relative overflow-hidden">
+                                    {/* Status Indicator */}
+                                    <div className={`absolute top-0 right-0 w-16 h-1 bg-gradient-to-l ${!log.logoutTime ? 'from-emerald-500 to-emerald-300' : 'from-slate-200 to-slate-100'}`} />
+                                    
+                                    <div className="flex justify-between items-start mb-6">
+                                        <div className="flex items-center gap-4">
+                                            <div className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-colors shadow-sm ${!log.logoutTime ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-100 text-slate-400'}`}>
+                                                <UserRound size={24} />
+                                            </div>
+                                            <div>
+                                                <h3 className="font-black text-slate-900 uppercase tracking-tight text-lg">{log.username}</h3>
+                                                <div className="flex items-center gap-1.5 mt-0.5">
+                                                    {!log.logoutTime ? (
+                                                        <span className="flex items-center gap-1 text-[10px] font-black text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-md uppercase">
+                                                            <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                                                            Currently Active
+                                                        </span>
+                                                    ) : (
+                                                        <span className="text-[10px] font-black text-slate-400 bg-slate-50 px-2 py-0.5 rounded-md uppercase">Session Ended</span>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div className="space-y-4">
+                                        <div className="grid grid-cols-2 gap-4 border-t border-slate-50 pt-4">
+                                            <div>
+                                                <span className="block text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">Login Time</span>
+                                                <span className="text-[11px] font-bold text-slate-700 leading-tight">{log.loginTime}</span>
+                                            </div>
+                                            <div>
+                                                <span className="block text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">Logout Time</span>
+                                                <span className="text-[11px] font-bold text-slate-700 leading-tight">{log.logoutTime || '-'}</span>
+                                            </div>
+                                        </div>
+
+                                        <div className="bg-slate-50 rounded-2xl p-4 flex items-center justify-between border border-slate-100 shadow-inner">
+                                            <div className="flex items-center gap-2">
+                                                <Clock size={16} className="text-indigo-400" />
+                                                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Session Duration</span>
+                                            </div>
+                                            <span className="text-sm font-black text-indigo-600 font-mono">
+                                                {log.durationMinutes ? `${log.durationMinutes}m` : (log.logoutTime ? '< 1m' : 'Live')}
+                                            </span>
+                                        </div>
+                                    </div>
+                                    
+                                    <div className="mt-6 pt-4 border-t border-slate-50 opacity-0 group-hover:opacity-100 transition-opacity flex justify-end">
+                                        <div className="text-[8px] font-black text-slate-300 uppercase tracking-tighter">Session ID: {log.id}</div>
+                                    </div>
+                                </div>
+                            )) : (
+                                <div className="col-span-full flex flex-col items-center justify-center py-32 text-slate-300 space-y-4">
+                                    <div className="p-8 bg-slate-50 rounded-full"><Database size={64} className="opacity-20" /></div>
+                                    <p className="font-black text-lg uppercase tracking-widest">找不到符合條件的日誌</p>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+
+                {/* Footer Footer Info */}
+                <footer className="p-6 bg-slate-900 text-white flex flex-col sm:flex-row items-center justify-between gap-4">
+                    <div className="flex items-center gap-4">
+                        <div className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Analytics Insights</div>
+                        <div className="flex gap-4">
+                             <div className="flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]" /><span className="text-xs font-bold">{activeSessions} Active</span></div>
+                             <div className="flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-indigo-500" /><span className="text-xs font-bold">{logs.length} Total Logs</span></div>
+                        </div>
+                    </div>
+                    <div className="text-[10px] font-bold text-slate-500 uppercase italic">Records are synchronized with cloud workspace automatically.</div>
+                </footer>
+            </div>
+        </div>
+    );
 };
 
 export default Settings;
