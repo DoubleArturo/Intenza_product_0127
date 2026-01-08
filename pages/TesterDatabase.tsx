@@ -546,22 +546,22 @@ const TesterCard: React.FC<{ tester: Tester, userRole?: string, aspectRatioClass
             </div>
         )}
 
-        {/* Detailed Experience Overlay on Hover - Refined Itemized List */}
-        <div className="absolute inset-0 bg-slate-900/98 backdrop-blur-xl p-8 opacity-0 group-hover:opacity-100 transition-all duration-500 z-20 flex flex-col translate-y-4 group-hover:translate-y-0">
-            <div className="flex items-center gap-2 mb-6 border-b border-white/10 pb-4">
-                <GraduationCap size={18} className="text-intenza-500" />
-                <span className="text-xs font-black uppercase tracking-[0.2em] text-white">Academic & Career Profile</span>
+        {/* Detailed Experience Overlay on Hover - Light High-Contrast Design */}
+        <div className="absolute inset-0 bg-white p-8 opacity-0 group-hover:opacity-100 transition-all duration-500 z-20 flex flex-col translate-y-4 group-hover:translate-y-0 shadow-inner">
+            <div className="flex items-center gap-2 mb-6 border-b border-slate-100 pb-4">
+                <GraduationCap size={18} className="text-intenza-600" />
+                <span className="text-xs font-black uppercase tracking-[0.2em] text-slate-900">Academic & Career Profile</span>
             </div>
             <div className="flex-1 overflow-y-auto custom-scrollbar pr-3 pointer-events-auto">
                 {bioLines.length > 0 ? (
                     <ul className="space-y-4">
                         {bioLines.map((line, idx) => {
-                            // Clean common bullet characters if they exist in raw text
+                            // Clean common bullet characters if they exist in raw text for consistent visual style
                             const cleanLine = line.replace(/^[\s\d\.\-\*•]+/, '').trim();
                             return (
                                 <li key={idx} className="flex items-start gap-3">
-                                    <div className="mt-1.5 w-1.5 h-1.5 rounded-full bg-intenza-500 shrink-0 shadow-[0_0_8px_rgba(246,62,50,0.6)]" />
-                                    <span className="text-sm text-slate-100 leading-relaxed font-medium">
+                                    <div className="mt-2 w-1.5 h-1.5 rounded-full bg-intenza-500 shrink-0 shadow-[0_0_5px_rgba(246,62,50,0.3)]" />
+                                    <span className="text-sm text-slate-600 leading-relaxed font-bold">
                                         {cleanLine}
                                     </span>
                                 </li>
@@ -570,17 +570,17 @@ const TesterCard: React.FC<{ tester: Tester, userRole?: string, aspectRatioClass
                     </ul>
                 ) : (
                     <div className="h-full flex flex-col items-center justify-center text-center opacity-40">
-                         <Info size={32} className="text-slate-500 mb-2" />
-                         <p className="text-xs text-slate-400 italic uppercase tracking-wider font-bold">Comprehensive profile documentation pending.</p>
+                         <Info size={32} className="text-slate-300 mb-2" />
+                         <p className="text-[10px] text-slate-400 italic uppercase tracking-wider font-bold">Comprehensive profile documentation pending.</p>
                     </div>
                 )}
             </div>
-            <div className="mt-6 pt-5 border-t border-white/10 flex justify-between items-end pointer-events-none">
+            <div className="mt-6 pt-5 border-t border-slate-100 flex justify-between items-end pointer-events-none">
                 <div className="flex flex-col">
-                    <span className="text-[8px] font-black text-slate-500 uppercase tracking-widest mb-1">Subject Registry Status</span>
-                    <span className="text-[10px] font-bold text-emerald-400 flex items-center gap-1"><CheckCircle size={10} /> Verified Expert Subject</span>
+                    <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">Registry Status</span>
+                    <span className="text-[10px] font-bold text-emerald-600 flex items-center gap-1"><CheckCircle size={10} /> Verified Expert</span>
                 </div>
-                <div className="text-[10px] font-black text-slate-600 bg-white/5 px-2 py-1 rounded uppercase tracking-tighter">Intenza QA Div.</div>
+                <div className="text-[10px] font-black text-slate-300 uppercase tracking-tighter">Intenza QA Div.</div>
             </div>
         </div>
 
@@ -588,14 +588,14 @@ const TesterCard: React.FC<{ tester: Tester, userRole?: string, aspectRatioClass
           <div className="absolute top-4 right-4 flex flex-col gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-30">
              <button 
                 onClick={(e) => { e.stopPropagation(); onEdit(); }}
-                className="w-10 h-10 bg-white/95 backdrop-blur-sm rounded-full flex items-center justify-center text-slate-500 hover:text-slate-900 transition-all shadow-lg border border-slate-100 pointer-events-auto"
+                className="w-10 h-10 bg-white/95 backdrop-blur-sm rounded-full flex items-center justify-center text-slate-500 hover:text-slate-900 transition-all shadow-lg border border-slate-200 pointer-events-auto"
                 title="Edit"
              >
                 <Pencil size={18} strokeWidth={2.5} />
              </button>
              <button 
                 onClick={(e) => { e.stopPropagation(); if(window.confirm('Delete this profile?')) onDelete(); }}
-                className="w-10 h-10 bg-white/95 backdrop-blur-sm rounded-full flex items-center justify-center text-slate-500 hover:text-red-600 transition-all shadow-lg border border-slate-100 pointer-events-auto"
+                className="w-10 h-10 bg-white/95 backdrop-blur-sm rounded-full flex items-center justify-center text-slate-500 hover:text-red-600 transition-all shadow-lg border border-slate-200 pointer-events-auto"
                 title="Delete"
              >
                 <Trash2 size={18} strokeWidth={2.5} />
