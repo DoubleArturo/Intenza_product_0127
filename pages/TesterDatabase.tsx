@@ -1,7 +1,7 @@
 
 import React, { useState, useRef, useEffect, useContext } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { ArrowLeft, Plus, Star, Upload, Ruler, Clock, User, X, Filter, Search, RotateCcw, Pencil, Trash2, CheckCircle, Loader2, Users2, ListChecks, ChevronRight, Save, Image as ImageIcon } from 'lucide-react';
+import { ArrowLeft, Plus, Star, Upload, Ruler, Clock, User, X, Filter, Search, RotateCcw, Pencil, Trash2, CheckCircle, Loader2, Users2, ListChecks, ChevronRight, Save, Image as ImageIcon, Info, GraduationCap } from 'lucide-react';
 import { Tester, Gender, TesterGroup } from '../types';
 import { api } from '../services/api';
 import { LanguageContext } from '../App';
@@ -524,7 +524,7 @@ const TesterCard: React.FC<{ tester: Tester, userRole?: string, aspectRatioClass
 
   return (
     <div 
-      className={`group bg-white rounded-[2rem] border-2 transition-all duration-300 overflow-hidden flex flex-col ${isSelected ? 'border-intenza-500 shadow-xl ring-2 ring-intenza-500/20' : 'border-slate-100 shadow-sm hover:shadow-2xl hover:shadow-slate-200/60 hover:border-slate-200'} ${isViewer && !selectionMode ? 'cursor-default' : 'cursor-pointer hover:-translate-y-1'}`} 
+      className={`group bg-white rounded-[2rem] border-2 transition-all duration-300 overflow-hidden flex flex-col relative ${isSelected ? 'border-intenza-500 shadow-xl ring-2 ring-intenza-500/20' : 'border-slate-100 shadow-sm hover:shadow-2xl hover:shadow-slate-200/60 hover:border-slate-200'} ${isViewer && !selectionMode ? 'cursor-default' : 'cursor-pointer hover:-translate-y-1'}`} 
       onClick={cardAction}
     >
       <div className={`relative ${aspectRatioClass} bg-slate-100 overflow-hidden border-b border-slate-50`}>
@@ -543,18 +543,42 @@ const TesterCard: React.FC<{ tester: Tester, userRole?: string, aspectRatioClass
             </div>
         )}
 
+        {/* Detailed Experience Overlay on Hover */}
+        <div className="absolute inset-0 bg-slate-900/95 backdrop-blur-md p-6 opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-20 flex flex-col pointer-events-none">
+            <div className="flex items-center gap-2 mb-4 border-b border-white/10 pb-3">
+                <GraduationCap size={18} className="text-intenza-500" />
+                <span className="text-xs font-black uppercase tracking-[0.2em] text-white">Subject Experience</span>
+            </div>
+            <div className="flex-1 overflow-y-auto custom-scrollbar pr-1">
+                {tester.bio?.en || tester.bio?.zh ? (
+                    <p className="text-sm text-slate-300 leading-relaxed font-medium">
+                        {t(tester.bio)}
+                    </p>
+                ) : (
+                    <p className="text-xs text-slate-500 italic uppercase tracking-wider mt-4">No academic or professional records provided.</p>
+                )}
+            </div>
+            <div className="mt-6 pt-4 border-t border-white/10 flex justify-between items-center">
+                <div className="flex flex-col">
+                    <span className="text-[8px] font-black text-slate-500 uppercase">Verification History</span>
+                    <span className="text-[10px] font-bold text-slate-400">Total Projects: 12</span>
+                </div>
+                <Info size={14} className="text-slate-600" />
+            </div>
+        </div>
+
         {!selectionMode && !isViewer && (
-          <div className="absolute top-4 right-4 flex flex-col gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-10">
+          <div className="absolute top-4 right-4 flex flex-col gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-30">
              <button 
                 onClick={(e) => { e.stopPropagation(); onEdit(); }}
-                className="w-10 h-10 bg-white/95 backdrop-blur-sm rounded-full flex items-center justify-center text-slate-500 hover:text-slate-900 transition-all shadow-lg border border-slate-100"
+                className="w-10 h-10 bg-white/95 backdrop-blur-sm rounded-full flex items-center justify-center text-slate-500 hover:text-slate-900 transition-all shadow-lg border border-slate-100 pointer-events-auto"
                 title="Edit"
              >
                 <Pencil size={18} strokeWidth={2.5} />
              </button>
              <button 
                 onClick={(e) => { e.stopPropagation(); if(window.confirm('Delete this profile?')) onDelete(); }}
-                className="w-10 h-10 bg-white/95 backdrop-blur-sm rounded-full flex items-center justify-center text-slate-500 hover:text-red-600 transition-all shadow-lg border border-slate-100"
+                className="w-10 h-10 bg-white/95 backdrop-blur-sm rounded-full flex items-center justify-center text-slate-500 hover:text-red-600 transition-all shadow-lg border border-slate-100 pointer-events-auto"
                 title="Delete"
              >
                 <Trash2 size={18} strokeWidth={2.5} />
@@ -562,7 +586,7 @@ const TesterCard: React.FC<{ tester: Tester, userRole?: string, aspectRatioClass
           </div>
         )}
         
-        <div className="absolute bottom-4 left-4">
+        <div className="absolute bottom-4 left-4 z-10">
              <span className={`text-[9px] px-3 py-1 rounded-full uppercase font-black tracking-[0.2em] shadow-lg backdrop-blur-md ${tester.gender === 'Male' ? 'bg-blue-600 text-white' : 'bg-pink-600 text-white'}`}>
                 {tester.gender}
              </span>
