@@ -947,7 +947,8 @@ const ErgoSection = ({ product, testers, testerGroups, onUpdateProduct, highligh
       <div className={`transition-all duration-500 ease-in-out ${isFeedbackPanelOpen ? 'pr-[40%]' : 'pr-14'}`}>
         <div className="flex justify-end mb-6">
              {!isViewer && (
-               <button onClick={() => { setEditingProject(null); setStartEvaluationModalOpen(true); }} className="flex items-center gap-2 text-sm bg-slate-900 text-white px-4 py-2 rounded-lg font-medium hover:bg-slate-800 transition-colors shadow-sm"><Plus size={16} /> Start Evaluation</button>
+               /* 按鈕高度優化：py-2 -> py-4, px-4 -> px-6 */
+               <button onClick={() => { setEditingProject(null); setStartEvaluationModalOpen(true); }} className="flex items-center gap-2 text-sm bg-slate-900 text-white px-6 py-4 rounded-lg font-medium hover:bg-slate-800 transition-colors shadow-sm"><Plus size={16} /> Start Evaluation</button>
              )}
         </div>
         <div className="space-y-6">
