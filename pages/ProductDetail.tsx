@@ -662,40 +662,54 @@ const DesignSection = ({ product, shipments, userRole, onAddEco, onEditEco, onDe
              )}
           </div>
           <div className="space-y-6">
-               {activeChanges.map((change: DesignChange) => (
-                  <div key={change.id} className="group relative rounded-lg transition-colors hover:bg-slate-50/50 -m-3 p-3">
-                     <div className="flex flex-col md:flex-row gap-6">
-                        <div className="md:w-48 flex-shrink-0">
-                           <span className="font-mono text-sm font-bold text-intenza-600 bg-intenza-50 px-2 py-1 rounded border border-intenza-100">{change.ecoNumber || change.ecrNumber || 'N/A'}</span>
-                           {/* Requirement 1: Show ECO Status Label */}
-                           <div className={`mt-2 px-2 py-0.5 rounded text-[10px] font-bold uppercase w-fit border ${ecoStatusStyles[change.status]}`}>
-                              {ecoStatusTranslations[change.status]}
-                           </div>
-                           <div className="flex flex-col gap-1.5 text-slate-500 text-[10px] font-bold uppercase tracking-wider mt-2">
-                              <div className="flex items-center gap-2"><Calendar size={12} className="text-slate-400" />ECO Date: {change.date}</div>
-                           </div>
-                        </div>
-                        <div className="flex-1">
-                           <h4 className="text-lg font-medium text-slate-900 mb-3 leading-snug">{t(change.description)}</h4>
-                           {change.imageUrls && change.imageUrls.length > 0 && (
-                              <div className="mb-4 flex flex-wrap gap-2">
-                                 {change.imageUrls.map((url, imgIndex) => (
-                                    <div key={imgIndex} className="inline-block">
-                                       {isVideo(url) ? <video src={url} controls className="h-32 rounded-lg border border-slate-200" /> : <img src={url} className="h-32 rounded-lg border border-slate-200 object-cover" />}
+               {activeChanges.map((change: DesignChange) => {
+                  const linkedSources = change.sourceFeedbacks || [];
+                  const ergoCount = linkedSources.filter(s => s.projectId).length;
+                  const feedbackCount = linkedSources.filter(s => s.feedbackId).length;
+
+                  return (
+                    <div key={change.id} className="group relative rounded-lg transition-colors hover:bg-slate-50/50 -m-3 p-3">
+                        <div className="flex flex-col md:flex-row gap-6">
+                            <div className="md:w-48 flex-shrink-0">
+                                <span className="font-mono text-sm font-bold text-intenza-600 bg-intenza-50 px-2 py-1 rounded border border-intenza-100">{change.ecoNumber || change.ecrNumber || 'N/A'}</span>
+                                <div className={`mt-2 px-2 py-0.5 rounded text-[10px] font-bold uppercase w-fit border ${ecoStatusStyles[change.status]}`}>
+                                    {ecoStatusTranslations[change.status]}
+                                </div>
+                                <div className="flex flex-col gap-1.5 text-slate-500 text-[10px] font-bold uppercase tracking-wider mt-3">
+                                    <div className="flex items-center gap-2"><Calendar size={12} className="text-slate-400" />ECO Date: {change.date}</div>
+                                </div>
+                                
+                                {/* REVERSE LINKAGE UI */}
+                                {(ergoCount > 0 || feedbackCount > 0) && (
+                                    <div className="mt-4 pt-3 border-t border-slate-100 space-y-1.5">
+                                        <div className="text-[9px] font-black text-slate-300 uppercase tracking-widest">關聯來源</div>
+                                        {ergoCount > 0 && <div className="flex items-center gap-1.5 text-[10px] font-bold text-indigo-600"><UserCheck size={10}/> {ergoCount} 人因評估項</div>}
+                                        {feedbackCount > 0 && <div className="flex items-center gap-1.5 text-[10px] font-bold text-emerald-600"><MessageSquare size={10}/> {feedbackCount} 客戶回饋</div>}
                                     </div>
-                                 ))}
-                              </div>
-                           )}
+                                )}
+                            </div>
+                            <div className="flex-1">
+                                <h4 className="text-lg font-medium text-slate-900 mb-3 leading-snug">{t(change.description)}</h4>
+                                {change.imageUrls && change.imageUrls.length > 0 && (
+                                    <div className="mb-4 flex flex-wrap gap-2">
+                                        {change.imageUrls.map((url, imgIndex) => (
+                                            <div key={imgIndex} className="inline-block">
+                                                {isVideo(url) ? <video src={url} controls className="h-32 rounded-lg border border-slate-200" /> : <img src={url} className="h-32 rounded-lg border border-slate-200 object-cover" />}
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
                         </div>
-                     </div>
-                     {!isViewer && (
-                        <div className="absolute top-2 right-2 flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                           <button onClick={() => onEditEco(change)} className="p-2 bg-slate-100 rounded-full text-slate-500 hover:bg-slate-200 hover:text-slate-800"><Pencil size={14} /></button>
-                           <button onClick={() => onDeleteEco(change.id)} className="p-2 bg-red-50 rounded-full text-red-500 hover:bg-red-100 hover:text-red-700"><Trash2 size={14} /></button>
-                        </div>
-                     )}
-                  </div>
-               ))}
+                        {!isViewer && (
+                            <div className="absolute top-2 right-2 flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                <button onClick={() => onEditEco(change)} className="p-2 bg-slate-100 rounded-full text-slate-500 hover:bg-slate-200 hover:text-slate-800"><Pencil size={14} /></button>
+                                <button onClick={() => onDeleteEco(change.id)} className="p-2 bg-red-50 rounded-full text-red-500 hover:bg-red-100 hover:text-red-700"><Trash2 size={14} /></button>
+                            </div>
+                        )}
+                    </div>
+                  );
+               })}
           </div>
         </div>
       </div>
@@ -715,8 +729,77 @@ const ErgoSection = ({ product, testers, testerGroups, onUpdateProduct, highligh
   const [ngReasonModalState, setNgReasonModalState] = useState<any>({ isOpen: false, context: null });
   const [statusModalState, setStatusModalState] = useState<any>({ isOpen: false, context: null });
   const [feedbackStatusModal, setFeedbackStatusModal] = useState<any>({ isOpen: false, feedback: null });
+  
   const activeEcosList = product.designHistory.filter((e: DesignChange) => e.status !== EcoStatus.IN_PRODUCTION && e.status !== EcoStatus.DESIGN_COMPLETE);
   const productVersions = useMemo(() => Array.from(new Set([product.currentVersion, ...product.designHistory.map((h: DesignChange) => h.version)])).sort().reverse(), [product]);
+
+  /**
+   * REFACTORED: Unified linkage helper to ensure bidirectional consistency
+   */
+  const performBidirectionalUpdate = (
+    newStatus: NgDecisionStatus | string, 
+    linkedEcoId?: string, 
+    context?: any, // { projectId, category, taskId, testerId }
+    feedbackId?: string
+  ) => {
+    // 1. Clean existing references in all ECOs for this source
+    const updatedHistory = product.designHistory.map((eco: DesignChange) => {
+        let sources = [...(eco.sourceFeedbacks || [])];
+        if (feedbackId) {
+            sources = sources.filter(s => s.feedbackId !== feedbackId);
+        } else if (context) {
+            sources = sources.filter(s => 
+                !(s.projectId === context.projectId && 
+                  s.taskId === context.taskId && 
+                  s.testerId === context.testerId)
+            );
+        }
+        
+        // 2. Add new reference if we are linking
+        if (linkedEcoId && eco.id === linkedEcoId) {
+            if (feedbackId) {
+                sources.push({ category: feedbackStatusModal.feedback.category, feedbackId });
+            } else if (context) {
+                sources.push({ ...context });
+            }
+        }
+        return { ...eco, sourceFeedbacks: sources };
+    });
+
+    // 3. Update the source (Task or Feedback)
+    let updatedProjects = product.ergoProjects;
+    let updatedFeedbacks = product.customerFeedback;
+
+    if (feedbackId) {
+        updatedFeedbacks = product.customerFeedback.map((f: ErgoFeedback) => 
+            f.id === feedbackId ? { ...f, status: newStatus as any, linkedEcoId } : f
+        );
+    } else if (context) {
+        updatedProjects = product.ergoProjects.map((p: ErgoProject) => 
+            p.id === context.projectId ? {
+                ...p,
+                tasks: {
+                    ...p.tasks,
+                    [context.category]: p.tasks[context.category].map((t: EvaluationTask) => 
+                        t.id === context.taskId ? {
+                            ...t,
+                            ngReasons: t.ngReasons.map((ng: NgReason) => 
+                                ng.testerId === context.testerId ? { ...ng, decisionStatus: newStatus as NgDecisionStatus, linkedEcoId } : ng
+                            )
+                        } : t
+                    )
+                }
+            } : p
+        );
+    }
+
+    onUpdateProduct({
+        ...product,
+        designHistory: updatedHistory,
+        ergoProjects: updatedProjects,
+        customerFeedback: updatedFeedbacks
+    });
+  };
 
   return (
     <div className="relative animate-fade-in">
@@ -747,13 +830,116 @@ const ErgoSection = ({ product, testers, testerGroups, onUpdateProduct, highligh
           )}
         </div>
       </div>
+
       {isStartEvaluationModalOpen && <StartEvaluationModal onClose={() => setStartEvaluationModalOpen(false)} onStartProject={(name: any, ids: any) => { if(editingProject) { onUpdateProduct({...product, ergoProjects: product.ergoProjects.map((p: any) => p.id === editingProject.id ? {...p, name, testerIds: ids} : p)}); } else { onUpdateProduct({...product, ergoProjects: [...product.ergoProjects, {id: `proj-${Date.now()}`, name, date: new Date().toISOString().split('T')[0], testerIds: ids, overallStatus: 'PENDING', tasks: {'Resistance profile':[], 'Experience':[], 'Stroke':[], 'Other Suggestion':[]}, uniqueNgReasons: {}}]}); } setStartEvaluationModalOpen(false); }} allTesters={testers} testerGroups={testerGroups} project={editingProject} />}
       {addTaskModalState.isOpen && <AddTaskModal onClose={() => setAddTaskModalState({isOpen:false})} onSave={(name: any) => { const {projectId, category} = addTaskModalState.context; onUpdateProduct({...product, ergoProjects: product.ergoProjects.map((p: any) => p.id === projectId ? {...p, tasks: {...p.tasks, [category]: [...p.tasks[category], {id: `t-${Date.now()}`, name: {en: name, zh: name}, passTesterIds: [], ngReasons: []}]}} : p)}); setAddTaskModalState({isOpen:false}); }} />}
       {taskResultModalState.isOpen && <SetTaskResultsModal onClose={() => setTaskResultModalState({isOpen:false})} onSave={(ids: any) => { const {projectId, category, taskId} = taskResultModalState.context; onUpdateProduct({...product, ergoProjects: product.ergoProjects.map((p: any) => p.id === projectId ? {...p, tasks: {...p.tasks, [category]: p.tasks[category].map((t: any) => t.id === taskId ? {...t, passTesterIds: ids, ngReasons: p.testerIds.filter((tid: any) => !ids.includes(tid)).map((tid: any) => t.ngReasons.find((r: any) => r.testerId === tid) || {testerId: tid, reason: {en: '', zh: ''}, decisionStatus: 'PENDING'})} : t)}} : p)}); setTaskResultModalState({isOpen:false}); }} context={taskResultModalState.context} project={product.ergoProjects.find((p: any) => p.id === taskResultModalState.context.projectId)} testers={testers} />}
       {ngReasonModalState.isOpen && <SetPassNgModal onClose={() => setNgReasonModalState({isOpen:false})} onSet={(reason: any, isNew: any, atts: any, type: any) => { const {projectId, category, taskId, testerId} = ngReasonModalState.context; onUpdateProduct({...product, ergoProjects: product.ergoProjects.map((p: any) => p.id === projectId ? {...p, tasks: {...p.tasks, [category]: p.tasks[category].map((t: any) => t.id === taskId ? {...t, ngReasons: t.ngReasons.map((ng: any) => ng.testerId === testerId ? {...ng, reason, attachmentUrls: atts, decisionStatus: type === 'IDEA' ? 'IDEA' : ng.decisionStatus} : ng)} : t)}} : p)}); setNgReasonModalState({isOpen:false}); }} existingReason={product.ergoProjects.find((p: any) => p.id === ngReasonModalState.context.projectId)?.tasks[ngReasonModalState.context.category].find((t: any) => t.id === ngReasonModalState.context.taskId)?.ngReasons.find((ng: any) => ng.testerId === ngReasonModalState.context.testerId)} />}
-      {statusModalState.isOpen && <StatusDecisionModal onClose={() => setStatusModalState({isOpen:false})} context={statusModalState.context} onSetStatus={(s: any) => { const {projectId, category, taskId, testerId} = statusModalState.context; onUpdateProduct({...product, ergoProjects: product.ergoProjects.map((p: any) => p.id === projectId ? {...p, tasks: {...p.tasks, [category]: p.tasks[category].map((t: any) => t.id === taskId ? {...t, ngReasons: t.ngReasons.map((ng: any) => ng.testerId === testerId ? {...ng, decisionStatus: s, linkedEcoId: undefined} : ng)} : t)}} : p)}); setStatusModalState({isOpen:false}); }} onLinkEco={(ecoId: any) => { const {projectId, category, taskId, testerId} = statusModalState.context; const oldEco = statusModalState.context.linkedEcoId; const isUn = oldEco === ecoId; const updatedH = product.designHistory.map((eco: any) => { let sources = (eco.sourceFeedbacks || []).filter((s: any) => !(s.projectId === projectId && s.taskId === taskId && s.testerId === testerId)); if(eco.id === ecoId && !isUn) sources.push({projectId, category, taskId, testerId}); return {...eco, sourceFeedbacks: sources}; }); onUpdateProduct({...product, designHistory: updatedH, ergoProjects: product.ergoProjects.map((p: any) => p.id === projectId ? {...p, tasks: {...p.tasks, [category]: p.tasks[category].map((t: any) => t.id === taskId ? {...t, ngReasons: t.ngReasons.map((ng: any) => ng.testerId === testerId ? {...ng, linkedEcoId: isUn ? undefined : ecoId, decisionStatus: isUn ? 'PENDING' : 'NEEDS_IMPROVEMENT'} : ng)} : t)}} : p)}); setStatusModalState({isOpen:false}); }} onCreateEco={(v: any) => { const {projectId, category, taskId, testerId} = statusModalState.context; const ng = product.ergoProjects.find((p: any) => p.id === projectId).tasks[category].find((t: any) => t.id === taskId).ngReasons.find((r: any) => r.testerId === testerId); const newEcoId = `eco-${Date.now()}`; const newEco: any = { id: newEcoId, ecoNumber: `EVAL-${Date.now().toString().slice(-4)}`, date: new Date().toISOString().split('T')[0], version: v, description: {en: `[Needs Improvement] ${t(ng.reason)}`, zh: `[需改進] ${t(ng.reason)}`}, affectedBatches: [], affectedCustomers: [], status: EcoStatus.EVALUATING, imageUrls: ng.attachmentUrls || [], sourceFeedbacks: [{projectId, category, taskId, testerId}] }; onUpdateProduct({...product, designHistory: [...product.designHistory, newEco], ergoProjects: product.ergoProjects.map((p: any) => p.id === projectId ? {...p, tasks: {...p.tasks, [category]: p.tasks[category].map((t: any) => t.id === taskId ? {...t, ngReasons: t.ngReasons.map((r: any) => r.testerId === testerId ? {...r, linkedEcoId: newEcoId, decisionStatus: 'NEEDS_IMPROVEMENT'} : r)} : t)}} : p)}); setStatusModalState({isOpen:false}); }} activeEcos={activeEcosList} versions={productVersions} currentProductVersion={product.currentVersion} />}
+      
+      {/* IMPROVED DECISION MODALS WITH BIDIRECTIONAL SYNC */}
+      {statusModalState.isOpen && (
+          <StatusDecisionModal 
+              onClose={() => setStatusModalState({isOpen:false})} 
+              context={statusModalState.context} 
+              onSetStatus={(s: any) => {
+                  performBidirectionalUpdate(s, undefined, statusModalState.context);
+                  setStatusModalState({isOpen:false});
+              }} 
+              onLinkEco={(ecoId: any) => {
+                  const isUnlink = statusModalState.context.linkedEcoId === ecoId;
+                  performBidirectionalUpdate(
+                      isUnlink ? 'PENDING' : 'NEEDS_IMPROVEMENT', 
+                      isUnlink ? undefined : ecoId, 
+                      statusModalState.context
+                  );
+                  setStatusModalState({isOpen:false});
+              }} 
+              onCreateEco={(version: string) => {
+                  const {projectId, category, taskId, testerId} = statusModalState.context;
+                  const ng = product.ergoProjects.find((p: any) => p.id === projectId).tasks[category].find((t: any) => t.id === taskId).ngReasons.find((r: any) => r.testerId === testerId);
+                  const newEcoId = `eco-${Date.now()}`;
+                  const newEco: any = { 
+                      id: newEcoId, 
+                      ecoNumber: `EVAL-${Date.now().toString().slice(-4)}`, 
+                      date: new Date().toISOString().split('T')[0], 
+                      version, 
+                      description: {en: `[Ergo Improvement] ${t(ng.reason)}`, zh: `[人因改進] ${t(ng.reason)}`}, 
+                      affectedBatches: [], 
+                      affectedCustomers: [], 
+                      status: EcoStatus.EVALUATING, 
+                      imageUrls: ng.attachmentUrls || [], 
+                      sourceFeedbacks: [{projectId, category, taskId, testerId}] 
+                  };
+                  onUpdateProduct({
+                      ...product,
+                      designHistory: [...product.designHistory, newEco],
+                      ergoProjects: product.ergoProjects.map((p: any) => p.id === projectId ? {
+                          ...p,
+                          tasks: {
+                              ...p.tasks,
+                              [category]: p.tasks[category].map((t: any) => t.id === taskId ? {
+                                  ...t,
+                                  ngReasons: t.ngReasons.map((r: any) => r.testerId === testerId ? { ...r, linkedEcoId: newEcoId, decisionStatus: 'NEEDS_IMPROVEMENT'} : r)
+                              } : t)
+                          }
+                      } : p)
+                  });
+                  setStatusModalState({isOpen:false});
+              }} 
+              activeEcos={activeEcosList} 
+              versions={productVersions} 
+              currentProductVersion={product.currentVersion} 
+          />
+      )}
+
       {feedbackModalState.isOpen && <FeedbackModal onClose={() => setFeedbackModalState({isOpen:false})} onSave={(data: any) => { if(feedbackModalState.feedback) { onUpdateProduct({...product, customerFeedback: product.customerFeedback.map((f: any) => f.id === feedbackModalState.feedback.id ? {...f, ...data} : f)}); } else { onUpdateProduct({...product, customerFeedback: [...product.customerFeedback, {id: `fb-${Date.now()}`, ...data, type: 'COMPLAINT', status: 'PENDING'}]}); } setFeedbackModalState({isOpen:false}); }} feedback={feedbackModalState.feedback} product={product} />}
-      {feedbackStatusModal.isOpen && <FeedbackStatusDecisionModal onClose={() => setFeedbackStatusModal({isOpen:false})} feedback={feedbackStatusModal.feedback} onUpdateStatus={(fid: any, s: any) => { onUpdateProduct({...product, customerFeedback: product.customerFeedback.map((f: any) => f.id === fid ? {...f, status: s, linkedEcoId: undefined} : f)}); setFeedbackStatusModal({isOpen:false}); }} onLinkEco={(ecoId: any) => { const fid = feedbackStatusModal.feedback.id; const isUn = feedbackStatusModal.feedback.linkedEcoId === ecoId; const updatedH = product.designHistory.map((eco: any) => { let sources = (eco.sourceFeedbacks || []).filter((s: any) => s.feedbackId !== fid); if(eco.id === ecoId && !isUn) sources.push({category: feedbackStatusModal.feedback.category, feedbackId: fid}); return {...eco, sourceFeedbacks: sources}; }); onUpdateProduct({...product, designHistory: updatedH, customerFeedback: product.customerFeedback.map((f: any) => f.id === fid ? {...f, linkedEcoId: isUn ? undefined : ecoId, status: isUn ? 'PENDING' : 'DISCUSSION'} : f)}); setFeedbackStatusModal({isOpen:false}); }} onCreateEco={(v: any) => { const f = feedbackStatusModal.feedback; const newEcoId = `eco-${Date.now()}`; const newEco: any = { id: newEcoId, ecoNumber: `CUST-${Date.now().toString().slice(-4)}`, date: new Date().toISOString().split('T')[0], version: v, description: {en: `[Customer Feedback] ${t(f.content)}`, zh: `[客訴回饋] ${t(f.content)}`}, affectedBatches: [], affectedCustomers: [], status: EcoStatus.EVALUATING, imageUrls: f.attachmentUrls || [], sourceFeedbacks: [{category: f.category, feedbackId: f.id}] }; onUpdateProduct({...product, designHistory: [...product.designHistory, newEco], customerFeedback: product.customerFeedback.map((item: any) => item.id === f.id ? {...item, linkedEcoId: newEcoId, status: 'DISCUSSION'} : item)}); setFeedbackStatusModal({isOpen:false}); }} activeEcos={activeEcosList} versions={productVersions} currentProductVersion={product.currentVersion} />}
+      
+      {feedbackStatusModal.isOpen && (
+          <FeedbackStatusDecisionModal 
+            onClose={() => setFeedbackStatusModal({isOpen:false})} 
+            feedback={feedbackStatusModal.feedback} 
+            onUpdateStatus={(fid: any, s: any) => {
+                performBidirectionalUpdate(s, undefined, undefined, fid);
+                setFeedbackStatusModal({isOpen:false});
+            }} 
+            onLinkEco={(ecoId: any) => {
+                const fid = feedbackStatusModal.feedback.id;
+                const isUnlink = feedbackStatusModal.feedback.linkedEcoId === ecoId;
+                performBidirectionalUpdate(
+                    isUnlink ? 'PENDING' : 'DISCUSSION', 
+                    isUnlink ? undefined : ecoId, 
+                    undefined, 
+                    fid
+                );
+                setFeedbackStatusModal({isOpen:false});
+            }} 
+            onCreateEco={(version: string) => {
+                const f = feedbackStatusModal.feedback;
+                const newEcoId = `eco-${Date.now()}`;
+                const newEco: any = { 
+                    id: newEcoId, 
+                    ecoNumber: `CUST-${Date.now().toString().slice(-4)}`, 
+                    date: new Date().toISOString().split('T')[0], 
+                    version, 
+                    description: {en: `[Customer Feedback Address] ${t(f.content)}`, zh: `[客訴回饋處理] ${t(f.content)}`}, 
+                    affectedBatches: [], 
+                    affectedCustomers: [], 
+                    status: EcoStatus.EVALUATING, 
+                    imageUrls: f.attachmentUrls || [], 
+                    sourceFeedbacks: [{category: f.category, feedbackId: f.id}] 
+                };
+                onUpdateProduct({
+                    ...product,
+                    designHistory: [...product.designHistory, newEco],
+                    customerFeedback: product.customerFeedback.map((item: any) => item.id === f.id ? { ...item, linkedEcoId: newEcoId, status: 'DISCUSSION'} : item)
+                });
+                setFeedbackStatusModal({isOpen:false});
+            }} 
+            activeEcos={activeEcosList} 
+            versions={productVersions} 
+            currentProductVersion={product.currentVersion} 
+          />
+      )}
     </div>
   );
 };
@@ -927,8 +1113,8 @@ const SetPassNgModal = ({ onClose, onSet, existingReason }: any) => {
 };
 
 /**
- * REFACTORED StatusDecisionModal: Matches UI and requirements for Pending/Discussion/Ignored
- * and displays ECO numbers when linked.
+ * REFACTORED StatusDecisionModal: Now supports direct status setting (Pending, Discussion, Ignored)
+ * and links to ECOs with bidirectional synchronization.
  */
 const StatusDecisionModal = ({ onClose, onSetStatus, onLinkEco, onCreateEco, activeEcos, versions, currentProductVersion, context }: any) => {
     const [view, setView] = useState('MAIN');
