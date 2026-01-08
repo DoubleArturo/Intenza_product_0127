@@ -1445,7 +1445,50 @@ const StatusDecisionModal = ({ onClose, onSetStatus, onLinkEco, onCreateEco, act
 const FeedbackModal = ({ onClose, onSave, feedback }: any) => {
     const [d, setD] = useState(feedback || { content: {en:'',zh:''}, source: '', category: 'Experience', date: new Date().toISOString().split('T')[0] });
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm"><div className="bg-white rounded-2xl w-full max-w-md p-6"><h2 className="font-bold mb-4">Feedback</h2><input type="text" placeholder="Source" value={d.source} onChange={e=>setD({...d,source:e.target.value})} className="w-full p-2 border rounded mb-2"/><textarea placeholder="Content" value={d.content.en} onChange={e=>setD({...d,content:{en:e.target.value,zh:e.target.value}})} className="w-full p-2 border rounded mb-4" rows={3}/><button onClick={()=>onSave(d)} className="w-full py-2 bg-slate-900 text-white rounded">Save</button></div></div>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm animate-fade-in">
+            <div className="bg-white rounded-3xl w-full max-w-md h-[250px] overflow-hidden flex flex-col shadow-2xl relative border border-white/20 animate-slide-up">
+                <div className="px-5 py-3 border-b border-slate-100 flex justify-between items-center bg-white">
+                    <h2 className="text-sm font-black text-slate-900 uppercase tracking-widest flex items-center gap-2">
+                        <MessageSquare size={14} className="text-intenza-600" />
+                        {feedback ? 'Edit Feedback' : 'New Feedback Entry'}
+                    </h2>
+                    <button onClick={onClose} className="p-1 hover:bg-slate-100 rounded-full transition-colors"><X size={18}/></button>
+                </div>
+                
+                <div className="p-4 flex-1 overflow-y-auto space-y-3 custom-scrollbar">
+                    <div>
+                        <label className="block text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">Feedback Source</label>
+                        <input 
+                            type="text" 
+                            placeholder="e.g. Sales, UK Market" 
+                            value={d.source} 
+                            onChange={e=>setD({...d,source:e.target.value})} 
+                            className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:border-intenza-600 focus:bg-white outline-none text-xs font-bold transition-all"
+                        />
+                    </div>
+                    <div>
+                        <label className="block text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">Description / Content</label>
+                        <textarea 
+                            placeholder="Detail the complaint or market observation..." 
+                            value={d.content.en} 
+                            onChange={e=>setD({...d,content:{en:e.target.value,zh:e.target.value}})} 
+                            className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:border-intenza-600 focus:bg-white outline-none text-xs font-medium resize-none transition-all" 
+                            rows={3}
+                        />
+                    </div>
+                </div>
+
+                <div className="px-4 py-3 border-t border-slate-100 bg-slate-50/50 flex justify-end">
+                    <button 
+                        onClick={()=>onSave(d)} 
+                        disabled={!d.source || !d.content.en}
+                        className="w-full py-2.5 bg-slate-900 text-white rounded-xl text-[10px] font-black uppercase tracking-[0.2em] hover:bg-slate-800 transition-all shadow-lg shadow-slate-900/10 disabled:opacity-30 disabled:cursor-not-allowed active:scale-[0.98]"
+                    >
+                        Confirm & Save Entry
+                    </button>
+                </div>
+            </div>
+        </div>
     );
 };
 
