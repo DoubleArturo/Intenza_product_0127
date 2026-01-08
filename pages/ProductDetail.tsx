@@ -1094,7 +1094,7 @@ const ErgoSection = ({ product, testers, testerGroups, onUpdateProduct, highligh
 // --- Modals ---
 
 const EcoModal = ({ isOpen, onClose, onSave, eco, productVersions, product }: any) => {
-    const [formData, setFormData] = useState<any>(eco || { ecoNumber: '', date: new Date().toISOString().split('T')[0], version: product.currentVersion, description: { en: '', zh: '' }, status: EcoStatus.EVALUATING, imageUrl: [], imageCaptions: [] });
+    const [formData, setFormData] = useState<any>(eco || { ecoNumber: '', date: new Date().toISOString().split('T')[0], version: product.currentVersion, description: { en: '', zh: '' }, status: EcoStatus.EVALUATING, imageUrls: [], imageCaptions: [] });
     const [isUp, setIsUp] = useState(false);
     const fileRef = useRef<HTMLInputElement>(null);
     return (
@@ -1171,69 +1171,71 @@ const StartEvaluationModal = ({ onClose, onStartProject, allTesters, testerGroup
     };
 
     return (
-        <div className="fixed inset-0 z-[120] flex justify-center items-center p-2 md:p-4 bg-slate-900/60 backdrop-blur-sm animate-fade-in overflow-hidden">
-            <div className="bg-white rounded-[2.5rem] w-[98vw] h-fit max-h-[96vh] overflow-hidden flex flex-col shadow-2xl border border-white/20 transition-all duration-300">
-                <div className="p-6 md:p-8 border-b border-slate-100 flex justify-between items-center bg-white shrink-0">
+        <div className="fixed inset-0 z-[9999] flex justify-center items-center p-4 bg-slate-950/80 backdrop-blur-xl animate-fade-in overflow-hidden">
+            <div className="bg-white rounded-[3rem] w-[98vw] h-[96vh] shadow-2xl flex flex-col border border-white/20 overflow-hidden relative">
+                {/* Fixed Header */}
+                <div className="p-8 border-b border-slate-100 flex justify-between items-center bg-white shrink-0">
                     <div>
-                        <h2 className="text-2xl md:text-3xl font-black text-slate-900 tracking-tight">{project ? 'Edit Project Definition' : 'Launch New Evaluation Project'}</h2>
-                        <p className="text-slate-400 text-xs md:text-sm font-bold uppercase tracking-widest mt-1">Configure verification scope and test cohort baseline</p>
+                        <h2 className="text-3xl font-black text-slate-900 tracking-tight">{project ? 'Edit Project Definition' : 'Launch New Evaluation Project'}</h2>
+                        <p className="text-slate-400 text-sm font-bold uppercase tracking-widest mt-1">Configure verification scope and test cohort baseline</p>
                     </div>
-                    <button onClick={onClose} className="p-3 md:p-4 hover:bg-slate-100 rounded-2xl transition-colors"><X size={32} strokeWidth={3} /></button>
+                    <button onClick={onClose} className="p-4 hover:bg-slate-100 rounded-3xl transition-colors text-slate-400 hover:text-slate-900"><X size={36} strokeWidth={3} /></button>
                 </div>
                 
-                <div className="p-6 md:p-10 space-y-10 overflow-y-auto flex-1 custom-scrollbar bg-slate-50/20">
+                {/* Scrollable Body */}
+                <div className="p-10 space-y-12 overflow-y-auto flex-1 custom-scrollbar bg-slate-50/20">
                     <div className="max-w-4xl">
-                        <label className="block text-[10px] md:text-xs font-black text-slate-400 uppercase tracking-widest mb-3">Project Title & Identification</label>
-                        <input type="text" placeholder="Enter evaluation project title (e.g., Q1 Ergo Audit - Resistance Profile)..." value={name} onChange={e=>setName(e.target.value)} className="w-full p-4 md:p-5 bg-white border border-slate-200 rounded-2xl shadow-sm focus:ring-4 focus:ring-intenza-500/10 focus:border-intenza-600 outline-none font-bold text-lg md:text-xl"/>
+                        <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-4">Project Title & Identification</label>
+                        <input type="text" placeholder="Enter evaluation project title (e.g., Q1 Ergo Audit - Resistance Profile)..." value={name} onChange={e=>setName(e.target.value)} className="w-full p-6 bg-white border border-slate-200 rounded-[2rem] shadow-sm focus:ring-8 focus:ring-intenza-500/10 focus:border-intenza-600 outline-none font-bold text-2xl"/>
                     </div>
 
                     {testerGroups.length > 0 && (
-                        <div>
-                            <div className="flex items-center gap-3 mb-5">
-                                <div className="p-2 bg-indigo-50 rounded-xl"><Users2 size={20} className="text-indigo-600" /></div>
-                                <label className="text-[10px] md:text-xs font-black text-slate-400 uppercase tracking-widest">Quick Import Cohort Pre-sets</label>
+                        <div className="max-w-full">
+                            <div className="flex items-center gap-3 mb-6">
+                                <div className="p-2.5 bg-indigo-50 rounded-2xl"><Users2 size={24} className="text-indigo-600" /></div>
+                                <label className="text-xs font-black text-slate-400 uppercase tracking-widest">Quick Import Cohort Pre-sets</label>
                             </div>
-                            <div className="flex flex-wrap gap-3 md:gap-4">
+                            <div className="flex flex-wrap gap-4">
                                 {testerGroups.map(g => (
-                                    <button key={g.id} onClick={() => handleApplyGroup(g.id)} className="flex items-center gap-4 px-5 md:px-6 py-3 md:py-4 bg-white border border-slate-200 rounded-3xl text-sm md:text-base font-black text-slate-700 hover:border-indigo-400 hover:shadow-xl transition-all group/btn">
-                                        <Users2 size={18} className="text-indigo-500 group-hover/btn:scale-110 transition-transform" />
+                                    <button key={g.id} onClick={() => handleApplyGroup(g.id)} className="flex items-center gap-5 px-8 py-5 bg-white border border-slate-200 rounded-[2.5rem] text-base font-black text-slate-700 hover:border-indigo-400 hover:shadow-xl hover:-translate-y-1 transition-all group/btn">
+                                        <Users2 size={20} className="text-indigo-500 group-hover/btn:scale-110 transition-transform" />
                                         <span>{t(g.name)}</span>
-                                        <span className="ml-2 px-3 py-1 bg-slate-100 rounded-full text-xs font-mono text-slate-500">{g.testerIds.length}</span>
+                                        <span className="ml-2 px-4 py-1.5 bg-slate-100 rounded-full text-xs font-mono text-slate-500">{g.testerIds.length} subjects</span>
                                     </button>
                                 ))}
                             </div>
                         </div>
                     )}
 
-                    <div className="border-t border-slate-100 pt-10 md:pt-12">
-                        <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 md:gap-8 mb-8">
-                            <div className="flex items-center gap-3">
-                                <div className="p-2 bg-intenza-50 rounded-xl"><User size={20} className="text-intenza-600" /></div>
-                                <h3 className="text-[10px] md:text-xs font-black text-slate-400 uppercase tracking-widest">Select Subject Cohort ({ids.length} Active)</h3>
+                    <div className="border-t border-slate-100 pt-12">
+                        <div className="flex flex-col md:flex-row md:items-end justify-between gap-10 mb-10">
+                            <div className="flex items-center gap-4">
+                                <div className="p-2.5 bg-intenza-50 rounded-2xl"><User size={24} className="text-intenza-600" /></div>
+                                <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest">Select Subject Cohort ({ids.length} Active Candidates)</h3>
                             </div>
-                            <div className="relative w-full md:w-96">
-                                <Search size={22} className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-400" />
-                                <input type="text" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} placeholder="Search subjects..." className="w-full pl-14 pr-6 py-4 bg-white border border-slate-200 rounded-2xl text-sm md:text-base font-bold shadow-sm focus:border-intenza-600 outline-none" />
+                            <div className="relative w-full md:w-[450px]">
+                                <Search size={28} className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-400" />
+                                <input type="text" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} placeholder="Filter subjects by name or height..." className="w-full pl-16 pr-8 py-5 bg-white border border-slate-200 rounded-3xl text-lg font-bold shadow-sm focus:border-intenza-600 outline-none" />
                             </div>
                         </div>
                         
-                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 2xl:grid-cols-10 3xl:grid-cols-12 gap-4 md:gap-6 pb-12">
+                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 2xl:grid-cols-10 gap-8 pb-12">
                             {filteredTesters.map((tester: Tester) => {
                                 const isSelected = ids.includes(tester.id);
                                 return (
                                     <div 
                                         key={tester.id} 
                                         onClick={() => isSelected ? setIds(ids.filter(i => i !== tester.id)) : setIds([...ids, tester.id])}
-                                        className={`relative group cursor-pointer transition-all duration-300 rounded-[2rem] md:rounded-[2.5rem] border-2 overflow-hidden bg-white ${isSelected ? 'border-intenza-600 ring-8 ring-intenza-500/5 shadow-2xl -translate-y-1' : 'border-slate-100 hover:border-slate-200 hover:-translate-y-0.5'}`}
+                                        className={`relative group cursor-pointer transition-all duration-300 rounded-[3rem] border-2 overflow-hidden bg-white ${isSelected ? 'border-intenza-600 ring-[12px] ring-intenza-500/5 shadow-2xl -translate-y-2' : 'border-slate-100 hover:border-slate-300 hover:-translate-y-1'}`}
                                     >
                                         <div className="aspect-[3/4] bg-slate-100 relative overflow-hidden">
-                                            <img src={tester.imageUrl} className={`w-full h-full object-cover transition-all duration-700 ${isSelected ? 'grayscale-0' : 'grayscale-[0.5] group-hover:grayscale-0'}`} alt={tester.name} />
-                                            {isSelected && <div className="absolute inset-0 bg-intenza-600/20 backdrop-blur-[1.5px] flex items-center justify-center"><CheckCircle size={40} className="text-white drop-shadow-2xl" strokeWidth={3} /></div>}
-                                            <div className="absolute bottom-2 md:bottom-3 left-2 md:left-3 px-2 md:px-3 py-0.5 md:py-1 rounded-full bg-black/40 backdrop-blur-md text-[8px] md:text-[10px] font-black text-white uppercase tracking-widest">{tester.gender}</div>
+                                            <img src={tester.imageUrl} className={`w-full h-full object-cover transition-all duration-700 ${isSelected ? 'grayscale-0' : 'grayscale-[0.6] group-hover:grayscale-0'}`} alt={tester.name} />
+                                            {isSelected && <div className="absolute inset-0 bg-intenza-600/30 backdrop-blur-[2px] flex items-center justify-center"><CheckCircle size={64} className="text-white drop-shadow-2xl" strokeWidth={3} /></div>}
+                                            <div className="absolute bottom-4 left-4 px-4 py-1.5 rounded-full bg-black/50 backdrop-blur-md text-[10px] font-black text-white uppercase tracking-widest">{tester.gender}</div>
                                         </div>
-                                        <div className="p-3 md:p-5">
-                                            <div className="text-xs md:text-sm font-black text-slate-900 truncate uppercase tracking-tight">{tester.name}</div>
-                                            <div className="text-[9px] md:text-[11px] font-bold text-slate-300 mt-1 uppercase tracking-tighter">{tester.height}cm • {tester.experienceYears}y exp</div>
+                                        <div className="p-6">
+                                            <div className="text-base font-black text-slate-900 truncate uppercase tracking-tight">{tester.name}</div>
+                                            <div className="text-xs font-bold text-slate-300 mt-1.5 uppercase tracking-tighter">{tester.height}cm • {tester.experienceYears}y experience</div>
                                         </div>
                                     </div>
                                 );
@@ -1242,27 +1244,28 @@ const StartEvaluationModal = ({ onClose, onStartProject, allTesters, testerGroup
                     </div>
                 </div>
 
-                <div className="p-6 md:p-10 border-t border-slate-100 bg-white shrink-0 flex flex-col md:flex-row justify-between items-center gap-6 md:gap-0 shadow-[0_-8px_40px_rgba(0,0,0,0.04)]">
-                    <div className="flex gap-6 md:gap-10">
+                {/* Fixed Footer */}
+                <div className="p-10 border-t border-slate-100 bg-white shrink-0 flex flex-col md:flex-row justify-between items-center gap-8 shadow-[0_-12px_60px_rgba(0,0,0,0.06)]">
+                    <div className="flex gap-12">
                         <div className="flex flex-col">
-                            <span className="text-[8px] md:text-[10px] font-black text-slate-300 uppercase tracking-widest mb-1">Target Cohort</span>
-                            <span className="text-lg md:text-xl font-black text-slate-900">{ids.length} <span className="text-slate-400 font-bold text-xs md:text-sm">Testers selected</span></span>
+                            <span className="text-[10px] font-black text-slate-300 uppercase tracking-widest mb-1.5">Target Verification Cohort</span>
+                            <span className="text-3xl font-black text-slate-900">{ids.length} <span className="text-slate-400 font-bold text-sm tracking-normal ml-1">Subjects Enrolled</span></span>
                         </div>
-                        <div className="h-full w-px bg-slate-100 mx-1 md:mx-2" />
+                        <div className="h-full w-px bg-slate-100 mx-2" />
                         <div className="flex flex-col">
-                            <span className="text-[8px] md:text-[10px] font-black text-slate-300 uppercase tracking-widest mb-1">Impact Scope</span>
-                            <span className="text-lg md:text-xl font-black text-slate-900">4 <span className="text-slate-400 font-bold text-xs md:text-sm">Categories provisioned</span></span>
+                            <span className="text-[10px] font-black text-slate-300 uppercase tracking-widest mb-1.5">Evaluation Scope</span>
+                            <span className="text-3xl font-black text-slate-900">4 <span className="text-slate-400 font-bold text-sm tracking-normal ml-1">Impact Domains</span></span>
                         </div>
                     </div>
-                    <div className="flex gap-3 md:gap-4 w-full md:w-auto">
-                        <button onClick={onClose} className="flex-1 md:flex-none px-6 md:px-10 py-4 md:py-5 text-slate-400 font-black uppercase tracking-[0.2em] hover:bg-slate-50 rounded-2xl transition-all">Cancel</button>
+                    <div className="flex gap-6 w-full md:w-auto">
+                        <button onClick={onClose} className="flex-1 md:flex-none px-12 py-6 text-slate-400 font-black uppercase tracking-[0.3em] hover:bg-slate-50 hover:text-slate-900 rounded-3xl transition-all">Cancel</button>
                         <button 
                             onClick={()=>onStartProject({en:name,zh:name},ids)} 
                             disabled={!name || ids.length === 0}
-                            className="flex-1 md:flex-none px-8 md:px-16 py-4 md:py-5 bg-slate-900 text-white rounded-3xl font-black uppercase tracking-[0.2em] md:tracking-[0.3em] hover:bg-slate-800 transition-all shadow-2xl shadow-slate-900/30 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-3"
+                            className="flex-1 md:flex-none px-20 py-6 bg-slate-900 text-white rounded-[2.5rem] font-black uppercase tracking-[0.4em] hover:bg-slate-800 transition-all shadow-2xl shadow-slate-900/40 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-4"
                         >
-                            <PlayCircle size={24} />
-                            {project ? 'Commit Update' : 'Initialize Project'}
+                            <PlayCircle size={28} />
+                            {project ? 'Commit Baseline Sync' : 'Initialize Verification'}
                         </button>
                     </div>
                 </div>
@@ -1274,21 +1277,21 @@ const StartEvaluationModal = ({ onClose, onStartProject, allTesters, testerGroup
 const AddTaskModal = ({ onClose, onSave }: any) => {
     const [n, setN] = useState('');
     return (
-        <div className="fixed inset-0 z-[130] flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm animate-fade-in"><div className="bg-white rounded-2xl w-full max-w-sm p-6 shadow-2xl"><h3 className="font-bold mb-4">Add Task</h3><input type="text" value={n} onChange={e=>setN(e.target.value)} className="w-full p-2 border rounded-xl mb-4 focus:ring-2 focus:ring-slate-200 outline-none"/><button onClick={()=>onSave(n)} className="w-full py-3 bg-slate-900 text-white rounded-xl font-bold">Add Task</button><button onClick={onClose} className="w-full py-2 mt-2 text-slate-400 font-medium">Cancel</button></div></div>
+        <div className="fixed inset-0 z-[10001] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md animate-fade-in"><div className="bg-white rounded-[2.5rem] w-full max-w-md p-8 shadow-2xl"><h3 className="text-xl font-black mb-6 uppercase tracking-tight">Add Testing Domain</h3><input type="text" value={n} onChange={e=>setN(e.target.value)} placeholder="Enter task name..." className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl mb-6 focus:ring-4 focus:ring-slate-100 outline-none font-bold"/><button onClick={()=>onSave(n)} className="w-full py-5 bg-slate-900 text-white rounded-[1.5rem] font-black uppercase tracking-widest hover:bg-slate-800 transition-all">Create Task</button><button onClick={onClose} className="w-full py-4 mt-2 text-slate-400 font-bold uppercase text-xs tracking-widest hover:text-slate-600">Cancel</button></div></div>
     );
 };
 
 const SetTaskResultsModal = ({ onClose, onSave, project, testers }: any) => {
     const [ids, setIds] = useState<string[]>([]);
     return (
-        <div className="fixed inset-0 z-[130] flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm animate-fade-in"><div className="bg-white rounded-[2rem] w-full max-w-md p-8 shadow-2xl animate-slide-up"><h3 className="text-xl font-black text-slate-900 mb-6 uppercase tracking-tight">Set Quick Results</h3><div className="space-y-3 mb-8 max-h-[40vh] overflow-y-auto custom-scrollbar pr-2">{testers.filter((t:any)=>project.testerIds.includes(t.id)).map((t:any)=><div key={t.id} className="flex items-center justify-between p-3 bg-slate-50 rounded-2xl border border-slate-100"><span className="font-bold text-slate-700">{t.name}</span><div className="flex gap-1.5"><button onClick={()=>setIds([...ids.filter(i=>i!==t.id),t.id])} className={`px-4 py-1.5 rounded-xl text-[10px] font-black uppercase transition-all ${ids.includes(t.id)?'bg-emerald-500 text-white shadow-lg shadow-emerald-500/20':'bg-white text-slate-400 border border-slate-200 hover:border-emerald-300'}`}>PASS</button><button onClick={()=>setIds(ids.filter(i=>i!==t.id))} className={`px-4 py-1.5 rounded-xl text-[10px] font-black uppercase transition-all ${!ids.includes(t.id)?'bg-rose-500 text-white shadow-lg shadow-rose-500/20':'bg-white text-slate-400 border border-slate-200 hover:border-rose-300'}`}>NG</button></div></div>)}</div><button onClick={()=>onSave(ids)} className="w-full py-4 bg-slate-900 text-white rounded-2xl font-black uppercase tracking-widest hover:bg-slate-800 transition-all shadow-xl shadow-slate-900/20">Confirm Results</button></div></div>
+        <div className="fixed inset-0 z-[10001] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md animate-fade-in"><div className="bg-white rounded-[3rem] w-full max-w-lg p-10 shadow-2xl animate-slide-up"><h3 className="text-2xl font-black text-slate-900 mb-8 uppercase tracking-tight">Assign Results Batch</h3><div className="space-y-4 mb-10 max-h-[50vh] overflow-y-auto custom-scrollbar pr-4">{testers.filter((t:any)=>project.testerIds.includes(t.id)).map((t:any)=><div key={t.id} className="flex items-center justify-between p-5 bg-slate-50 rounded-[2rem] border border-slate-100"><span className="font-black text-slate-700 uppercase tracking-tight">{t.name}</span><div className="flex gap-2"><button onClick={()=>setIds([...ids.filter(i=>i!==t.id),t.id])} className={`px-6 py-2.5 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all ${ids.includes(t.id)?'bg-emerald-500 text-white shadow-xl shadow-emerald-500/30':'bg-white text-slate-400 border border-slate-200 hover:border-emerald-300'}`}>PASS</button><button onClick={()=>setIds(ids.filter(i=>i!==t.id))} className={`px-6 py-2.5 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all ${!ids.includes(t.id)?'bg-rose-500 text-white shadow-xl shadow-rose-500/30':'bg-white text-slate-400 border border-slate-200 hover:border-rose-300'}`}>NG</button></div></div>)}</div><button onClick={()=>onSave(ids)} className="w-full py-6 bg-slate-900 text-white rounded-[2rem] font-black uppercase tracking-[0.2em] hover:bg-slate-800 transition-all shadow-2xl shadow-slate-900/30">Confirm Batch Entry</button></div></div>
     );
 };
 
 const SetPassNgModal = ({ onClose, onSet, existingReason }: any) => {
     const [r, setR] = useState(existingReason?.reason?.en || '');
     return (
-        <div className="fixed inset-0 z-[130] flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm animate-fade-in"><div className="bg-white rounded-3xl w-full max-w-sm p-8 shadow-2xl animate-slide-up"><h3 className="text-xl font-black text-slate-900 mb-4 uppercase tracking-tight">Set NG Reason</h3><textarea value={r} onChange={e=>setR(e.target.value)} className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-2 focus:ring-intenza-500/20 outline-none text-slate-900 font-medium mb-6 resize-none" rows={4} placeholder="Describe the issue observed... "/><button onClick={()=>onSet({en:r,zh:r},false,[],'ISSUE')} className="w-full py-4 bg-slate-900 text-white rounded-2xl font-black uppercase tracking-widest hover:bg-slate-800 transition-all">Save Reason</button></div></div>
+        <div className="fixed inset-0 z-[10001] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md animate-fade-in"><div className="bg-white rounded-[3rem] w-full max-w-md p-10 shadow-2xl animate-slide-up"><h3 className="text-2xl font-black text-slate-900 mb-6 uppercase tracking-tight">Record NG Detail</h3><textarea value={r} onChange={e=>setR(e.target.value)} className="w-full p-6 bg-slate-50 border border-slate-200 rounded-[2rem] focus:ring-8 focus:ring-intenza-500/5 outline-none text-slate-900 font-bold mb-8 resize-none shadow-inner" rows={5} placeholder="Describe the mechanical or ergonomic observation... "/><button onClick={()=>onSet({en:r,zh:r},false,[],'ISSUE')} className="w-full py-6 bg-slate-900 text-white rounded-[2rem] font-black uppercase tracking-[0.2em] hover:bg-slate-800 transition-all shadow-xl shadow-slate-900/30">Save Observation</button></div></div>
     );
 };
 
@@ -1311,36 +1314,36 @@ const StatusDecisionModal = ({ onClose, onSetStatus, onLinkEco, onCreateEco, act
     };
 
     return (
-        <div className="fixed inset-0 z-[130] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md animate-fade-in">
-            <div className="bg-white rounded-[2rem] w-full max-w-sm overflow-hidden shadow-2xl">
-                <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-white">
+        <div className="fixed inset-0 z-[10001] flex items-center justify-center p-4 bg-slate-900/70 backdrop-blur-lg animate-fade-in">
+            <div className="bg-white rounded-[3rem] w-full max-w-sm overflow-hidden shadow-[0_32px_80px_rgba(0,0,0,0.5)] border border-white/20">
+                <div className="p-8 border-b border-slate-100 flex justify-between items-center bg-white">
                     <h2 className="text-xl font-black text-slate-900 uppercase tracking-tight">Manage Decision</h2>
-                    <button onClick={onClose} className="p-2 hover:bg-slate-100 rounded-full transition-colors"><X size={20}/></button>
+                    <button onClick={onClose} className="p-3 hover:bg-slate-100 rounded-full transition-colors"><X size={20}/></button>
                 </div>
                 
                 {view === 'MAIN' ? (
-                    <div className="p-6 space-y-3">
+                    <div className="p-8 space-y-4">
                         <button 
                             onClick={() => setView('SELECT_V')} 
-                            className="w-full py-3.5 bg-intenza-600 text-white rounded-xl font-bold hover:bg-intenza-700 transition-all shadow-lg shadow-intenza-600/20 flex items-center justify-center gap-2"
+                            className="w-full py-4.5 bg-intenza-600 text-white rounded-[1.5rem] font-black uppercase tracking-widest hover:bg-intenza-700 transition-all shadow-2xl shadow-intenza-600/30 flex items-center justify-center gap-3"
                         >
-                            <Plus size={18} /> Address via New ECO
+                            <Plus size={20} /> Address via New ECO
                         </button>
                         <button 
                             onClick={() => setView('LINK')} 
-                            className="w-full py-3.5 bg-slate-50 border border-slate-200 text-slate-700 rounded-xl font-bold hover:bg-slate-100 transition-all flex items-center justify-center gap-2"
+                            className="w-full py-4.5 bg-slate-50 border border-slate-200 text-slate-700 rounded-[1.5rem] font-black uppercase tracking-widest hover:bg-slate-100 transition-all flex items-center justify-center gap-3"
                         >
-                            <LinkIcon size={18} /> Link Existing ECO
+                            <LinkIcon size={20} /> Link Existing ECO
                         </button>
                         
-                        <div className="pt-6 border-t border-slate-100">
-                            <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4 text-center">Set Status Directly</label>
+                        <div className="pt-8 border-t border-slate-100">
+                            <label className="block text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] mb-5 text-center">Fast Track Status</label>
                             <div className="flex gap-2">
                                 {(['PENDING', 'DISCUSSION', 'IGNORED'] as const).map(s => (
                                     <button 
                                         key={s} 
                                         onClick={() => onSetStatus(s)} 
-                                        className={`flex-1 py-2 text-[10px] font-black border rounded-xl transition-all uppercase tracking-widest ${getActiveStyle(s)}`}
+                                        className={`flex-1 py-3 text-[10px] font-black border-2 rounded-2xl transition-all uppercase tracking-widest ${getActiveStyle(s)}`}
                                     >
                                         {s}
                                     </button>
@@ -1349,34 +1352,34 @@ const StatusDecisionModal = ({ onClose, onSetStatus, onLinkEco, onCreateEco, act
                         </div>
                     </div>
                 ) : view === 'LINK' ? (
-                    <div className="p-6 space-y-2 max-h-[400px] overflow-y-auto custom-scrollbar">
-                        <h3 className="text-xs font-black text-slate-400 uppercase mb-3">Select Active ECO</h3>
+                    <div className="p-8 space-y-3 max-h-[450px] overflow-y-auto custom-scrollbar">
+                        <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest mb-4">Select Open ECO</h3>
                         {activeEcos.length > 0 ? activeEcos.map((e: any) => (
                             <button 
                                 key={e.id} 
                                 onClick={() => onLinkEco(e.id)} 
-                                className="w-full text-left p-4 border border-slate-100 rounded-2xl hover:bg-slate-50 hover:border-intenza-300 transition-all group flex items-center justify-between"
+                                className="w-full text-left p-5 border-2 border-slate-50 rounded-[1.5rem] hover:bg-slate-50 hover:border-intenza-300 transition-all group flex items-center justify-between"
                             >
                                 <div>
-                                    <div className="text-sm font-black text-slate-900">{e.ecoNumber}</div>
-                                    <div className="text-[10px] font-bold text-slate-400">{e.version}</div>
+                                    <div className="text-base font-black text-slate-900">{e.ecoNumber}</div>
+                                    <div className="text-[11px] font-bold text-slate-400 uppercase tracking-widest">{e.version}</div>
                                 </div>
-                                <ChevronRight size={16} className="text-slate-300 group-hover:text-intenza-500" />
+                                <ChevronRight size={20} className="text-slate-200 group-hover:text-intenza-500 group-hover:translate-x-1 transition-all" />
                             </button>
                         )) : (
-                            <div className="text-center py-8 text-slate-400 italic text-sm">No active ECOs found.</div>
+                            <div className="text-center py-12 text-slate-400 italic text-sm bg-slate-50 rounded-3xl">No active ECO pipelines.</div>
                         )}
-                        <button onClick={() => setView('MAIN')} className="w-full py-3 text-slate-500 font-bold hover:underline">Back</button>
+                        <button onClick={() => setView('MAIN')} className="w-full py-4 text-slate-400 font-black uppercase tracking-widest text-[10px] hover:text-slate-900 transition-colors">Back to Options</button>
                     </div>
                 ) : (
-                    <div className="p-6 space-y-2">
-                        <h3 className="text-xs font-black text-slate-400 uppercase mb-4">Target Production Version</h3>
-                        <div className="grid grid-cols-2 gap-2">
+                    <div className="p-8 space-y-4">
+                        <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest mb-6">Target Batch Version</h3>
+                        <div className="grid grid-cols-2 gap-3">
                             {versions.map((vr: any) => (
                                 <button 
                                     key={vr} 
                                     onClick={() => setV(vr)} 
-                                    className={`py-3 px-2 border rounded-xl text-xs font-bold transition-all ${v === vr ? 'bg-slate-900 text-white border-slate-900 shadow-lg shadow-slate-900/10' : 'bg-slate-50 text-slate-600 border-slate-200'}`}
+                                    className={`py-4 px-3 border-2 rounded-2xl text-xs font-black transition-all ${v === vr ? 'bg-slate-900 text-white border-slate-900 shadow-xl' : 'bg-slate-50 text-slate-600 border-slate-100'}`}
                                 >
                                     {vr}
                                 </button>
@@ -1384,11 +1387,11 @@ const StatusDecisionModal = ({ onClose, onSetStatus, onLinkEco, onCreateEco, act
                         </div>
                         <button 
                             onClick={() => onCreateEco(v)} 
-                            className="w-full py-4 bg-intenza-600 text-white rounded-2xl font-black uppercase tracking-widest mt-6 shadow-xl shadow-intenza-600/20 hover:bg-intenza-700 active:scale-[0.98] transition-all"
+                            className="w-full py-5 bg-intenza-600 text-white rounded-[1.5rem] font-black uppercase tracking-[0.2em] mt-8 shadow-2xl shadow-intenza-600/30 hover:bg-intenza-700 active:scale-[0.98] transition-all"
                         >
-                            Confirm & Create
+                            Initialize ECO
                         </button>
-                        <button onClick={() => setView('MAIN')} className="w-full py-2 text-slate-400 font-bold hover:underline">Cancel</button>
+                        <button onClick={() => setView('MAIN')} className="w-full py-4 text-slate-400 font-black uppercase tracking-widest text-[10px] hover:text-slate-900 transition-colors">Go Back</button>
                     </div>
                 )}
             </div>
@@ -1399,7 +1402,7 @@ const StatusDecisionModal = ({ onClose, onSetStatus, onLinkEco, onCreateEco, act
 const FeedbackModal = ({ onClose, onSave, feedback }: any) => {
     const [d, setD] = useState(feedback || { content: {en:'',zh:''}, source: '', category: 'Experience', date: new Date().toISOString().split('T')[0] });
     return (
-        <div className="fixed inset-0 z-[130] flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm animate-fade-in"><div className="bg-white rounded-2xl w-full max-w-md p-6 shadow-2xl"><h2 className="font-bold mb-4">Feedback</h2><input type="text" placeholder="Source" value={d.source} onChange={e=>setD({...d,source:e.target.value})} className="w-full p-2 border rounded mb-2"/><textarea placeholder="Content" value={d.content.en} onChange={e=>setD({...d,content:{en:e.target.value,zh:e.target.value}})} className="w-full p-2 border rounded mb-4" rows={3}/><button onClick={()=>onSave(d)} className="w-full py-2 bg-slate-900 text-white rounded">Save</button></div></div>
+        <div className="fixed inset-0 z-[10001] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md animate-fade-in"><div className="bg-white rounded-[2.5rem] w-full max-w-md p-8 shadow-2xl"><h2 className="font-black text-xl mb-6 uppercase tracking-tight">Record Customer Voice</h2><input type="text" placeholder="Reporting Source (e.g. Anytime Fitness)" value={d.source} onChange={e=>setD({...d,source:e.target.value})} className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl mb-4 font-bold"/><textarea placeholder="Describe the feedback in detail..." value={d.content.en} onChange={e=>setD({...d,content:{en:e.target.value,zh:e.target.value}})} className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl mb-6 font-medium resize-none shadow-inner" rows={4}/><button onClick={()=>onSave(d)} className="w-full py-5 bg-slate-900 text-white rounded-[1.5rem] font-black uppercase tracking-widest shadow-xl">Commit Feedback</button></div></div>
     );
 };
 
@@ -1418,36 +1421,36 @@ const FeedbackStatusDecisionModal = ({ onClose, onUpdateStatus, onLinkEco, onCre
     };
 
     return (
-        <div className="fixed inset-0 z-[130] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md animate-fade-in">
-            <div className="bg-white rounded-[2rem] w-full max-w-sm overflow-hidden shadow-2xl">
-                <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-white">
+        <div className="fixed inset-0 z-[10001] flex items-center justify-center p-4 bg-slate-900/70 backdrop-blur-lg animate-fade-in">
+            <div className="bg-white rounded-[3rem] w-full max-w-sm overflow-hidden shadow-[0_32px_80px_rgba(0,0,0,0.5)] border border-white/20">
+                <div className="p-8 border-b border-slate-100 flex justify-between items-center bg-white">
                     <h2 className="text-xl font-black text-slate-900 uppercase tracking-tight">Manage Feedback</h2>
-                    <button onClick={onClose} className="p-2 hover:bg-slate-100 rounded-full transition-colors"><X size={20}/></button>
+                    <button onClick={onClose} className="p-3 hover:bg-slate-100 rounded-full transition-colors"><X size={20}/></button>
                 </div>
                 
                 {view === 'MAIN' ? (
-                    <div className="p-6 space-y-3">
+                    <div className="p-8 space-y-4">
                         <button 
                             onClick={() => setView('SELECT_V')} 
-                            className="w-full py-3.5 bg-intenza-600 text-white rounded-xl font-bold hover:bg-intenza-700 transition-all shadow-lg shadow-intenza-600/20 flex items-center justify-center gap-2"
+                            className="w-full py-4.5 bg-intenza-600 text-white rounded-[1.5rem] font-black uppercase tracking-widest hover:bg-intenza-700 transition-all shadow-2xl shadow-intenza-600/30 flex items-center justify-center gap-3"
                         >
-                            <Plus size={18} /> Address via New ECO
+                            <Plus size={20} /> Convert to ECO
                         </button>
                         <button 
                             onClick={() => setView('LINK')} 
-                            className="w-full py-3.5 bg-slate-50 border border-slate-200 text-slate-700 rounded-xl font-bold hover:bg-slate-100 transition-all flex items-center justify-center gap-2"
+                            className="w-full py-4.5 bg-slate-50 border border-slate-200 text-slate-700 rounded-[1.5rem] font-black uppercase tracking-widest hover:bg-slate-100 transition-all flex items-center justify-center gap-3"
                         >
-                            <LinkIcon size={18} /> Link Existing ECO
+                            <LinkIcon size={20} /> Attach to ECO
                         </button>
                         
-                        <div className="pt-6 border-t border-slate-100">
-                            <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4 text-center">Set Status Directly</label>
+                        <div className="pt-8 border-t border-slate-100">
+                            <label className="block text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] mb-5 text-center">Fast Track Status</label>
                             <div className="flex gap-2">
                                 {(['PENDING', 'DISCUSSION', 'IGNORED'] as const).map(s => (
                                     <button 
                                         key={s} 
                                         onClick={() => onUpdateStatus(feedback.id, s)} 
-                                        className={`flex-1 py-2 text-[10px] font-black border rounded-xl transition-all uppercase tracking-widest ${getActiveStyle(s)}`}
+                                        className={`flex-1 py-3 text-[10px] font-black border-2 rounded-2xl transition-all uppercase tracking-widest ${getActiveStyle(s)}`}
                                     >
                                         {s}
                                     </button>
@@ -1456,34 +1459,34 @@ const FeedbackStatusDecisionModal = ({ onClose, onUpdateStatus, onLinkEco, onCre
                         </div>
                     </div>
                 ) : view === 'LINK' ? (
-                    <div className="p-6 space-y-2 max-h-[400px] overflow-y-auto custom-scrollbar">
-                        <h3 className="text-xs font-black text-slate-400 uppercase mb-3">Select Active ECO</h3>
+                    <div className="p-8 space-y-3 max-h-[450px] overflow-y-auto custom-scrollbar">
+                        <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest mb-4">Select Target ECO</h3>
                         {activeEcos.length > 0 ? activeEcos.map((e: any) => (
                             <button 
                                 key={e.id} 
                                 onClick={() => onLinkEco(e.id)} 
-                                className="w-full text-left p-4 border border-slate-100 rounded-2xl hover:bg-slate-50 hover:border-intenza-300 transition-all group flex items-center justify-between"
+                                className="w-full text-left p-5 border-2 border-slate-50 rounded-[1.5rem] hover:bg-slate-50 hover:border-intenza-300 transition-all group flex items-center justify-between"
                             >
                                 <div>
-                                    <div className="text-sm font-black text-slate-900">{e.ecoNumber}</div>
-                                    <div className="text-[10px] font-bold text-slate-400">{e.version}</div>
+                                    <div className="text-base font-black text-slate-900">{e.ecoNumber}</div>
+                                    <div className="text-[11px] font-bold text-slate-400 uppercase tracking-widest">{e.version}</div>
                                 </div>
-                                <ChevronRight size={16} className="text-slate-300 group-hover:text-intenza-500" />
+                                <ChevronRight size={20} className="text-slate-200 group-hover:text-intenza-500 group-hover:translate-x-1 transition-all" />
                             </button>
                         )) : (
-                            <div className="text-center py-8 text-slate-400 italic text-sm">No active ECOs found.</div>
+                            <div className="text-center py-12 text-slate-400 italic text-sm bg-slate-50 rounded-3xl">No available ECO pipelines.</div>
                         )}
-                        <button onClick={() => setView('MAIN')} className="w-full py-3 text-slate-500 font-bold hover:underline">Back</button>
+                        <button onClick={() => setView('MAIN')} className="w-full py-4 text-slate-400 font-black uppercase tracking-widest text-[10px] hover:text-slate-900 transition-colors">Go Back</button>
                     </div>
                 ) : (
-                    <div className="p-6 space-y-2">
-                        <h3 className="text-xs font-black text-slate-400 uppercase mb-4">Target Production Version</h3>
-                        <div className="grid grid-cols-2 gap-2">
+                    <div className="p-8 space-y-4">
+                        <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest mb-6">Target Batch Version</h3>
+                        <div className="grid grid-cols-2 gap-3">
                             {versions.map((vr: any) => (
                                 <button 
                                     key={vr} 
                                     onClick={() => setV(vr)} 
-                                    className={`py-3 px-2 border rounded-xl text-xs font-bold transition-all ${v === vr ? 'bg-slate-900 text-white border-slate-900 shadow-lg shadow-slate-900/10' : 'bg-slate-50 text-slate-600 border-slate-200'}`}
+                                    className={`py-4 px-3 border-2 rounded-2xl text-xs font-black transition-all ${v === vr ? 'bg-slate-900 text-white border-slate-900 shadow-xl' : 'bg-slate-50 text-slate-600 border-slate-100'}`}
                                 >
                                     {vr}
                                 </button>
@@ -1491,11 +1494,11 @@ const FeedbackStatusDecisionModal = ({ onClose, onUpdateStatus, onLinkEco, onCre
                         </div>
                         <button 
                             onClick={() => onCreateEco(v)} 
-                            className="w-full py-4 bg-intenza-600 text-white rounded-2xl font-black uppercase tracking-widest mt-6 shadow-xl shadow-intenza-600/20 hover:bg-intenza-700 active:scale-[0.98] transition-all"
+                            className="w-full py-5 bg-intenza-600 text-white rounded-[1.5rem] font-black uppercase tracking-[0.2em] mt-8 shadow-2xl shadow-intenza-600/30 hover:bg-intenza-700 active:scale-[0.98] transition-all"
                         >
-                            Confirm & Create
+                            Confirm ECO
                         </button>
-                        <button onClick={() => setView('MAIN')} className="w-full py-2 text-slate-400 font-bold hover:underline">Cancel</button>
+                        <button onClick={() => setView('MAIN')} className="w-full py-4 text-slate-400 font-black uppercase tracking-widest text-[10px] hover:text-slate-900 transition-colors">Go Back</button>
                     </div>
                 )}
             </div>
