@@ -339,9 +339,9 @@ export const Dashboard: React.FC<DashboardProps> = ({
               className="group bg-white rounded-[2rem] border-2 border-slate-100 shadow-sm hover:shadow-2xl hover:shadow-slate-200/60 hover:border-slate-200 transition-all duration-300 overflow-hidden flex flex-col cursor-pointer active:scale-[0.98] relative"
               onClick={() => navigate(`/product/${p.id}`)}
             >
-              {/* FULL WIDTH SAFETY CERT OVERLAY ON HOVER */}
+              {/* FULL WIDTH SAFETY CERT OVERLAY ON HOVER - Fixed with pointer-events-none */}
               {hoveredSafetyId === p.id && safetyCertLines.length > 0 && (
-                <div className="absolute inset-x-0 bottom-0 top-0 bg-slate-900/95 backdrop-blur-md z-[60] p-8 animate-fade-in flex flex-col">
+                <div className="absolute inset-x-0 bottom-0 top-0 bg-slate-900/95 backdrop-blur-md z-[60] p-8 animate-fade-in flex flex-col pointer-events-none">
                   <div className="flex items-center justify-between mb-6 border-b border-white/10 pb-4">
                     <div className="flex items-center gap-3">
                       <ShieldCheck size={24} className="text-blue-400" />
@@ -351,16 +351,16 @@ export const Dashboard: React.FC<DashboardProps> = ({
                   </div>
                   <ul className="space-y-4 overflow-y-auto custom-scrollbar flex-1 pr-2">
                     {safetyCertLines.map((line, idx) => (
-                      <li key={idx} className="flex items-start gap-4 p-3 bg-white/5 rounded-xl border border-white/5 hover:bg-white/10 transition-colors group/item">
-                        <div className="mt-1 w-5 h-5 rounded-full bg-emerald-500/20 flex items-center justify-center border border-emerald-500/30 group-hover/item:bg-emerald-500 transition-colors">
-                          <Check size={12} className="text-emerald-500 group-hover/item:text-white" strokeWidth={4} />
+                      <li key={idx} className="flex items-start gap-4 p-3 bg-white/5 rounded-xl border border-white/5 group/item">
+                        <div className="mt-1 w-5 h-5 rounded-full bg-emerald-500/20 flex items-center justify-center border border-emerald-500/30">
+                          <Check size={12} className="text-emerald-500" strokeWidth={4} />
                         </div>
                         <span className="text-sm font-bold text-slate-100 leading-relaxed">{line}</span>
                       </li>
                     ))}
                   </ul>
                   <div className="mt-6 pt-4 border-t border-white/5 text-center">
-                    <p className="text-[10px] font-bold text-slate-500 uppercase tracking-[0.2em]">Release to close this view</p>
+                    <p className="text-[10px] font-bold text-slate-500 uppercase tracking-[0.2em]">Move cursor away to close</p>
                   </div>
                 </div>
               )}
@@ -561,7 +561,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                       <h3 className="text-sm font-black uppercase tracking-widest">{t({ en: 'Product Attributes', zh: '產品屬性設定' })}</h3>
                    </div>
                    <div className="space-y-6">
-                      {/* SAFETY CERT FIELD - NOW TEXTAREA */}
+                      {/* SAFETY CERT FIELD - TEXTAREA FOR MULTI-LINE SUPPORT */}
                       <div>
                         <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">{t({ en: 'Safety Cert (Supports Multi-line)', zh: '安規認證詳情 (可換行輸入條列)' })}</label>
                         <textarea 
