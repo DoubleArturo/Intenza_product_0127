@@ -38,7 +38,7 @@ const PageLoader = () => (
 const App = () => {
   const [language, setLanguage] = useState<Language>('en'); // Default to English
   const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [currentUser, setCurrentUser] = useState<UserAccount | null>(null);
+  const [currentUser, setCurrentUser] = useState<{username: string, role: 'admin' | 'user' | 'uploader' | 'viewer'} | null>(null);
   
   const [products, setProducts] = useState<ProductModel[]>(MOCK_PRODUCTS);
   const [seriesList, setSeriesList] = useState<LocalizedString[]>(DEFAULT_SERIES);
@@ -177,17 +177,15 @@ const App = () => {
   }, [isLoggedIn, currentUser]);
 
   const handleLoginSuccess = useCallback((user: any) => {
-    // Find full user object from current users list if available, or use the response
-    const fullUser = users.find(u => u.username === user.username) || user;
     const newLog: AuditLog = {
       id: `log-${Date.now()}`,
       username: user.username,
       loginTime: new Date().toLocaleString()
     };
     setAuditLogs(prev => [...prev, newLog]);
-    setCurrentUser(fullUser);
+    setCurrentUser(user);
     setIsLoggedIn(true);
-  }, [users]);
+  }, []);
 
   const handleLoadFromCloud = useCallback(async () => {
     if (isSyncingRef.current) return;
@@ -281,7 +279,7 @@ const App = () => {
                 <Route path="/" element={
                   <Dashboard 
                     products={products} seriesList={seriesList} 
-                    currentUser={currentUser}
+                    userRole={currentUser?.role}
                     globalStatusLightSize={globalStatusLightSize}
                     dashboardColumns={dashboardColumns}
                     cardAspectRatio={cardAspectRatio}
@@ -303,7 +301,7 @@ const App = () => {
                 <Route path="/product/:id" element={
                   <ProductDetail 
                     products={products} shipments={shipments} testers={testers} testerGroups={testerGroups} 
-                    currentUser={currentUser} onUpdateProduct={async (p) => setProducts(products.map(old => old.id === p.id ? p : old))} 
+                    userRole={currentUser?.role} onUpdateProduct={async (p) => setProducts(products.map(old => old.id === p.id ? p : old))} 
                     showAiInsights={showAiInsights} 
                     evaluationModalYOffset={evaluationModalYOffset}
                   />

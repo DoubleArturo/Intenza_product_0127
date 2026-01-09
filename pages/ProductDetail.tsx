@@ -9,34 +9,10 @@ import {
   BarChart3, AlertCircle, PlayCircle, Loader2, StickyNote, Lightbulb, Paperclip, 
   Video, Image as ImageIcon, Save, Star, Info, Ship, Users2, Maximize2 
 } from 'lucide-react';
-import { ProductModel, TestStatus, DesignChange, LocalizedString, TestResult, EcoStatus, ErgoFeedback, ErgoProject, Tester, ErgoProjectCategory, NgReason, ProjectOverallStatus, Gender, NgDecisionStatus, EvaluationTask, ShipmentData, TesterGroup, UserAccount } from '../types';
+import { ProductModel, TestStatus, DesignChange, LocalizedString, TestResult, EcoStatus, ErgoFeedback, ErgoProject, Tester, ErgoProjectCategory, NgReason, ProjectOverallStatus, Gender, NgDecisionStatus, EvaluationTask, ShipmentData, TesterGroup } from '../types';
 import GeminiInsight from '../components/GeminiInsight';
 import { LanguageContext } from '../App';
 import { api } from '../services/api';
-
-// Helper for permission checking
-const hasGranularPermission = (user: UserAccount | null, product: ProductModel, area: 'design' | 'ergo' | 'durability') => {
-  if (!user) return false;
-  if (user.role === 'admin') return true;
-  if (user.role === 'viewer') return false;
-  
-  const perms = user.permissions;
-  // Fix: Role is already narrowed to 'user' | 'uploader' here, so checking !== 'viewer' is redundant.
-  if (!perms) return true;
-
-  // 1. Check SKU Overrides first
-  const skuOverride = perms.skuOverrides[product.sku];
-  if (skuOverride) {
-    return skuOverride[area];
-  }
-
-  // 2. Fallback to Series Permission
-  const seriesName = product.series.en;
-  const isSeriesAllowed = perms.allowedSeries.includes('ALL') || perms.allowedSeries.includes(seriesName);
-  
-  // By default, if series is allowed, all functions are allowed unless specific override exists
-  return isSeriesAllowed;
-};
 
 // Helper to determine if a URL is a video
 const isVideo = (url: string) => {
@@ -56,14 +32,14 @@ interface ProductDetailProps {
   shipments: ShipmentData[];
   testers: Tester[];
   testerGroups?: TesterGroup[];
-  currentUser: UserAccount | null;
+  userRole?: 'admin' | 'user' | 'uploader' | 'viewer';
   onUpdateProduct: (p: ProductModel) => Promise<void>;
   showAiInsights: boolean;
   evaluationModalYOffset?: number;
 }
 
 // Main Product Detail Page Component
-const ProductDetail: React.FC<ProductDetailProps> = ({ products, shipments = [], testers = [], testerGroups = [], currentUser, onUpdateProduct, showAiInsights, evaluationModalYOffset = 100 }) => {
+const ProductDetail: React.FC<ProductDetailProps> = ({ products, shipments = [], testers = [], testerGroups = [], userRole, onUpdateProduct, showAiInsights, evaluationModalYOffset = 100 }) => {
   const { id } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
@@ -88,13 +64,7 @@ const ProductDetail: React.FC<ProductDetailProps> = ({ products, shipments = [],
   // Lightbox state
   const [lightboxState, setLightboxState] = useState<{isOpen: boolean, ecoId?: string, testId?: string, imgUrl?: string, imgIndex?: number} | null>(null);
 
-  const userRole = currentUser?.role;
   const isViewer = userRole === 'viewer';
-
-  // Specific area permissions
-  const canEditDesign = product ? hasGranularPermission(currentUser, product, 'design') : false;
-  const canEditErgo = product ? hasGranularPermission(currentUser, product, 'ergo') : false;
-  const canEditDurability = product ? hasGranularPermission(currentUser, product, 'durability') : false;
 
   const pendingNgCount = useMemo(() => {
     if (!product) return 0;
@@ -156,7 +126,7 @@ const ProductDetail: React.FC<ProductDetailProps> = ({ products, shipments = [],
 
   // ECO Handlers
   const handleOpenEcoModal = (eco: DesignChange | null = null) => {
-    if (!canEditDesign) return;
+    if (isViewer) return;
     setEditingEco(eco);
     setIsEcoModalOpen(true);
   };
@@ -167,7 +137,7 @@ const ProductDetail: React.FC<ProductDetailProps> = ({ products, shipments = [],
   };
   
   const handleSaveEco = async (ecoData: any) => {
-      if (!canEditDesign) return;
+      if (isViewer) return;
       let updatedDesignHistory;
       let newCurrentVersion = product.currentVersion;
 
@@ -191,10 +161,7 @@ const ProductDetail: React.FC<ProductDetailProps> = ({ products, shipments = [],
   };
 
   const handleUpdateImageCaption = async (id: string, imgIndex: number, caption: string, type: 'eco' | 'test') => {
-    // Check relevant area permission
-    if (type === 'eco' && !canEditDesign) return;
-    if (type === 'test' && !canEditDurability) return;
-
+    if (isViewer) return;
     const now = new Date();
     const timestamp = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
     
@@ -224,7 +191,7 @@ const ProductDetail: React.FC<ProductDetailProps> = ({ products, shipments = [],
   };
 
   const handleDeleteEco = (ecoId: string) => {
-    if (!canEditDesign) return;
+    if (isViewer) return;
     if (window.confirm('確定要刪除此 ECO 記錄嗎？')) {
       const updatedDesignHistory = product.designHistory.filter(eco => eco.id !== ecoId);
       onUpdateProduct({ ...product, designHistory: updatedDesignHistory });
@@ -233,7 +200,7 @@ const ProductDetail: React.FC<ProductDetailProps> = ({ products, shipments = [],
 
   // Test Handlers
   const handleOpenTestModal = (test: TestResult | null = null) => {
-    if (!canEditDurability) return;
+    if (isViewer) return;
     setEditingTest(test);
     setIsTestModalOpen(true);
   };
@@ -244,7 +211,7 @@ const ProductDetail: React.FC<ProductDetailProps> = ({ products, shipments = [],
   };
 
   const handleSaveTest = async (testData: any) => {
-    if (!canEditDurability) return;
+    if (isViewer) return;
     let updatedDurabilityTests;
     const now = new Date();
     const timestamp = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
@@ -262,7 +229,7 @@ const ProductDetail: React.FC<ProductDetailProps> = ({ products, shipments = [],
   };
 
   const handleDeleteTest = (testId: string) => {
-    if (!canEditDurability) return;
+    if (isViewer) return;
     if (window.confirm('確定要刪除此測試記錄嗎？')) {
       const updatedDurabilityTests = product.durabilityTests.filter(t => t.id !== testId);
       onUpdateProduct({ ...product, durabilityTests: updatedDurabilityTests });
@@ -270,7 +237,7 @@ const ProductDetail: React.FC<ProductDetailProps> = ({ products, shipments = [],
   };
   
   const handleDeleteVersion = (versionToDelete: string) => {
-    if (!canEditDesign) return;
+    if (isViewer) return;
     if (window.confirm(`⚠️ 警告：這將會刪除版本 ${versionToDelete} 下的所有 ECO 資訊，此動作無法復原。確定要繼續嗎？`)) {
       const updatedDesignHistory = product.designHistory.filter(eco => eco.version !== versionToDelete);
       onUpdateProduct({ ...product, currentVersion: product.currentVersion === versionToDelete ? '' : product.currentVersion, designHistory: updatedDesignHistory });
@@ -278,10 +245,11 @@ const ProductDetail: React.FC<ProductDetailProps> = ({ products, shipments = [],
   };
 
   const handleSetCurrentVersion = (version: string) => {
-    if (!canEditDesign) return;
+    if (isViewer) return;
     onUpdateProduct({ ...product, currentVersion: version });
   };
 
+  // Source navigation helper
   const navigateToSource = (source: any) => {
       setActiveTab('ERGO');
       if (source.feedbackId) {
@@ -338,7 +306,7 @@ const ProductDetail: React.FC<ProductDetailProps> = ({ products, shipments = [],
                <DesignSection 
                  product={product} 
                  shipments={shipments}
-                 canEditDesign={canEditDesign}
+                 userRole={userRole}
                  onAddEco={() => handleOpenEcoModal()} 
                  onEditEco={handleOpenEcoModal} 
                  onDeleteEco={handleDeleteEco} 
@@ -362,21 +330,12 @@ const ProductDetail: React.FC<ProductDetailProps> = ({ products, shipments = [],
                         highlightedFeedback={highlightedFeedback} 
                         isFeedbackPanelOpen={isFeedbackPanelOpen}
                         setIsFeedbackPanelOpen={setIsFeedbackPanelOpen}
-                        canEditErgo={canEditErgo}
+                        userRole={userRole}
                         evaluationModalYOffset={evaluationModalYOffset}
                     />
                 </div>
              )}
-             {activeTab === 'LIFE' && (
-               <LifeSection 
-                 product={product} 
-                 canEditDurability={canEditDurability} 
-                 onAddTest={() => handleOpenTestModal()} 
-                 onEditTest={handleOpenTestModal} 
-                 onDeleteTest={handleDeleteTest} 
-                 onOpenLightbox={(testId: string, url: string, idx: number) => setLightboxState({isOpen: true, testId, imgUrl: url, imgIndex: idx})} 
-               />
-             )}
+             {activeTab === 'LIFE' && <LifeSection product={product} userRole={userRole} onAddTest={() => handleOpenTestModal()} onEditTest={handleOpenTestModal} onDeleteTest={handleDeleteTest} onOpenLightbox={(testId: string, url: string, idx: number) => setLightboxState({isOpen: true, testId, imgUrl: url, imgIndex: idx})} />}
           </div>
           <div className="space-y-6 sticky top-40">
              {showAiInsights && <GeminiInsight context={`Analyzing product quality for ${t(product.modelName)} (${product.sku}). Active tab: ${activeTab}`} data={product} />}
@@ -434,6 +393,7 @@ const ProductDetail: React.FC<ProductDetailProps> = ({ products, shipments = [],
       {isTestModalOpen && <TestModal isOpen={isTestModalOpen} onClose={handleCloseTestModal} onSave={handleSaveTest} test={editingTest} productVersions={productVersions}/>}
       {isNoShipmentModalOpen && <NoShipmentModal isOpen={isNoShipmentModalOpen} onClose={() => setIsNoShipmentModalOpen(false)} version={selectedVersionForModal} />}
       
+      {/* Lightbox Modal */}
       {lightboxState && lightboxState.isOpen && (
         <ImageLightbox 
             imgUrl={lightboxState.imgUrl!} 
@@ -449,7 +409,7 @@ const ProductDetail: React.FC<ProductDetailProps> = ({ products, shipments = [],
                 caption,
                 lightboxState.ecoId ? 'eco' : 'test'
             )}
-            isViewer={!(lightboxState.ecoId ? canEditDesign : canEditDurability)}
+            isViewer={isViewer}
         />
       )}
     </div>
@@ -494,13 +454,14 @@ const ngDecisionTranslations: { [key in NgDecisionStatus]: string } = {
     [NgDecisionStatus.IDEA]: 'LOGGED AS IDEA'
 };
 
-const LifeSection = ({ product, canEditDurability, onAddTest, onEditTest, onDeleteTest, onOpenLightbox }: any) => {
+const LifeSection = ({ product, userRole, onAddTest, onEditTest, onDeleteTest, onOpenLightbox }: any) => {
   const { t } = useContext(LanguageContext);
+  const isViewer = userRole === 'viewer';
   return (
     <div className="animate-fade-in">
       <div className="flex items-center justify-between mb-6">
         <h2 className="text-xl font-bold text-slate-900">Durability & Reliability Tests</h2>
-        {canEditDurability && (
+        {!isViewer && (
           <button onClick={onAddTest} className="flex items-center gap-2 text-sm bg-slate-900 text-white px-4 py-2 rounded-lg font-medium hover:bg-slate-800 transition-colors">
             <Plus size={16} /> Add Test
           </button>
@@ -536,7 +497,7 @@ const LifeSection = ({ product, canEditDurability, onAddTest, onEditTest, onDele
             </div>
             {test.attachmentUrls && test.attachmentUrls.length > 0 && (
                 <div className="flex gap-1 mb-2">
-                    {test.attachmentUrls.map((url: string, i: number) => (
+                    {test.attachmentUrls.map((url, i) => (
                         <div 
                           key={i} 
                           onClick={() => onOpenLightbox(test.id, url, i)}
@@ -551,7 +512,34 @@ const LifeSection = ({ product, canEditDurability, onAddTest, onEditTest, onDele
                 </div>
             )}
             <p className="text-xs text-slate-500 line-clamp-2">{t(test.details)}</p>
-            {canEditDurability && (
+            <div className="absolute inset-0 z-20 bg-white/95 backdrop-blur-sm p-6 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col pointer-events-none">
+                <div className="flex items-center justify-between mb-4 border-b border-slate-100 pb-2">
+                    <div className="flex items-center gap-2">
+                        <Info size={16} className="text-intenza-600" />
+                        <span className="text-xs font-black uppercase tracking-widest text-slate-900">Details / Notes</span>
+                    </div>
+                </div>
+                <div className="flex-1 overflow-y-auto custom-scrollbar pr-1 pointer-events-auto">
+                    {test.details?.en || test.details?.zh ? (
+                        <p className="text-sm text-slate-700 leading-relaxed font-medium">{t(test.details)}</p>
+                    ) : (
+                        <p className="text-xs text-slate-400 italic">No additional details recorded.</p>
+                    )}
+                </div>
+                {test.attachmentUrls && test.attachmentUrls.length > 0 && (
+                    <div className="mt-4 flex gap-2 overflow-x-auto pb-2 pointer-events-auto">
+                        {test.attachmentUrls.map((url, i) => (
+                            <div key={i} className="relative group/overlay-img flex-shrink-0" onClick={() => onOpenLightbox(test.id, url, i)}>
+                                <img src={url} className="h-16 w-16 rounded-lg object-cover border border-slate-200 shadow-sm cursor-pointer" />
+                                <div className="absolute inset-0 bg-black/20 opacity-0 group-hover/overlay-img:opacity-100 rounded-lg flex items-center justify-center transition-opacity">
+                                    <Maximize2 size={14} className="text-white" />
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                )}
+            </div>
+            {!isViewer && (
               <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity z-30">
                   <button onClick={() => onEditTest(test)} className="p-1.5 bg-white border border-slate-100 rounded-md text-slate-500 hover:text-slate-900 hover:shadow-sm transition-all pointer-events-auto"><Pencil size={12} /></button>
                   <button onClick={() => onDeleteTest(test.id)} className="p-1.5 bg-white border border-slate-100 rounded-md text-red-500 hover:text-red-700 hover:shadow-sm transition-all pointer-events-auto"><Trash2 size={12} /></button>
@@ -567,9 +555,10 @@ const LifeSection = ({ product, canEditDurability, onAddTest, onEditTest, onDele
   );
 };
 
-const ProjectCard = ({ project, testers, product, onOpenAddTask, onEditTaskName, onDeleteTask, onOpenTaskResults, onDeleteProject, onEditProject, categoryTranslations, onStatusClick, onEditNgReason, highlightedFeedback, canEditErgo }: any) => {
+const ProjectCard = ({ project, testers, product, onOpenAddTask, onEditTaskName, onDeleteTask, onOpenTaskResults, onDeleteProject, onEditProject, categoryTranslations, onStatusClick, onEditNgReason, highlightedFeedback, userRole }: any) => {
     const { t, language } = useContext(LanguageContext);
     const categories: ErgoProjectCategory[] = ['Resistance profile', 'Experience', 'Stroke', 'Other Suggestion'];
+    const isViewer = userRole === 'viewer';
     return (
         <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden animate-fade-in group mb-6">
             <div className="p-6 border-b border-slate-100 bg-slate-50/50 flex justify-between items-center">
@@ -580,7 +569,7 @@ const ProjectCard = ({ project, testers, product, onOpenAddTask, onEditTaskName,
                         <span className="text-xs text-slate-400 flex items-center gap-1"><Users size={12}/> {project.testerIds.length} Testers</span>
                     </div>
                 </div>
-                {canEditErgo && (
+                {!isViewer && (
                   <div className="flex items-center gap-2">
                       <button onClick={onEditProject} className="p-2 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-white transition-colors"><Pencil size={16}/></button>
                       <button onClick={() => { if(window.confirm('Delete this project?')) onDeleteProject(); }} className="p-2 text-slate-400 hover:text-red-500 rounded-lg hover:bg-white transition-colors"><Trash2 size={16}/></button>
@@ -592,7 +581,7 @@ const ProjectCard = ({ project, testers, product, onOpenAddTask, onEditTaskName,
                     <div key={cat} className="space-y-4">
                         <div className="flex items-center justify-between border-l-4 border-intenza-500 pl-3">
                             <h4 className="font-bold text-sm text-slate-800 uppercase tracking-tight">{language === 'en' ? cat : categoryTranslations[cat]}</h4>
-                            {canEditErgo && (
+                            {!isViewer && (
                               <button onClick={() => onOpenAddTask(project.id, cat)} className="text-[10px] font-bold text-intenza-600 flex items-center gap-1 hover:underline"><Plus size={10}/> Add Task</button>
                             )}
                         </div>
@@ -602,11 +591,11 @@ const ProjectCard = ({ project, testers, product, onOpenAddTask, onEditTaskName,
                                     <div className="flex justify-between items-start mb-4">
                                         <div className="flex items-center gap-3">
                                             <h5 className="font-bold text-slate-700 text-sm">{t(task.name)}</h5>
-                                            {canEditErgo && (
+                                            {!isViewer && (
                                               <button onClick={() => onEditTaskName(project.id, cat, task.id, t(task.name))} className="opacity-0 group-hover/task:opacity-100 p-1 text-slate-400 hover:text-slate-600"><Pencil size={12}/></button>
                                             )}
                                         </div>
-                                        {canEditErgo && (
+                                        {!isViewer && (
                                           <div className="flex items-center gap-2">
                                               <button onClick={() => onOpenTaskResults(cat, task.id)} className="text-[10px] font-bold bg-white border border-slate-200 text-slate-600 px-3 py-1 rounded-lg hover:border-slate-400 transition-all">Set Pass/NG</button>
                                               <button onClick={() => { if(window.confirm('Delete task?')) onDeleteTask(project.id, cat, task.id); }} className="opacity-0 group-hover/task:opacity-100 p-1 text-slate-400 hover:text-red-500"><Trash2 size={12}/></button>
@@ -621,9 +610,12 @@ const ProjectCard = ({ project, testers, product, onOpenAddTask, onEditTaskName,
                                             const isHighlighted = highlightedFeedback?.projectId === project.id && highlightedFeedback?.taskId === task.id && highlightedFeedback?.testerId === tid;
                                             const linkedEco = product.designHistory.find((eco: DesignChange) => eco.id === ngReason?.linkedEcoId);
                                             
+                                            // Determine styles based on decision status
                                             const status = ngReason?.decisionStatus || NgDecisionStatus.PENDING;
                                             let statusStyle = ngDecisionStyles[status];
-                                            if (linkedEco) statusStyle = 'bg-amber-50 text-amber-700 border-amber-300 shadow-sm font-black';
+                                            if (linkedEco) {
+                                                statusStyle = 'bg-amber-50 text-amber-700 border-amber-300 shadow-sm font-black';
+                                            }
 
                                             return (
                                                 <div key={tid} data-feedback-id={`${project.id}-${task.id}-${tid}`} className={`p-3 rounded-xl border transition-all ${isPass ? 'bg-white border-slate-100 opacity-60' : isHighlighted ? 'bg-intenza-50 border-intenza-400 shadow-md ring-2 ring-intenza-500/10' : 'bg-white border-slate-200 shadow-sm'}`}>
@@ -638,13 +630,13 @@ const ProjectCard = ({ project, testers, product, onOpenAddTask, onEditTaskName,
                                                         <div className="space-y-2">
                                                             <p className="text-[10px] text-slate-600 line-clamp-2 min-h-[1.5rem] italic">"{ngReason?.reason ? t(ngReason.reason) : 'No description'}"</p>
                                                             <div className="flex items-center justify-between pt-2 border-t border-slate-50">
-                                                                {canEditErgo && (
+                                                                {!isViewer && (
                                                                   <button onClick={() => onEditNgReason(cat, task.id, tid)} className="text-[9px] font-bold text-intenza-600 hover:underline">Edit Reason</button>
                                                                 )}
                                                                 <button 
-                                                                    onClick={() => canEditErgo && onStatusClick(project.id, cat, task.id, tid, status, ngReason?.linkedEcoId)} 
-                                                                    disabled={!canEditErgo} 
-                                                                    className={`px-2 py-1 rounded text-[8px] font-black uppercase border transition-all ${statusStyle} ${!canEditErgo ? 'cursor-default' : 'hover:scale-105 active:scale-95'}`}
+                                                                    onClick={() => !isViewer && onStatusClick(project.id, cat, task.id, tid, status, ngReason?.linkedEcoId)} 
+                                                                    disabled={isViewer} 
+                                                                    className={`px-2 py-1 rounded text-[8px] font-black uppercase border transition-all ${statusStyle} ${isViewer ? 'cursor-default' : 'hover:scale-105 active:scale-95'}`}
                                                                 >
                                                                     {linkedEco ? linkedEco.ecoNumber : ngDecisionTranslations[status]}
                                                                 </button>
@@ -665,23 +657,29 @@ const ProjectCard = ({ project, testers, product, onOpenAddTask, onEditTaskName,
     );
 };
 
-const CustomerFeedbackCard = ({ feedback, onStatusClick, onEdit, onDelete, product, isHighlighted, canEditErgo }: any) => {
+const CustomerFeedbackCard = ({ feedback, onStatusClick, onEdit, onDelete, product, isHighlighted, userRole }: any) => {
     const { t } = useContext(LanguageContext);
     const linkedEco = product.designHistory.find((eco: DesignChange) => eco.id === feedback.linkedEcoId);
+    const isViewer = userRole === 'viewer';
     
+    // Status Logic
     const status = feedback.status || 'PENDING';
     const isLinked = !!linkedEco;
 
     let statusStyle = 'bg-slate-100 text-slate-500 border-slate-200';
-    if (isLinked) statusStyle = 'bg-amber-50 text-amber-700 border-amber-300 font-black';
-    else if (status === 'DISCUSSION') statusStyle = 'bg-purple-50 text-purple-600 border-purple-200 font-bold';
-    else if (status === 'IGNORED') statusStyle = 'bg-zinc-100 text-zinc-400 border-zinc-200';
+    if (isLinked) {
+        statusStyle = 'bg-amber-50 text-amber-700 border-amber-300 font-black';
+    } else if (status === 'DISCUSSION') {
+        statusStyle = 'bg-purple-50 text-purple-600 border-purple-200 font-bold';
+    } else if (status === 'IGNORED') {
+        statusStyle = 'bg-zinc-100 text-zinc-400 border-zinc-200';
+    }
 
     return (
         <div data-customer-feedback-id={feedback.id} className={`rounded-xl border p-4 shadow-sm group transition-all ${isHighlighted ? 'bg-intenza-50 border-intenza-400 shadow-md ring-2 ring-intenza-500/10 scale-[1.02]' : 'bg-white border-slate-200 hover:border-slate-300'}`}>
             <div className="flex justify-between items-start mb-2">
                 <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">{feedback.date}</span>
-                {canEditErgo && (
+                {!isViewer && (
                   <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                       <button onClick={onEdit} className="p-1 text-slate-400 hover:text-slate-600"><Pencil size={12}/></button>
                       <button onClick={onDelete} className="p-1 text-slate-400 hover:text-red-500"><Trash2 size={12}/></button>
@@ -694,9 +692,9 @@ const CustomerFeedbackCard = ({ feedback, onStatusClick, onEdit, onDelete, produ
                     <User size={10}/> {feedback.source}
                 </div>
                 <button 
-                    onClick={() => canEditErgo && onStatusClick()} 
-                    disabled={!canEditErgo} 
-                    className={`px-2 py-1 rounded text-[8px] font-black uppercase border transition-all ${statusStyle} ${!canEditErgo ? 'cursor-default' : 'hover:scale-105 active:scale-95'}`}
+                    onClick={() => !isViewer && onStatusClick()} 
+                    disabled={isViewer} 
+                    className={`px-2 py-1 rounded text-[8px] font-black uppercase border transition-all ${statusStyle} ${isViewer ? 'cursor-default' : 'hover:scale-105 active:scale-95'}`}
                 >
                     {isLinked ? linkedEco.ecoNumber : status}
                 </button>
@@ -705,9 +703,10 @@ const CustomerFeedbackCard = ({ feedback, onStatusClick, onEdit, onDelete, produ
     );
 };
 
-const DesignSection = ({ product, shipments, canEditDesign, onAddEco, onEditEco, onDeleteEco, onDeleteVersion, onSetCurrentVersion, onNoShipment, onNavigateToSource, onOpenLightbox }: any) => {
-  const { t } = useContext(LanguageContext);
+const DesignSection = ({ product, shipments, userRole, onAddEco, onEditEco, onDeleteEco, onDeleteVersion, onSetCurrentVersion, onNoShipment, onNavigateToSource, onOpenLightbox }: any) => {
+  const { t, language } = useContext(LanguageContext);
   const navigate = useNavigate();
+  const isViewer = userRole === 'viewer';
   const versions = useMemo(() => Array.from(new Set([product.currentVersion, ...product.designHistory.map((h: DesignChange) => h.version)])).sort().reverse(), [product]);
   const [selectedVersion, setSelectedVersion] = useState<string>(versions[0] || product.currentVersion);
   
@@ -721,7 +720,7 @@ const DesignSection = ({ product, shipments, canEditDesign, onAddEco, onEditEco,
     <div className="animate-fade-in">
       <div className="flex items-center justify-between mb-6">
         <h2 className="text-xl font-bold text-slate-900">Design Version History</h2>
-        {canEditDesign && (
+        {!isViewer && (
           <button onClick={onAddEco} className="flex items-center gap-2 text-sm bg-slate-900 text-white px-4 py-2 rounded-lg font-medium hover:bg-slate-800 transition-colors"><Plus size={16} /> Add ECO</button>
         )}
       </div>
@@ -745,18 +744,23 @@ const DesignSection = ({ product, shipments, canEditDesign, onAddEco, onEditEco,
                         const hasShip = shipments.some((s: ShipmentData) => s.sku === product.sku && formatVersion(s.version) === formatVersion(selectedVersion));
                         if (!hasShip) { onNoShipment(selectedVersion); return; }
                         navigate('/analytics', { state: { autoDrill: { sku: product.sku, version: selectedVersion } } });
-                    }} className="p-1.5 bg-slate-100 text-slate-500 hover:text-intenza-600 hover:bg-intenza-50 rounded-lg transition-all shadow-sm border border-slate-200"><Users size={18} /></button>
+                    }} className="p-1.5 bg-slate-100 text-slate-500 hover:text-intenza-600 hover:bg-intenza-50 rounded-lg transition-all shadow-sm border border-slate-200" title={t({ en: 'View market distribution', zh: '檢視出貨分佈' })}><Users size={18} /></button>
                 </div>
-                {selectedVersion !== product.currentVersion && canEditDesign && (
+                {selectedVersion !== product.currentVersion && !isViewer && (
                    <button onClick={() => onSetCurrentVersion(selectedVersion)} className="text-[11px] font-bold text-emerald-600 hover:text-emerald-700 flex items-center gap-1 w-fit mt-1"><Star size={12} fill="currentColor" /> {t({ en: 'Set as Current Production Version', zh: '設為目前的正式量產版本' })}</button>
                 )}
              </div>
-             {canEditDesign && (
+             {!isViewer && (
                <button onClick={() => onDeleteVersion(selectedVersion)} className="flex items-center gap-1 text-xs font-bold text-slate-400 hover:text-red-500 transition-colors px-3 py-1.5 rounded-lg hover:bg-red-50"><Trash2 size={14} /> 刪除此版本</button>
              )}
           </div>
           <div className="space-y-8">
-               {activeChanges.map((change: any) => (
+               {activeChanges.map((change: any) => {
+                  const linkedSources = change.sourceFeedbacks || [];
+                  const ergoCount = linkedSources.filter((s: any) => s.projectId).length;
+                  const feedbackCount = linkedSources.filter((s: any) => s.feedbackId).length;
+
+                  return (
                     <div key={change.id} className="group relative rounded-2xl transition-all hover:bg-slate-50/80 -m-4 p-4 border border-transparent hover:border-slate-100">
                         <div className="flex flex-col md:flex-row gap-8">
                             <div className="md:w-48 flex-shrink-0">
@@ -764,19 +768,68 @@ const DesignSection = ({ product, shipments, canEditDesign, onAddEco, onEditEco,
                                 <div className={`mt-3 px-2 py-1 rounded-md text-[10px] font-black uppercase w-fit border shadow-sm ${ecoStatusStyles[change.status as EcoStatus]}`}>
                                     {ecoStatusTranslations[change.status as EcoStatus]}
                                 </div>
+                                <div className="flex flex-col gap-2 text-slate-400 text-[10px] font-bold uppercase tracking-widest mt-4">
+                                    <div className="flex items-center gap-2"><Calendar size={12} className="text-slate-300" />Issue: {change.date}</div>
+                                    {change.updatedAt && (
+                                        <div className="flex items-center gap-2 text-intenza-500 bg-intenza-50/50 px-1.5 py-0.5 rounded w-fit"><RefreshCw size={10} />Updated: {change.updatedAt}</div>
+                                    )}
+                                </div>
+                                
+                                {/* REVERSE LINKAGE UI - Now Interactive */}
+                                {(ergoCount > 0 || feedbackCount > 0) && (
+                                    <div className="mt-6 pt-4 border-t border-slate-100 space-y-2">
+                                        <div className="text-[9px] font-black text-slate-300 uppercase tracking-widest">關聯來源 (點擊跳轉)</div>
+                                        {linkedSources.map((s: any, idx: number) => (
+                                            <button 
+                                                key={idx} 
+                                                onClick={() => onNavigateToSource(s)}
+                                                className={`flex items-center gap-1.5 text-[10px] font-bold p-1 rounded hover:bg-white hover:shadow-sm transition-all w-full text-left ${s.projectId ? 'text-indigo-600' : 'text-emerald-600'}`}
+                                            >
+                                                {s.projectId ? <UserCheck size={10}/> : <MessageSquare size={10}/>}
+                                                <span className="truncate">{s.projectId ? '人因評估項' : '客戶回饋'}</span>
+                                                <ChevronRight size={10} className="ml-auto opacity-40" />
+                                            </button>
+                                        ))}
+                                    </div>
+                                )}
                             </div>
                             <div className="flex-1">
                                 <h4 className="text-xl font-bold text-slate-900 mb-4 leading-snug">{t(change.description)}</h4>
+                                {change.imageUrls && change.imageUrls.length > 0 && (
+                                    <div className="mb-4 flex flex-wrap gap-3">
+                                        {change.imageUrls.map((url: string, imgIndex: number) => (
+                                            <div key={imgIndex} className="relative group/img overflow-hidden rounded-xl border border-slate-200 shadow-sm bg-slate-50">
+                                                {isVideo(url) ? (
+                                                    <video src={url} className="h-40 w-auto" />
+                                                ) : (
+                                                    <img src={url} className="h-40 w-auto object-cover" />
+                                                )}
+                                                <div 
+                                                    onClick={() => onOpenLightbox(change.id, url, imgIndex)}
+                                                    className="absolute inset-0 bg-slate-900/40 opacity-0 group-hover/img:opacity-100 transition-opacity flex items-center justify-center cursor-pointer backdrop-blur-[2px]"
+                                                >
+                                                    <Maximize2 size={24} className="text-white drop-shadow-md" />
+                                                </div>
+                                                {change.imageCaptions?.[imgIndex] && (
+                                                    <div className="absolute bottom-0 inset-x-0 p-2 bg-black/60 backdrop-blur-md text-white text-[10px] font-bold truncate">
+                                                        {change.imageCaptions[imgIndex]}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
                             </div>
                         </div>
-                        {canEditDesign && (
+                        {!isViewer && (
                             <div className="absolute top-4 right-4 flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                                 <button onClick={() => onEditEco(change)} className="p-2.5 bg-white shadow-lg rounded-xl text-slate-400 hover:text-slate-900 border border-slate-100 transition-all hover:scale-110"><Pencil size={16} /></button>
                                 <button onClick={() => onDeleteEco(change.id)} className="p-2.5 bg-white shadow-lg rounded-xl text-rose-400 hover:text-rose-600 border border-slate-100 transition-all hover:scale-110"><Trash2 size={16} /></button>
                             </div>
                         )}
                     </div>
-               ))}
+                  );
+               })}
           </div>
         </div>
       </div>
@@ -791,26 +844,58 @@ const ImageLightbox = ({ imgUrl, onClose, caption, onSaveCaption, isViewer }: an
     return (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-8 bg-slate-950/95 backdrop-blur-xl animate-fade-in">
             <button onClick={onClose} className="absolute top-8 right-8 p-3 bg-white/10 hover:bg-white/20 text-white rounded-full transition-colors z-20"><X size={32}/></button>
+            
             <div className="w-full h-full flex flex-col items-center justify-center gap-8">
                 <div className="flex-1 w-full flex items-center justify-center overflow-hidden">
-                    {isVideo(imgUrl) ? <video src={imgUrl} controls className="max-w-full max-h-full rounded-2xl shadow-2xl" /> : <img src={imgUrl} className="max-w-full max-h-full object-contain rounded-2xl shadow-2xl" />}
+                    {isVideo(imgUrl) ? (
+                        <video src={imgUrl} controls className="max-w-full max-h-full rounded-2xl shadow-2xl" />
+                    ) : (
+                        <img src={imgUrl} className="max-w-full max-h-full object-contain rounded-2xl shadow-2xl" />
+                    )}
                 </div>
+
                 <div className="w-full max-w-2xl bg-white/10 backdrop-blur-md border border-white/20 p-6 rounded-[2rem] shadow-2xl animate-slide-up">
                     <div className="flex items-center justify-between mb-4">
-                        <div className="flex items-center gap-2 text-white/50"><FileText size={18} /><span className="text-xs font-black uppercase tracking-widest">Image Description</span></div>
+                        <div className="flex items-center gap-2 text-white/50">
+                            <FileText size={18} />
+                            <span className="text-xs font-black uppercase tracking-widest">Image Description</span>
+                        </div>
                         {!isViewer && (
-                            <button onClick={() => { if (isEditing) onSaveCaption(localCaption); setIsEditing(!isEditing); }} className="px-4 py-1.5 bg-white text-slate-900 rounded-xl text-xs font-black uppercase tracking-tight hover:bg-intenza-100 transition-all flex items-center gap-2">{isEditing ? <><Save size={14}/> Save</> : <><Pencil size={14}/> Edit</>}</button>
+                            <button 
+                                onClick={() => {
+                                    if (isEditing) onSaveCaption(localCaption);
+                                    setIsEditing(!isEditing);
+                                }}
+                                className="px-4 py-1.5 bg-white text-slate-900 rounded-xl text-xs font-black uppercase tracking-tight hover:bg-intenza-100 transition-all flex items-center gap-2"
+                            >
+                                {isEditing ? <><Save size={14}/> Save Annotation</> : <><Pencil size={14}/> Edit Description</>}
+                            </button>
                         )}
                     </div>
-                    {isEditing ? <textarea autoFocus value={localCaption} onChange={e => setLocalCaption(e.target.value)} className="w-full bg-white/5 border border-white/10 rounded-2xl p-4 text-white text-sm outline-none resize-none font-medium" rows={3} /> : <p className={`text-lg font-medium leading-relaxed ${localCaption ? 'text-white' : 'text-white/30 italic'}`}>{localCaption || 'No description provided.'}</p>}
+
+                    {isEditing ? (
+                        <textarea 
+                            autoFocus
+                            value={localCaption} 
+                            onChange={e => setLocalCaption(e.target.value)}
+                            className="w-full bg-white/5 border border-white/10 rounded-2xl p-4 text-white text-sm outline-none focus:ring-2 focus:ring-white/20 transition-all resize-none font-medium"
+                            rows={3}
+                            placeholder="Add explanation for this design detail..."
+                        />
+                    ) : (
+                        <p className={`text-lg font-medium leading-relaxed ${localCaption ? 'text-white' : 'text-white/30 italic'}`}>
+                            {localCaption || 'No description provided for this visual evidence.'}
+                        </p>
+                    )}
                 </div>
             </div>
         </div>
     );
 };
 
-const ErgoSection = ({ product, testers, testerGroups, onUpdateProduct, highlightedFeedback, isFeedbackPanelOpen, setIsFeedbackPanelOpen, canEditErgo, evaluationModalYOffset }: any) => {
-  const { t } = useContext(LanguageContext);
+const ErgoSection = ({ product, testers, testerGroups, onUpdateProduct, highlightedFeedback, isFeedbackPanelOpen, setIsFeedbackPanelOpen, userRole, evaluationModalYOffset }: any) => {
+  const { t, language } = useContext(LanguageContext);
+  const isViewer = userRole === 'viewer';
   const [isStartEvaluationModalOpen, setStartEvaluationModalOpen] = useState(false);
   const [editingProject, setEditingProject] = useState<ErgoProject | null>(null);
   const [addTaskModalState, setAddTaskModalState] = useState<any>({ isOpen: false, context: null });
@@ -824,74 +909,186 @@ const ErgoSection = ({ product, testers, testerGroups, onUpdateProduct, highligh
   const activeEcosList = product.designHistory.filter((e: DesignChange) => e.status !== EcoStatus.IN_PRODUCTION && e.status !== EcoStatus.DESIGN_COMPLETE);
   const productVersions = useMemo(() => Array.from(new Set([product.currentVersion, ...product.designHistory.map((h: DesignChange) => h.version)])).sort().reverse(), [product]);
 
-  const performBidirectionalUpdate = (newStatus: NgDecisionStatus | string, linkedEcoId?: string, context?: any, feedbackId?: string) => {
+  /**
+   * REFACTORED: Unified linkage helper to ensure bidirectional consistency
+   */
+  const performBidirectionalUpdate = (
+    newStatus: NgDecisionStatus | string, 
+    linkedEcoId?: string, 
+    context?: any, // { projectId, category, taskId, testerId }
+    feedbackId?: string
+  ) => {
+    // 1. Clean existing references in all ECOs for this source
     const updatedHistory = product.designHistory.map((eco: DesignChange) => {
         let sources = [...(eco.sourceFeedbacks || [])];
-        if (feedbackId) sources = sources.filter(s => s.feedbackId !== feedbackId);
-        else if (context) sources = sources.filter(s => !(s.projectId === context.projectId && s.taskId === context.taskId && s.testerId === context.testerId));
+        if (feedbackId) {
+            sources = sources.filter(s => s.feedbackId !== feedbackId);
+        } else if (context) {
+            sources = sources.filter(s => 
+                !(s.projectId === context.projectId && 
+                  s.taskId === context.taskId && 
+                  s.testerId === context.testerId)
+            );
+        }
+        
+        // 2. Add new reference if we are linking
         if (linkedEcoId && eco.id === linkedEcoId) {
-            if (feedbackId) sources.push({ category: feedbackStatusModal.feedback.category, feedbackId });
-            else if (context) sources.push({ ...context });
+            if (feedbackId) {
+                sources.push({ category: feedbackStatusModal.feedback.category, feedbackId });
+            } else if (context) {
+                sources.push({ ...context });
+            }
         }
         return { ...eco, sourceFeedbacks: sources };
     });
 
+    // 3. Update the source (Task or Feedback)
     let updatedProjects = product.ergoProjects;
     let updatedFeedbacks = product.customerFeedback;
-    if (feedbackId) updatedFeedbacks = product.customerFeedback.map((f: ErgoFeedback) => f.id === feedbackId ? { ...f, status: newStatus as any, linkedEcoId } : f);
-    else if (context) {
-        updatedProjects = product.ergoProjects.map((p: ErgoProject) => p.id === context.projectId ? {
-                ...p, tasks: { ...p.tasks, [context.category]: p.tasks[context.category].map((t: EvaluationTask) => {
+
+    if (feedbackId) {
+        updatedFeedbacks = product.customerFeedback.map((f: ErgoFeedback) => 
+            f.id === feedbackId ? { ...f, status: newStatus as any, linkedEcoId } : f
+        );
+    } else if (context) {
+        updatedProjects = product.ergoProjects.map((p: ErgoProject) => 
+            p.id === context.projectId ? {
+                ...p,
+                tasks: {
+                    ...p.tasks,
+                    [context.category]: p.tasks[context.category].map((t: EvaluationTask) => {
                         if (t.id !== context.taskId) return t;
+                        
+                        // FIX: Ensure the NG record exists before updating status
                         const exists = t.ngReasons.some(r => r.testerId === context.testerId);
-                        const newNgReasons = exists ? t.ngReasons.map((ng: NgReason) => ng.testerId === context.testerId ? { ...ng, decisionStatus: newStatus as NgDecisionStatus, linkedEcoId } : ng) : [...t.ngReasons, { testerId: context.testerId, reason: { en: '', zh: '' }, decisionStatus: newStatus as NgDecisionStatus, linkedEcoId }];
+                        const newNgReasons = exists 
+                            ? t.ngReasons.map((ng: NgReason) => 
+                                ng.testerId === context.testerId ? { ...ng, decisionStatus: newStatus as NgDecisionStatus, linkedEcoId } : ng
+                              )
+                            : [...t.ngReasons, { 
+                                testerId: context.testerId, 
+                                reason: { en: '', zh: '' }, 
+                                decisionStatus: newStatus as NgDecisionStatus, 
+                                linkedEcoId 
+                              }];
+                              
                         return { ...t, ngReasons: newNgReasons };
                     })
                 }
             } : p
         );
     }
-    onUpdateProduct({ ...product, designHistory: updatedHistory, ergoProjects: updatedProjects, customerFeedback: updatedFeedbacks });
+
+    onUpdateProduct({
+        ...product,
+        designHistory: updatedHistory,
+        ergoProjects: updatedProjects,
+        customerFeedback: updatedFeedbacks
+    });
   };
 
   return (
     <div className="relative animate-fade-in">
       <div className={`transition-all duration-500 ease-in-out ${isFeedbackPanelOpen ? 'pr-[40%]' : 'pr-14'}`}>
         <div className="flex justify-end mb-6">
-             {canEditErgo && (
+             {!isViewer && (
+               /* 按鈕高度優化：py-2 -> py-4, px-4 -> px-6 */
                <button onClick={() => { setEditingProject(null); setStartEvaluationModalOpen(true); }} className="flex items-center gap-2 text-sm bg-slate-900 text-white px-6 py-4 rounded-lg font-medium hover:bg-slate-800 transition-colors shadow-sm"><Plus size={16} /> Start Evaluation</button>
              )}
         </div>
         <div className="space-y-6">
           {product.ergoProjects.map((project: ErgoProject) => (
-             <ProjectCard key={project.id} project={project} testers={testers} product={product} canEditErgo={canEditErgo} onOpenAddTask={(pid: string, cat: ErgoProjectCategory) => setAddTaskModalState({ isOpen: true, context: { projectId: pid, category: cat } })} onEditTaskName={(pid: string, cat: ErgoProjectCategory, tid: string, name: string) => setEditTaskModalState({ isOpen: true, context: { projectId: pid, category: cat, taskId: tid, currentName: name } })} onDeleteTask={(pid: string, cat: ErgoProjectCategory, tid: string) => onUpdateProduct({...product, ergoProjects: product.ergoProjects.map((p: any) => p.id === pid ? {...p, tasks: {...p.tasks, [cat]: p.tasks[cat].filter((t: any) => t.id !== tid)}} : p)})} onOpenTaskResults={(cat: ErgoProjectCategory, taskId: string) => setTaskResultModalState({ isOpen: true, context: { projectId: project.id, category: cat, taskId } })} onDeleteProject={() => onUpdateProduct({...product, ergoProjects: product.ergoProjects.filter((p: any) => p.id !== project.id)})} onEditProject={() => { setEditingProject(project); setStartEvaluationModalOpen(true); }} categoryTranslations={{'Resistance profile': 'Resistance profile', 'Experience': 'Experience', 'Stroke': 'Stroke', 'Other Suggestion': 'Other Suggestion'}} onStatusClick={(pid: string, cat: ErgoProjectCategory, tid: string, testerId: string, cur: NgDecisionStatus, eco: string) => setStatusModalState({ isOpen: true, context: { projectId: pid, category: cat, taskId: tid, testerId, currentStatus: cur, linkedEcoId: eco } })} onEditNgReason={(cat: ErgoProjectCategory, taskId: string, testerId: string) => setNgReasonModalState({ isOpen: true, context: { projectId: project.id, category: cat, taskId, testerId } })} highlightedFeedback={highlightedFeedback} />
+             <ProjectCard key={project.id} project={project} testers={testers} product={product} userRole={userRole} onOpenAddTask={(pid: string, cat: ErgoProjectCategory) => setAddTaskModalState({ isOpen: true, context: { projectId: pid, category: cat } })} onEditTaskName={(pid: string, cat: ErgoProjectCategory, tid: string, name: string) => setEditTaskModalState({ isOpen: true, context: { projectId: pid, category: cat, taskId: tid, currentName: name } })} onDeleteTask={(pid: string, cat: ErgoProjectCategory, tid: string) => onUpdateProduct({...product, ergoProjects: product.ergoProjects.map((p: any) => p.id === pid ? {...p, tasks: {...p.tasks, [cat]: p.tasks[cat].filter((t: any) => t.id !== tid)}} : p)})} onOpenTaskResults={(cat: ErgoProjectCategory, taskId: string) => setTaskResultModalState({ isOpen: true, context: { projectId: project.id, category: cat, taskId } })} onDeleteProject={() => onUpdateProduct({...product, ergoProjects: product.ergoProjects.filter((p: any) => p.id !== project.id)})} onEditProject={() => { setEditingProject(project); setStartEvaluationModalOpen(true); }} categoryTranslations={{'Resistance profile': 'Resistance profile', 'Experience': 'Experience', 'Stroke': 'Stroke', 'Other Suggestion': 'Other Suggestion'}} onStatusClick={(pid: string, cat: ErgoProjectCategory, tid: string, testerId: string, cur: NgDecisionStatus, eco: string) => setStatusModalState({ isOpen: true, context: { projectId: pid, category: cat, taskId: tid, testerId, currentStatus: cur, linkedEcoId: eco } })} onEditNgReason={(cat: ErgoProjectCategory, taskId: string, testerId: string) => setNgReasonModalState({ isOpen: true, context: { projectId: project.id, category: cat, taskId, testerId } })} highlightedFeedback={highlightedFeedback} />
           ))}
         </div>
       </div>
 
+      {/* IMPROVED SIDEBAR DRAWER WITH BETTER VISIBILITY WHEN CLOSED */}
       <div className={`absolute top-0 right-0 h-full transition-all duration-500 ease-in-out ${isFeedbackPanelOpen ? 'w-[38%]' : 'w-12'}`}>
         <div className="bg-white rounded-2xl border border-slate-200 h-full shadow-2xl flex flex-col overflow-hidden relative">
-          <button onClick={() => setIsFeedbackPanelOpen(!isFeedbackPanelOpen)} className="absolute top-1/2 -left-6 -translate-y-1/2 bg-white p-2 rounded-l-lg border-l border-t border-b border-slate-200 hover:bg-slate-50 shadow-md z-20">{isFeedbackPanelOpen ? <ChevronsRight size={20} className="text-slate-400" /> : <ChevronsLeft size={20} className="text-slate-400" />}</button>
+          {/* Toggle Button */}
+          <button 
+            onClick={() => setIsFeedbackPanelOpen(!isFeedbackPanelOpen)} 
+            className="absolute top-1/2 -left-6 -translate-y-1/2 bg-white p-2 rounded-l-lg border-l border-t border-b border-slate-200 hover:bg-slate-50 shadow-md z-20"
+          >
+            {isFeedbackPanelOpen ? <ChevronsRight size={20} className="text-slate-400" /> : <ChevronsLeft size={20} className="text-slate-400" />}
+          </button>
+
           {!isFeedbackPanelOpen ? (
-            <div onClick={() => setIsFeedbackPanelOpen(true)} className="flex-1 flex flex-col items-center py-8 cursor-pointer hover:bg-slate-50 transition-all group">
-              {product.customerFeedback.length === 0 && canEditErgo ? <Plus size={20} className="text-intenza-600 mb-6 transition-transform group-hover:scale-125" /> : <MessageSquare size={20} className="text-slate-400 group-hover:text-intenza-600 mb-6 transition-colors" />}
-              <div className="flex-1 flex items-center justify-center"><span className="text-[10px] font-black text-slate-300 group-hover:text-slate-500 uppercase tracking-[0.3em] rotate-90 whitespace-nowrap">Customer Feedback</span></div>
-              {product.customerFeedback.length > 0 && <div className="mt-8 bg-intenza-600 text-white text-[9px] font-black px-2 py-1 rounded-full shadow-lg">{product.customerFeedback.length}</div>}
+            /* COLLAPSED STATE: SHOW LABEL AND COUNT OR PLUS IF EMPTY */
+            <div 
+              onClick={() => setIsFeedbackPanelOpen(true)}
+              className="flex-1 flex flex-col items-center py-8 cursor-pointer hover:bg-slate-50 transition-all group"
+            >
+              {product.customerFeedback.length === 0 && !isViewer ? (
+                /* SHOW PLUS ICON TO GUIDE USER WHEN EMPTY */
+                <Plus size={20} className="text-intenza-600 mb-6 transition-transform group-hover:scale-125" />
+              ) : (
+                <MessageSquare size={20} className="text-slate-400 group-hover:text-intenza-600 mb-6 transition-colors" />
+              )}
+              
+              <div className="flex-1 flex items-center justify-center">
+                <span className="text-[10px] font-black text-slate-300 group-hover:text-slate-500 uppercase tracking-[0.3em] rotate-90 whitespace-nowrap transition-colors">
+                  Customer Feedback
+                </span>
+              </div>
+              {product.customerFeedback.length > 0 && (
+                <div className="mt-8 bg-intenza-600 text-white text-[9px] font-black px-2 py-1 rounded-full shadow-lg shadow-intenza-600/20">
+                  {product.customerFeedback.length}
+                </div>
+              )}
             </div>
           ) : (
+            /* EXPANDED STATE: FULL PANEL */
             <div className="flex-1 flex flex-col bg-slate-50 animate-fade-in">
                 <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-white sticky top-0 z-10 shadow-sm">
-                  <h3 className="font-bold text-slate-900 flex items-center gap-2"><MessageSquare size={18} className="text-intenza-500"/>Customer Feedback</h3>
-                  {canEditErgo && <button onClick={() => setFeedbackModalState({ isOpen: true, feedback: null })} className="text-xs font-black bg-intenza-600 text-white px-3 py-1.5 rounded-xl hover:bg-intenza-700 flex items-center gap-1 shadow-lg shadow-intenza-600/20 transition-all active:scale-95"><Plus size={14}/> Add</button>}
+                  <h3 className="font-bold text-slate-900 flex items-center gap-2">
+                    <MessageSquare size={18} className="text-intenza-500"/>
+                    Customer Feedback
+                  </h3>
+                  {!isViewer && (
+                    <button 
+                      onClick={() => setFeedbackModalState({ isOpen: true, feedback: null })} 
+                      className="text-xs font-black bg-intenza-600 text-white px-3 py-1.5 rounded-xl hover:bg-intenza-700 flex items-center gap-1 shadow-lg shadow-intenza-600/20 transition-all active:scale-95"
+                    >
+                      <Plus size={14}/> Add
+                    </button>
+                  )}
                 </div>
+                
                 <div className="p-6 overflow-y-auto flex-1 space-y-6 custom-scrollbar">
-                    {product.customerFeedback.length > 0 ? product.customerFeedback.map((fb: ErgoFeedback) => (
-                            <CustomerFeedbackCard key={fb.id} feedback={fb} product={product} canEditErgo={canEditErgo} isHighlighted={highlightedFeedback?.feedbackId === fb.id} onStatusClick={() => setFeedbackStatusModal({ isOpen: true, feedback: fb })} onEdit={() => setFeedbackModalState({ isOpen: true, feedback: fb })} onDelete={() => onUpdateProduct({...product, customerFeedback: product.customerFeedback.filter((f: any) => f.id !== fb.id)})} />
-                        )) : (
-                        <div onClick={() => canEditErgo && setFeedbackModalState({ isOpen: true, feedback: null })} className={`h-full flex flex-col items-center justify-center text-center px-4 py-12 transition-all rounded-3xl border-2 border-dashed border-transparent ${canEditErgo ? 'cursor-pointer hover:bg-white hover:border-slate-200 group/empty' : ''}`}>
-                            <div className="w-20 h-20 bg-white rounded-3xl border border-slate-100 flex items-center justify-center text-slate-200 mb-6 group-hover/empty:scale-110 transition-transform"><MessageSquare size={40} /></div>
+                    {product.customerFeedback.length > 0 ? (
+                        product.customerFeedback.map((fb: ErgoFeedback) => (
+                            <CustomerFeedbackCard 
+                                key={fb.id} 
+                                feedback={fb} 
+                                product={product} 
+                                userRole={userRole} 
+                                isHighlighted={highlightedFeedback?.feedbackId === fb.id} 
+                                onStatusClick={() => setFeedbackStatusModal({ isOpen: true, feedback: fb })} 
+                                onEdit={() => setFeedbackModalState({ isOpen: true, feedback: fb })} 
+                                onDelete={() => onUpdateProduct({...product, customerFeedback: product.customerFeedback.filter((f: any) => f.id !== fb.id)})} 
+                            />
+                        ))
+                    ) : (
+                        /* IMPROVED EMPTY STATE - ENTIRE AREA CLICKABLE */
+                        <div 
+                          onClick={() => !isViewer && setFeedbackModalState({ isOpen: true, feedback: null })}
+                          className={`h-full flex flex-col items-center justify-center text-center px-4 py-12 transition-all rounded-3xl border-2 border-dashed border-transparent ${!isViewer ? 'cursor-pointer hover:bg-white hover:border-slate-200 group/empty' : ''}`}
+                        >
+                            <div className="w-20 h-20 bg-white rounded-3xl border border-slate-100 flex items-center justify-center text-slate-200 mb-6 shadow-sm group-hover/empty:scale-110 transition-transform">
+                                <MessageSquare size={40} />
+                            </div>
                             <h4 className="text-slate-900 font-bold text-lg mb-2">No Feedback Yet</h4>
-                            {canEditErgo && <div className="px-6 py-3 bg-slate-900 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-xl group-hover/empty:bg-intenza-600 transition-all flex items-center gap-2"><Plus size={18} strokeWidth={3} />Add Your First Entry</div>}
+                            <p className="text-slate-400 text-xs mb-8 leading-relaxed max-w-[200px]">
+                              Collect field complaints or market observations here to link them to design changes.
+                            </p>
+                            {!isViewer && (
+                                <div className="px-6 py-3 bg-slate-900 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-xl shadow-slate-900/20 group-hover/empty:bg-intenza-600 transition-all flex items-center gap-2">
+                                    <Plus size={18} strokeWidth={3} />
+                                    Add Your First Entry
+                                </div>
+                            )}
                         </div>
                     )}
                 </div>
@@ -904,14 +1101,124 @@ const ErgoSection = ({ product, testers, testerGroups, onUpdateProduct, highligh
       {addTaskModalState.isOpen && <AddTaskModal onClose={() => setAddTaskModalState({isOpen:false})} onSave={(name: any) => { const {projectId, category} = addTaskModalState.context; onUpdateProduct({...product, ergoProjects: product.ergoProjects.map((p: any) => p.id === projectId ? {...p, tasks: {...p.tasks, [category]: [...p.tasks[category], {id: `t-${Date.now()}`, name: {en: name, zh: name}, passTesterIds: [], ngReasons: []}]}} : p)}); setAddTaskModalState({isOpen:false}); }} />}
       {taskResultModalState.isOpen && <SetTaskResultsModal onClose={() => setTaskResultModalState({isOpen:false})} onSave={(ids: any) => { const {projectId, category, taskId} = taskResultModalState.context; onUpdateProduct({...product, ergoProjects: product.ergoProjects.map((p: any) => p.id === projectId ? {...p, tasks: {...p.tasks, [category]: p.tasks[category].map((t: any) => t.id === taskId ? {...t, passTesterIds: ids, ngReasons: p.testerIds.filter((tid: any) => !ids.includes(tid)).map((tid: any) => t.ngReasons.find((r: any) => r.testerId === tid) || {testerId: tid, reason: {en: '', zh: ''}, decisionStatus: 'PENDING'})} : t)}} : p)}); setTaskResultModalState({isOpen:false}); }} context={taskResultModalState.context} project={product.ergoProjects.find((p: any) => p.id === taskResultModalState.context.projectId)} testers={testers} />}
       {ngReasonModalState.isOpen && <SetPassNgModal onClose={() => setNgReasonModalState({isOpen:false})} onSet={(reason: any, isNew: any, atts: any, type: any) => { const {projectId, category, taskId, testerId} = ngReasonModalState.context; onUpdateProduct({...product, ergoProjects: product.ergoProjects.map((p: any) => p.id === projectId ? {...p, tasks: {...p.tasks, [category]: p.tasks[category].map((t: any) => t.id === taskId ? {...t, ngReasons: t.ngReasons.map((ng: any) => ng.testerId === testerId ? {...ng, reason, attachmentUrls: atts, decisionStatus: type === 'IDEA' ? 'IDEA' : ng.decisionStatus} : ng)} : t)}} : p)}); setNgReasonModalState({isOpen:false}); }} existingReason={product.ergoProjects.find((p: any) => p.id === ngReasonModalState.context.projectId)?.tasks[ngReasonModalState.context.category].find((t: any) => t.id === ngReasonModalState.context.taskId)?.ngReasons.find((ng: any) => ng.testerId === ngReasonModalState.context.testerId)} />}
-      {statusModalState.isOpen && <StatusDecisionModal onClose={() => setStatusModalState({isOpen:false})} context={statusModalState.context} onSetStatus={(s: any) => { performBidirectionalUpdate(s, undefined, statusModalState.context); setStatusModalState({isOpen:false}); }} onLinkEco={(ecoId: any) => { const isUnlink = statusModalState.context.linkedEcoId === ecoId; performBidirectionalUpdate(isUnlink ? 'PENDING' : 'NEEDS_IMPROVEMENT', isUnlink ? undefined : ecoId, statusModalState.context); setStatusModalState({isOpen:false}); }} onCreateEco={(version: string) => { const {projectId, category, taskId, testerId} = statusModalState.context; const ng = product.ergoProjects.find((p: any) => p.id === projectId).tasks[category].find((t: any) => t.id === taskId).ngReasons.find((r: any) => r.testerId === testerId); const newEcoId = `eco-${Date.now()}`; const now = new Date(); const timestamp = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`; const newEco: any = { id: newEcoId, ecoNumber: `EVAL-${Date.now().toString().slice(-4)}`, date: new Date().toISOString().split('T')[0], version, description: {en: `[Ergo Improvement] ${t(ng.reason)}`, zh: `[人因改進] ${t(ng.reason)}`}, affectedBatches: [], affectedCustomers: [], status: EcoStatus.EVALUATING, imageUrls: ng.attachmentUrls || [], sourceFeedbacks: [{projectId, category, taskId, testerId}], updatedAt: timestamp }; onUpdateProduct({ ...product, designHistory: [...product.designHistory, newEco], ergoProjects: product.ergoProjects.map((p: any) => p.id === projectId ? { ...p, tasks: { ...p.tasks, [category]: p.tasks[category].map((t: any) => t.id === taskId ? { ...t, ngReasons: t.ngReasons.map((r: any) => r.testerId === testerId ? { ...r, linkedEcoId: newEcoId, decisionStatus: 'NEEDS_IMPROVEMENT'} : r) } : t) } } : p) }); setStatusModalState({isOpen:false}); }} activeEcos={activeEcosList} versions={productVersions} currentProductVersion={product.currentVersion} />}
+      
+      {statusModalState.isOpen && (
+          <StatusDecisionModal 
+              onClose={() => setStatusModalState({isOpen:false})} 
+              context={statusModalState.context} 
+              onSetStatus={(s: any) => {
+                  performBidirectionalUpdate(s, undefined, statusModalState.context);
+                  setStatusModalState({isOpen:false});
+              }} 
+              onLinkEco={(ecoId: any) => {
+                  const isUnlink = statusModalState.context.linkedEcoId === ecoId;
+                  performBidirectionalUpdate(
+                      isUnlink ? 'PENDING' : 'NEEDS_IMPROVEMENT', 
+                      isUnlink ? undefined : ecoId, 
+                      statusModalState.context
+                  );
+                  setStatusModalState({isOpen:false});
+              }} 
+              onCreateEco={(version: string) => {
+                  const {projectId, category, taskId, testerId} = statusModalState.context;
+                  const ng = product.ergoProjects.find((p: any) => p.id === projectId).tasks[category].find((t: any) => t.id === taskId).ngReasons.find((r: any) => r.testerId === testerId);
+                  const newEcoId = `eco-${Date.now()}`;
+                  const now = new Date();
+                  const timestamp = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+                  
+                  const newEco: any = { 
+                      id: newEcoId, 
+                      ecoNumber: `EVAL-${Date.now().toString().slice(-4)}`, 
+                      date: new Date().toISOString().split('T')[0], 
+                      version, 
+                      description: {en: `[Ergo Improvement] ${t(ng.reason)}`, zh: `[人因改進] ${t(ng.reason)}`}, 
+                      affectedBatches: [], 
+                      affectedCustomers: [], 
+                      status: EcoStatus.EVALUATING, 
+                      imageUrls: ng.attachmentUrls || [], 
+                      sourceFeedbacks: [{projectId, category, taskId, testerId}],
+                      updatedAt: timestamp 
+                  };
+                  onUpdateProduct({
+                      ...product,
+                      designHistory: [...product.designHistory, newEco],
+                      ergoProjects: product.ergoProjects.map((p: any) => p.id === projectId ? {
+                          ...p,
+                          tasks: {
+                              ...p.tasks,
+                              [category]: p.tasks[category].map((t: any) => t.id === taskId ? {
+                                  ...t,
+                                  ngReasons: t.ngReasons.map((r: any) => r.testerId === testerId ? { ...r, linkedEcoId: newEcoId, decisionStatus: 'NEEDS_IMPROVEMENT'} : r)
+                              } : t)
+                          }
+                      } : p)
+                  });
+                  setStatusModalState({isOpen:false});
+              }} 
+              activeEcos={activeEcosList} 
+              versions={productVersions} 
+              currentProductVersion={product.currentVersion} 
+          />
+      )}
+
       {feedbackModalState.isOpen && <FeedbackModal onClose={() => setFeedbackModalState({isOpen:false})} onSave={(data: any) => { if(feedbackModalState.feedback) { onUpdateProduct({...product, customerFeedback: product.customerFeedback.map((f: any) => f.id === feedbackModalState.feedback.id ? {...f, ...data} : f)}); } else { onUpdateProduct({...product, customerFeedback: [...product.customerFeedback, {id: `fb-${Date.now()}`, ...data, type: 'COMPLAINT', status: 'PENDING'}]}); } setFeedbackModalState({isOpen:false}); }} feedback={feedbackModalState.feedback} product={product} />}
-      {feedbackStatusModal.isOpen && <FeedbackStatusDecisionModal onClose={() => setFeedbackStatusModal({isOpen:false})} feedback={feedbackStatusModal.feedback} onUpdateStatus={(fid: any, s: any) => { performBidirectionalUpdate(s, undefined, undefined, fid); setFeedbackStatusModal({isOpen:false}); }} onLinkEco={(ecoId: any) => { const fid = feedbackStatusModal.feedback.id; const isUnlink = feedbackStatusModal.feedback.linkedEcoId === ecoId; performBidirectionalUpdate(isUnlink ? 'PENDING' : 'DISCUSSION', isUnlink ? undefined : ecoId, undefined, fid); setFeedbackStatusModal({isOpen:false}); }} onCreateEco={(version: string) => { const f = feedbackStatusModal.feedback; const newEcoId = `eco-${Date.now()}`; const now = new Date(); const timestamp = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`; const newEco: any = { id: newEcoId, ecoNumber: `CUST-${Date.now().toString().slice(-4)}`, date: new Date().toISOString().split('T')[0], version, description: {en: `[Customer Feedback Address] ${t(f.content)}`, zh: `[客訴回饋處理] ${t(f.content)}`}, affectedBatches: [], affectedCustomers: [], status: EcoStatus.EVALUATING, imageUrls: f.attachmentUrls || [], sourceFeedbacks: [{category: f.category, feedbackId: f.id}], updatedAt: timestamp }; onUpdateProduct({ ...product, designHistory: [...product.designHistory, newEco], customerFeedback: product.customerFeedback.map((item: any) => item.id === f.id ? { ...item, linkedEcoId: newEcoId, status: 'DISCUSSION'} : item) }); setFeedbackStatusModal({isOpen:false}); }} activeEcos={activeEcosList} versions={productVersions} currentProductVersion={product.currentVersion} />}
+      
+      {feedbackStatusModal.isOpen && (
+          <FeedbackStatusDecisionModal 
+            onClose={() => setFeedbackStatusModal({isOpen:false})} 
+            feedback={feedbackStatusModal.feedback} 
+            onUpdateStatus={(fid: any, s: any) => {
+                performBidirectionalUpdate(s, undefined, undefined, fid);
+                setFeedbackStatusModal({isOpen:false});
+            }} 
+            onLinkEco={(ecoId: any) => {
+                const fid = feedbackStatusModal.feedback.id;
+                const isUnlink = feedbackStatusModal.feedback.linkedEcoId === ecoId;
+                performBidirectionalUpdate(
+                    isUnlink ? 'PENDING' : 'DISCUSSION', 
+                    isUnlink ? undefined : ecoId, 
+                    undefined, 
+                    fid
+                );
+                setFeedbackStatusModal({isOpen:false});
+            }} 
+            onCreateEco={(version: string) => {
+                const f = feedbackStatusModal.feedback;
+                const newEcoId = `eco-${Date.now()}`;
+                const now = new Date();
+                const timestamp = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+                
+                const newEco: any = { 
+                    id: newEcoId, 
+                    ecoNumber: `CUST-${Date.now().toString().slice(-4)}`, 
+                    date: new Date().toISOString().split('T')[0], 
+                    version, 
+                    description: {en: `[Customer Feedback Address] ${t(f.content)}`, zh: `[客訴回饋處理] ${t(f.content)}`}, 
+                    affectedBatches: [], 
+                    affectedCustomers: [], 
+                    status: EcoStatus.EVALUATING, 
+                    imageUrls: f.attachmentUrls || [], 
+                    sourceFeedbacks: [{category: f.category, feedbackId: f.id}],
+                    updatedAt: timestamp 
+                };
+                onUpdateProduct({
+                    ...product,
+                    designHistory: [...product.designHistory, newEco],
+                    customerFeedback: product.customerFeedback.map((item: any) => item.id === f.id ? { ...item, linkedEcoId: newEcoId, status: 'DISCUSSION'} : item)
+                });
+                setFeedbackStatusModal({isOpen:false});
+            }} 
+            activeEcos={activeEcosList} 
+            versions={productVersions} 
+            currentProductVersion={product.currentVersion} 
+          />
+      )}
     </div>
   );
 };
 
 // --- Modals ---
+
 const EcoModal = ({ isOpen, onClose, onSave, eco, productVersions, product }: any) => {
     const [formData, setFormData] = useState<any>(eco || { ecoNumber: '', date: new Date().toISOString().split('T')[0], version: product.currentVersion, description: { en: '', zh: '' }, status: EcoStatus.EVALUATING, imageUrls: [], imageCaptions: [] });
     const [isUp, setIsUp] = useState(false);
@@ -929,7 +1236,11 @@ const EcoModal = ({ isOpen, onClose, onSave, eco, productVersions, product }: an
                     <div><label className="block text-xs font-bold text-slate-500 uppercase mb-1">Status</label><select value={formData.status} onChange={e => setFormData({...formData, status: e.target.value as EcoStatus})} className="w-full px-4 py-2 bg-slate-50 border rounded-lg">{Object.values(EcoStatus).map(s => <option key={s} value={s}>{s}</option>)}</select></div>
                     <div><label className="block text-xs font-bold text-slate-500 uppercase mb-1">Date</label><input type="date" value={formData.date} onChange={e => setFormData({...formData, date: e.target.value})} className="w-full px-4 py-2 bg-slate-50 border rounded-lg"/></div>
                 </div>
-                <div className="pt-4 border-t flex gap-3"><button type="button" onClick={onClose} className="flex-1 py-3 font-bold text-slate-500">Cancel</button><button type="submit" className="flex-1 py-3 bg-slate-900 text-white font-bold rounded-xl">Save ECO</button></div>
+                <div className="pt-4 border-t"><label className="block text-xs font-bold text-slate-500 uppercase mb-3">Media</label><div className="grid grid-cols-4 gap-3">{(formData.imageUrls || []).map((url: string, i: number) => <div key={i} className="relative aspect-square rounded-lg overflow-hidden border bg-slate-100 group">
+                    {isVideo(url)?<div className="w-full h-full flex items-center justify-center"><Video size={20}/></div>:<img src={url} className="w-full h-full object-cover"/>}
+                    <button type="button" onClick={() => setFormData({...formData, imageUrls: formData.imageUrls.filter((_:any,idx:number)=>idx!==i), imageCaptions: (formData.imageCaptions||[]).filter((_:any,idx:number)=>idx!==i)})} className="absolute top-1 right-1 p-1 bg-black/50 text-white rounded-full opacity-0 group-hover:opacity-100"><X size={10}/></button>
+                </div>)}<button type="button" onClick={() => fileRef.current?.click()} className="aspect-square border-2 border-dashed rounded-lg flex flex-col items-center justify-center text-slate-400 bg-slate-50">{isUp?<Loader2 className="animate-spin"/>:<Plus/>}</button><input ref={fileRef} type="file" multiple accept="image/*,video/*" className="hidden" onChange={async e => {const fs=e.target.files; if(!fs) return; setIsUp(true); try{const urls=await Promise.all(Array.from(fs).map(f=>api.uploadImage(f as File))); setFormData({...formData, imageUrls:[...(formData.imageUrls||[]),...urls], imageCaptions: [...(formData.imageCaptions||[]), ...urls.map(()=>'')]});}finally{setIsUp(false);}}}/></div></div>
+                <div className="flex gap-3 pt-6"><button type="button" onClick={onClose} className="flex-1 py-3 font-bold text-slate-500">Cancel</button><button type="submit" className="flex-1 py-3 bg-slate-900 text-white font-bold rounded-xl">Save ECO</button></div>
             </form>
         </div></div>
     );
@@ -937,9 +1248,12 @@ const EcoModal = ({ isOpen, onClose, onSave, eco, productVersions, product }: an
 
 const TestModal = ({ isOpen, onClose, onSave, test, productVersions }: any) => {
     const { language } = useContext(LanguageContext);
+    const [isUp, setIsUp] = useState(false);
+    const fileRef = useRef<HTMLInputElement>(null);
     const opts = [{ en: 'Durability Test', zh: '耐久測試' }, { en: 'Salt Spray Test', zh: '鹽霧測試' }, { en: 'Packaging Test', zh: '包裝測試' }, { en: 'Other Custom Test', zh: '其他自訂測試' }];
     const [formData, setFormData] = useState<any>(test || { category: 'Mechanical', testName: opts[0], version: '', score: 0, status: TestStatus.PENDING, details: { en: '', zh: '' }, attachmentUrls: [], attachmentCaptions: [] });
     const [custom, setCustom] = useState(!opts.some(o => o.en === formData.testName.en));
+
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm animate-fade-in"><div className="bg-white rounded-2xl w-full max-w-xl overflow-hidden flex flex-col max-h-[90vh]">
             <div className="p-6 border-b flex justify-between items-center"><h2 className="text-xl font-bold">Edit Test Record</h2><button onClick={onClose}><X/></button></div>
@@ -954,6 +1268,7 @@ const TestModal = ({ isOpen, onClose, onSave, test, productVersions }: any) => {
                     <div><label className="text-xs font-bold text-slate-500">Progress: {formData.score}%</label><input type="range" min="0" max="100" value={formData.score} onChange={e=>setFormData({...formData,score:Number(e.target.value)})} className="w-full"/></div>
                 </div>
                 <div><label className="text-xs font-bold text-slate-500">Details</label><textarea value={formData.details.en} onChange={e=>setFormData({...formData,details:{en:e.target.value,zh:e.target.value}})} className="w-full p-2 border rounded-lg" rows={3}/></div>
+                <div className="pt-2"><label className="text-xs font-bold text-slate-500">Photos</label><div className="grid grid-cols-4 gap-2">{(formData.attachmentUrls||[]).map((u:any,i:any)=><img key={i} src={u} className="aspect-square object-cover rounded border"/>)}<button type="button" onClick={()=>fileRef.current?.click()} className="aspect-square border-2 border-dashed rounded flex items-center justify-center">{isUp?<Loader2 className="animate-spin"/>:<Plus/>}</button><input ref={fileRef} type="file" multiple accept="image/*" className="hidden" onChange={async e=>{const fs=e.target.files; if(!fs)return; setIsUp(true); try{const urls=await Promise.all(Array.from(fs).map(f=>api.uploadImage(f as File))); setFormData({...formData,attachmentUrls:[...(formData.attachmentUrls||[]),...urls], attachmentCaptions: [...(formData.attachmentCaptions||[]), ...urls.map(()=>'')]});}finally{setIsUp(false);}}}/></div></div>
                 <div className="flex gap-2 pt-4"><button type="button" onClick={onClose} className="flex-1 py-3 text-slate-500">Cancel</button><button type="submit" className="flex-1 py-3 bg-slate-900 text-white rounded-xl">Save</button></div>
             </form>
         </div></div>
@@ -969,23 +1284,87 @@ const StartEvaluationModal = ({ onClose, onStartProject, allTesters, testerGroup
     const [name, setName] = useState(project ? project.name.en : '');
     const [ids, setIds] = useState<string[]>(project ? project.testerIds : []);
     const [searchTerm, setSearchTerm] = useState('');
+
     const filteredTesters = allTesters.filter((tr: Tester) => tr.name.toLowerCase().includes(searchTerm.toLowerCase()));
+
     const handleApplyGroup = (groupId: string) => {
         const group = testerGroups.find(g => g.id === groupId);
         if (group) setIds(Array.from(new Set([...ids, ...group.testerIds])));
     };
+
     return (
-        <div className="fixed inset-0 z-50 flex justify-center p-4 bg-slate-900/50 backdrop-blur-sm animate-fade-in overflow-y-auto" style={{ paddingTop: `${yOffset}px`, alignItems: 'flex-start' }}>
+        <div 
+          className="fixed inset-0 z-50 flex justify-center p-4 bg-slate-900/50 backdrop-blur-sm animate-fade-in overflow-y-auto"
+          style={{ paddingTop: `${yOffset}px`, alignItems: 'flex-start' }}
+        >
             <div className="bg-white rounded-3xl w-full max-w-2xl overflow-hidden flex flex-col shadow-2xl mb-20">
-                <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-white sticky top-0 z-10"><h2 className="text-xl font-black text-slate-900">{project ? 'Edit Project' : 'New Evaluation Project'}</h2><button onClick={onClose} className="p-2 hover:bg-slate-100 rounded-full transition-colors"><X size={20}/></button></div>
-                <div className="p-6 space-y-6">
-                    <div><label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Project Name</label><input type="text" placeholder="Enter evaluation project title..." value={name} onChange={e=>setName(e.target.value)} className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none font-bold"/></div>
-                    {testerGroups.length > 0 && (
-                        <div><label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Quick Import Groups</label><div className="flex flex-wrap gap-2">{testerGroups.map(g => (<button key={g.id} onClick={() => handleApplyGroup(g.id)} className="flex items-center gap-2 px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-bold text-slate-600 hover:bg-slate-50 transition-all"><Users2 size={12} className="text-indigo-500" />{t(g.name)} ({g.testerIds.length})</button>))}</div></div>
-                    )}
-                    <div><div className="flex items-center justify-between mb-3"><label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest">Select Testers ({ids.length})</label><div className="relative w-48"><Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" /><input type="text" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} placeholder="Find subject..." className="w-full pl-9 pr-3 py-1.5 bg-white border rounded-lg text-xs outline-none" /></div></div><div className="grid grid-cols-2 sm:grid-cols-4 gap-3">{filteredTesters.map((tester: Tester) => { const isSelected = ids.includes(tester.id); return (<div key={tester.id} onClick={() => isSelected ? setIds(ids.filter(i => i !== tester.id)) : setIds([...ids, tester.id])} className={`relative group cursor-pointer transition-all duration-300 rounded-2xl border-2 overflow-hidden ${isSelected ? 'border-intenza-600 ring-4 ring-intenza-500/10' : 'border-slate-100'}`}><div className="aspect-square bg-slate-100"><img src={tester.imageUrl} className="w-full h-full object-cover grayscale-[0.5] group-hover:grayscale-0 transition-all" alt={tester.name} />{isSelected && <div className="absolute inset-0 bg-intenza-600/20 backdrop-blur-[1px] flex items-center justify-center"><CheckCircle size={32} className="text-white drop-shadow-lg" strokeWidth={3} /></div>}</div><div className="p-2 bg-white"><div className="text-[10px] font-black text-slate-800 truncate">{tester.name}</div><div className="text-[8px] font-bold text-slate-400 uppercase">{tester.height}cm • {tester.gender}</div></div></div>); })}</div></div>
+                <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-white sticky top-0 z-10">
+                    <h2 className="text-xl font-black text-slate-900">{project ? 'Edit Project' : 'New Evaluation Project'}</h2>
+                    <button onClick={onClose} className="p-2 hover:bg-slate-100 rounded-full transition-colors"><X size={20}/></button>
                 </div>
-                <div className="p-6 border-t border-slate-100 bg-white sticky bottom-0"><button onClick={()=>onStartProject({en:name,zh:name},ids)} disabled={!name || ids.length === 0} className="w-full py-4 bg-slate-900 text-white rounded-2xl font-black uppercase tracking-widest shadow-xl shadow-slate-900/20 active:scale-[0.98] disabled:opacity-50">Launch Evaluation Project</button></div>
+                
+                <div className="p-6 space-y-6">
+                    <div>
+                        <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Project Name</label>
+                        <input type="text" placeholder="Enter evaluation project title..." value={name} onChange={e=>setName(e.target.value)} className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-intenza-500/20 focus:border-intenza-600 outline-none font-bold"/>
+                    </div>
+
+                    {testerGroups.length > 0 && (
+                        <div>
+                            <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Quick Import Groups</label>
+                            <div className="flex flex-wrap gap-2">
+                                {testerGroups.map(g => (
+                                    <button key={g.id} onClick={() => handleApplyGroup(g.id)} className="flex items-center gap-2 px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-bold text-slate-600 hover:bg-slate-50 hover:border-slate-300 transition-all">
+                                        <Users2 size={12} className="text-indigo-500" />
+                                        {t(g.name)} ({g.testerIds.length})
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+
+                    <div>
+                        <div className="flex items-center justify-between mb-3">
+                            <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest">Select Testers ({ids.length})</label>
+                            <div className="relative w-48">
+                                <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                                <input type="text" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} placeholder="Find subject..." className="w-full pl-9 pr-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs focus:border-intenza-600 outline-none" />
+                            </div>
+                        </div>
+                        
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                            {filteredTesters.map((tester: Tester) => {
+                                const isSelected = ids.includes(tester.id);
+                                return (
+                                    <div 
+                                        key={tester.id} 
+                                        onClick={() => isSelected ? setIds(ids.filter(i => i !== tester.id)) : setIds([...ids, tester.id])}
+                                        className={`relative group cursor-pointer transition-all duration-300 rounded-2xl border-2 overflow-hidden ${isSelected ? 'border-intenza-600 ring-4 ring-intenza-500/10' : 'border-slate-100 hover:border-slate-200'}`}
+                                    >
+                                        <div className="aspect-square bg-slate-100">
+                                            <img src={tester.imageUrl} className="w-full h-full object-cover grayscale-[0.5] group-hover:grayscale-0 transition-all" alt={tester.name} />
+                                            {isSelected && <div className="absolute inset-0 bg-intenza-600/20 backdrop-blur-[1px] flex items-center justify-center"><CheckCircle size={32} className="text-white drop-shadow-lg" strokeWidth={3} /></div>}
+                                        </div>
+                                        <div className="p-2 bg-white">
+                                            <div className="text-[10px] font-black text-slate-800 truncate">{tester.name}</div>
+                                            <div className="text-[8px] font-bold text-slate-400 uppercase">{tester.height}cm • {tester.gender}</div>
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    </div>
+                </div>
+
+                <div className="p-6 border-t border-slate-100 bg-white sticky bottom-0">
+                    <button 
+                        onClick={()=>onStartProject({en:name,zh:name},ids)} 
+                        disabled={!name || ids.length === 0}
+                        className="w-full py-4 bg-slate-900 text-white rounded-2xl font-black uppercase tracking-widest hover:bg-slate-800 transition-all shadow-xl shadow-slate-900/20 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                        {project ? 'Update Evaluation' : 'Launch Evaluation Project'}
+                    </button>
+                </div>
             </div>
         </div>
     );
@@ -1012,9 +1391,13 @@ const SetPassNgModal = ({ onClose, onSet, existingReason }: any) => {
     );
 };
 
+/**
+ * REFACTORED StatusDecisionModal
+ */
 const StatusDecisionModal = ({ onClose, onSetStatus, onLinkEco, onCreateEco, activeEcos, versions, currentProductVersion, context }: any) => {
     const [view, setView] = useState('MAIN');
     const [v, setV] = useState(currentProductVersion);
+    
     const getActiveStyle = (s: string) => {
         if (context.currentStatus !== s) return 'bg-white text-slate-400 border-slate-200 hover:border-slate-400';
         switch(s) {
@@ -1024,27 +1407,85 @@ const StatusDecisionModal = ({ onClose, onSetStatus, onLinkEco, onCreateEco, act
             default: return 'bg-slate-900 text-white border-slate-900';
         }
     };
+
     return (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md animate-fade-in">
             <div className="bg-white rounded-[2rem] w-full max-w-sm overflow-hidden shadow-2xl">
-                <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-white"><h2 className="text-xl font-black text-slate-900 uppercase tracking-tight">Manage Decision</h2><button onClick={onClose} className="p-2 hover:bg-slate-100 rounded-full transition-colors"><X size={20}/></button></div>
+                <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-white">
+                    <h2 className="text-xl font-black text-slate-900 uppercase tracking-tight">Manage Decision</h2>
+                    <button onClick={onClose} className="p-2 hover:bg-slate-100 rounded-full transition-colors"><X size={20}/></button>
+                </div>
+                
                 {view === 'MAIN' ? (
                     <div className="p-6 space-y-3">
-                        <button onClick={() => setView('SELECT_V')} className="w-full py-3.5 bg-intenza-600 text-white rounded-xl font-bold hover:bg-intenza-700 transition-all flex items-center justify-center gap-2"><Plus size={18} /> Address via New ECO</button>
-                        <button onClick={() => setView('LINK')} className="w-full py-3.5 bg-slate-50 border border-slate-200 text-slate-700 rounded-xl font-bold hover:bg-slate-100 transition-all flex items-center justify-center gap-2"><LinkIcon size={18} /> Link Existing ECO</button>
-                        <div className="pt-6 border-t border-slate-100"><label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4 text-center">Set Status Directly</label><div className="flex gap-2">{(['PENDING', 'DISCUSSION', 'IGNORED'] as const).map(s => (<button key={s} onClick={() => onSetStatus(s)} className={`flex-1 py-2 text-[10px] font-black border rounded-xl uppercase tracking-widest ${getActiveStyle(s)}`}>{s}</button>))}</div></div>
+                        <button 
+                            onClick={() => setView('SELECT_V')} 
+                            className="w-full py-3.5 bg-intenza-600 text-white rounded-xl font-bold hover:bg-intenza-700 transition-all shadow-lg shadow-intenza-600/20 flex items-center justify-center gap-2"
+                        >
+                            <Plus size={18} /> Address via New ECO
+                        </button>
+                        <button 
+                            onClick={() => setView('LINK')} 
+                            className="w-full py-3.5 bg-slate-50 border border-slate-200 text-slate-700 rounded-xl font-bold hover:bg-slate-100 transition-all flex items-center justify-center gap-2"
+                        >
+                            <LinkIcon size={18} /> Link Existing ECO
+                        </button>
+                        
+                        <div className="pt-6 border-t border-slate-100">
+                            <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4 text-center">Set Status Directly</label>
+                            <div className="flex gap-2">
+                                {(['PENDING', 'DISCUSSION', 'IGNORED'] as const).map(s => (
+                                    <button 
+                                        key={s} 
+                                        onClick={() => onSetStatus(s)} 
+                                        className={`flex-1 py-2 text-[10px] font-black border rounded-xl transition-all uppercase tracking-widest ${getActiveStyle(s)}`}
+                                    >
+                                        {s}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
                     </div>
                 ) : view === 'LINK' ? (
                     <div className="p-6 space-y-2 max-h-[400px] overflow-y-auto custom-scrollbar">
                         <h3 className="text-xs font-black text-slate-400 uppercase mb-3">Select Active ECO</h3>
-                        {activeEcos.length > 0 ? activeEcos.map((e: any) => (<button key={e.id} onClick={() => onLinkEco(e.id)} className="w-full text-left p-4 border border-slate-100 rounded-2xl hover:bg-slate-50 transition-all group flex items-center justify-between"><div><div className="text-sm font-black text-slate-900">{e.ecoNumber}</div><div className="text-[10px] font-bold text-slate-400">{e.version}</div></div><ChevronRight size={16} className="text-slate-300" /></button>)) : (<div className="text-center py-8 text-slate-400 italic text-sm">No active ECOs found.</div>)}
+                        {activeEcos.length > 0 ? activeEcos.map((e: any) => (
+                            <button 
+                                key={e.id} 
+                                onClick={() => onLinkEco(e.id)} 
+                                className="w-full text-left p-4 border border-slate-100 rounded-2xl hover:bg-slate-50 hover:border-intenza-300 transition-all group flex items-center justify-between"
+                            >
+                                <div>
+                                    <div className="text-sm font-black text-slate-900">{e.ecoNumber}</div>
+                                    <div className="text-[10px] font-bold text-slate-400">{e.version}</div>
+                                </div>
+                                <ChevronRight size={16} className="text-slate-300 group-hover:text-intenza-500" />
+                            </button>
+                        )) : (
+                            <div className="text-center py-8 text-slate-400 italic text-sm">No active ECOs found.</div>
+                        )}
                         <button onClick={() => setView('MAIN')} className="w-full py-3 text-slate-500 font-bold hover:underline">Back</button>
                     </div>
                 ) : (
                     <div className="p-6 space-y-2">
                         <h3 className="text-xs font-black text-slate-400 uppercase mb-4">Target Production Version</h3>
-                        <div className="grid grid-cols-2 gap-2">{versions.map((vr: any) => (<button key={vr} onClick={() => setV(vr)} className={`py-3 px-2 border rounded-xl text-xs font-bold transition-all ${v === vr ? 'bg-slate-900 text-white border-slate-900' : 'bg-slate-50 text-slate-600 border-slate-200'}`}>{vr}</button>))}</div>
-                        <button onClick={() => onCreateEco(v)} className="w-full py-4 bg-intenza-600 text-white rounded-2xl font-black uppercase tracking-widest mt-6 shadow-xl hover:bg-intenza-700 transition-all">Confirm & Create</button>
+                        <div className="grid grid-cols-2 gap-2">
+                            {versions.map((vr: any) => (
+                                <button 
+                                    key={vr} 
+                                    onClick={() => setV(vr)} 
+                                    className={`py-3 px-2 border rounded-xl text-xs font-bold transition-all ${v === vr ? 'bg-slate-900 text-white border-slate-900 shadow-lg shadow-slate-900/10' : 'bg-slate-50 text-slate-600 border-slate-200'}`}
+                                >
+                                    {vr}
+                                </button>
+                            ))}
+                        </div>
+                        <button 
+                            onClick={() => onCreateEco(v)} 
+                            className="w-full py-4 bg-intenza-600 text-white rounded-2xl font-black uppercase tracking-widest mt-6 shadow-xl shadow-intenza-600/20 hover:bg-intenza-700 active:scale-[0.98] transition-all"
+                        >
+                            Confirm & Create
+                        </button>
                         <button onClick={() => setView('MAIN')} className="w-full py-2 text-slate-400 font-bold hover:underline">Cancel</button>
                     </div>
                 )}
@@ -1056,13 +1497,57 @@ const StatusDecisionModal = ({ onClose, onSetStatus, onLinkEco, onCreateEco, act
 const FeedbackModal = ({ onClose, onSave, feedback }: any) => {
     const [d, setD] = useState(feedback || { content: {en:'',zh:''}, source: '', category: 'Experience', date: new Date().toISOString().split('T')[0] });
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm animate-fade-in"><div className="bg-white rounded-3xl w-full max-w-md p-6"><div className="flex justify-between mb-4"><h2 className="font-bold">Feedback Entry</h2><button onClick={onClose}><X size={20}/></button></div><div className="space-y-4"><div><label className="text-[10px] font-bold text-slate-400">Source</label><input type="text" value={d.source} onChange={e=>setD({...d,source:e.target.value})} className="w-full p-2 border rounded-xl bg-slate-50"/></div><div><label className="text-[10px] font-bold text-slate-400">Content</label><textarea value={d.content.en} onChange={e=>setD({...d,content:{en:e.target.value,zh:e.target.value}})} className="w-full p-2 border rounded-xl bg-slate-50" rows={4}/></div><button onClick={()=>onSave(d)} className="w-full py-3 bg-slate-900 text-white rounded-xl font-bold">Save Feedback</button></div></div></div>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm animate-fade-in">
+            <div className="bg-white rounded-3xl w-full max-w-md h-[250px] overflow-hidden flex flex-col shadow-2xl relative border border-white/20 animate-slide-up">
+                <div className="px-5 py-3 border-b border-slate-100 flex justify-between items-center bg-white">
+                    <h2 className="text-sm font-black text-slate-900 uppercase tracking-widest flex items-center gap-2">
+                        <MessageSquare size={14} className="text-intenza-600" />
+                        {feedback ? 'Edit Feedback' : 'New Feedback Entry'}
+                    </h2>
+                    <button onClick={onClose} className="p-1 hover:bg-slate-100 rounded-full transition-colors"><X size={18}/></button>
+                </div>
+                
+                <div className="p-4 flex-1 overflow-y-auto space-y-3 custom-scrollbar">
+                    <div>
+                        <label className="block text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">Feedback Source</label>
+                        <input 
+                            type="text" 
+                            placeholder="e.g. Sales, UK Market" 
+                            value={d.source} 
+                            onChange={e=>setD({...d,source:e.target.value})} 
+                            className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:border-intenza-600 focus:bg-white outline-none text-xs font-bold transition-all"
+                        />
+                    </div>
+                    <div>
+                        <label className="block text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">Description / Content</label>
+                        <textarea 
+                            placeholder="Detail the complaint or market observation..." 
+                            value={d.content.en} 
+                            onChange={e=>setD({...d,content:{en:e.target.value,zh:e.target.value}})} 
+                            className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:border-intenza-600 focus:bg-white outline-none text-xs font-medium resize-none transition-all" 
+                            rows={3}
+                        />
+                    </div>
+                </div>
+
+                <div className="px-4 py-3 border-t border-slate-100 bg-slate-50/50 flex justify-end">
+                    <button 
+                        onClick={()=>onSave(d)} 
+                        disabled={!d.source || !d.content.en}
+                        className="w-full py-2.5 bg-slate-900 text-white rounded-xl text-[10px] font-black uppercase tracking-[0.2em] hover:bg-slate-800 transition-all shadow-lg shadow-slate-900/10 disabled:opacity-30 disabled:cursor-not-allowed active:scale-[0.98]"
+                    >
+                        Confirm & Save Entry
+                    </button>
+                </div>
+            </div>
+        </div>
     );
 };
 
 const FeedbackStatusDecisionModal = ({ onClose, onUpdateStatus, onLinkEco, onCreateEco, activeEcos, versions, currentProductVersion, feedback }: any) => {
     const [view, setView] = useState('MAIN');
     const [v, setV] = useState(currentProductVersion);
+    
     const getActiveStyle = (s: string) => {
         if (feedback.status !== s) return 'bg-white text-slate-400 border-slate-200 hover:border-slate-400';
         switch(s) {
@@ -1072,27 +1557,85 @@ const FeedbackStatusDecisionModal = ({ onClose, onUpdateStatus, onLinkEco, onCre
             default: return 'bg-slate-900 text-white border-slate-900';
         }
     };
+
     return (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md animate-fade-in">
             <div className="bg-white rounded-[2rem] w-full max-w-sm overflow-hidden shadow-2xl">
-                <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-white"><h2 className="text-xl font-black text-slate-900 uppercase tracking-tight">Manage Feedback</h2><button onClick={onClose} className="p-2 hover:bg-slate-100 rounded-full transition-colors"><X size={20}/></button></div>
+                <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-white">
+                    <h2 className="text-xl font-black text-slate-900 uppercase tracking-tight">Manage Feedback</h2>
+                    <button onClick={onClose} className="p-2 hover:bg-slate-100 rounded-full transition-colors"><X size={20}/></button>
+                </div>
+                
                 {view === 'MAIN' ? (
                     <div className="p-6 space-y-3">
-                        <button onClick={() => setView('SELECT_V')} className="w-full py-3.5 bg-intenza-600 text-white rounded-xl font-bold hover:bg-intenza-700 transition-all flex items-center justify-center gap-2"><Plus size={18} /> Address via New ECO</button>
-                        <button onClick={() => setView('LINK')} className="w-full py-3.5 bg-slate-50 border border-slate-200 text-slate-700 rounded-xl font-bold hover:bg-slate-100 transition-all flex items-center justify-center gap-2"><LinkIcon size={18} /> Link Existing ECO</button>
-                        <div className="pt-6 border-t border-slate-100"><label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4 text-center">Set Status Directly</label><div className="flex gap-2">{(['PENDING', 'DISCUSSION', 'IGNORED'] as const).map(s => (<button key={s} onClick={() => onUpdateStatus(feedback.id, s)} className={`flex-1 py-2 text-[10px] font-black border rounded-xl uppercase tracking-widest ${getActiveStyle(s)}`}>{s}</button>))}</div></div>
+                        <button 
+                            onClick={() => setView('SELECT_V')} 
+                            className="w-full py-3.5 bg-intenza-600 text-white rounded-xl font-bold hover:bg-intenza-700 transition-all shadow-lg shadow-intenza-600/20 flex items-center justify-center gap-2"
+                        >
+                            <Plus size={18} /> Address via New ECO
+                        </button>
+                        <button 
+                            onClick={() => setView('LINK')} 
+                            className="w-full py-3.5 bg-slate-50 border border-slate-200 text-slate-700 rounded-xl font-bold hover:bg-slate-100 transition-all flex items-center justify-center gap-2"
+                        >
+                            <LinkIcon size={18} /> Link Existing ECO
+                        </button>
+                        
+                        <div className="pt-6 border-t border-slate-100">
+                            <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4 text-center">Set Status Directly</label>
+                            <div className="flex gap-2">
+                                {(['PENDING', 'DISCUSSION', 'IGNORED'] as const).map(s => (
+                                    <button 
+                                        key={s} 
+                                        onClick={() => onUpdateStatus(feedback.id, s)} 
+                                        className={`flex-1 py-2 text-[10px] font-black border rounded-xl transition-all uppercase tracking-widest ${getActiveStyle(s)}`}
+                                    >
+                                        {s}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
                     </div>
                 ) : view === 'LINK' ? (
                     <div className="p-6 space-y-2 max-h-[400px] overflow-y-auto custom-scrollbar">
                         <h3 className="text-xs font-black text-slate-400 uppercase mb-3">Select Active ECO</h3>
-                        {activeEcos.length > 0 ? activeEcos.map((e: any) => (<button key={e.id} onClick={() => onLinkEco(e.id)} className="w-full text-left p-4 border border-slate-100 rounded-2xl hover:bg-slate-50 transition-all group flex items-center justify-between"><div><div className="text-sm font-black text-slate-900">{e.ecoNumber}</div><div className="text-[10px] font-bold text-slate-400">{e.version}</div></div><ChevronRight size={16} className="text-slate-300" /></button>)) : (<div className="text-center py-8 text-slate-400 italic text-sm">No active ECOs found.</div>)}
+                        {activeEcos.length > 0 ? activeEcos.map((e: any) => (
+                            <button 
+                                key={e.id} 
+                                onClick={() => onLinkEco(e.id)} 
+                                className="w-full text-left p-4 border border-slate-100 rounded-2xl hover:bg-slate-50 hover:border-intenza-300 transition-all group flex items-center justify-between"
+                            >
+                                <div>
+                                    <div className="text-sm font-black text-slate-900">{e.ecoNumber}</div>
+                                    <div className="text-[10px] font-bold text-slate-400">{e.version}</div>
+                                </div>
+                                <ChevronRight size={16} className="text-slate-300 group-hover:text-intenza-500" />
+                            </button>
+                        )) : (
+                            <div className="text-center py-8 text-slate-400 italic text-sm">No active ECOs found.</div>
+                        )}
                         <button onClick={() => setView('MAIN')} className="w-full py-3 text-slate-500 font-bold hover:underline">Back</button>
                     </div>
                 ) : (
                     <div className="p-6 space-y-2">
                         <h3 className="text-xs font-black text-slate-400 uppercase mb-4">Target Production Version</h3>
-                        <div className="grid grid-cols-2 gap-2">{versions.map((vr: any) => (<button key={vr} onClick={() => setV(vr)} className={`py-3 px-2 border rounded-xl text-xs font-bold transition-all ${v === vr ? 'bg-slate-900 text-white border-slate-900' : 'bg-slate-50 text-slate-600 border-slate-200'}`}>{vr}</button>))}</div>
-                        <button onClick={() => onCreateEco(v)} className="w-full py-4 bg-intenza-600 text-white rounded-2xl font-black uppercase tracking-widest mt-6 shadow-xl hover:bg-intenza-700 transition-all">Confirm & Create</button>
+                        <div className="grid grid-cols-2 gap-2">
+                            {versions.map((vr: any) => (
+                                <button 
+                                    key={vr} 
+                                    onClick={() => setV(vr)} 
+                                    className={`py-3 px-2 border rounded-xl text-xs font-bold transition-all ${v === vr ? 'bg-slate-900 text-white border-slate-900 shadow-lg shadow-slate-900/10' : 'bg-slate-50 text-slate-600 border-slate-200'}`}
+                                >
+                                    {vr}
+                                </button>
+                            ))}
+                        </div>
+                        <button 
+                            onClick={() => onCreateEco(v)} 
+                            className="w-full py-4 bg-intenza-600 text-white rounded-2xl font-black uppercase tracking-widest mt-6 shadow-xl shadow-intenza-600/20 hover:bg-intenza-700 active:scale-[0.98] transition-all"
+                        >
+                            Confirm & Create
+                        </button>
                         <button onClick={() => setView('MAIN')} className="w-full py-2 text-slate-400 font-bold hover:underline">Cancel</button>
                     </div>
                 )}
