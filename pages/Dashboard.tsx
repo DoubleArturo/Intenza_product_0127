@@ -51,7 +51,6 @@ export const Dashboard: React.FC<DashboardProps> = ({
   
   // Tooltip State
   const [hoveredLightId, setHoveredLightId] = useState<string | null>(null);
-  const [hoveredSafetyId, setHoveredSafetyId] = useState<string | null>(null);
   const hoverTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Direct Selection State
@@ -329,6 +328,9 @@ export const Dashboard: React.FC<DashboardProps> = ({
           
           // Split description by new lines for auto-bulleted list
           const descriptionLines = t(p.description).split('\n').filter(l => l.trim().length > 0);
+          
+          // Split safetyCert by new lines for bulleted list
+          const safetyCertLines = (p.safetyCert || '').split('\n').filter(l => l.trim().length > 0);
 
           return (
             <div 
@@ -376,7 +378,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                 </div>
                 
                 {/* AUTO-BULLETED DESCRIPTION */}
-                <div className="flex-1 mb-6">
+                <div className="space-y-1 mb-4">
                   {descriptionLines.length > 0 ? (
                     <ul className="space-y-1">
                       {descriptionLines.map((line, idx) => (
@@ -391,33 +393,28 @@ export const Dashboard: React.FC<DashboardProps> = ({
                   )}
                 </div>
 
-                <div className="pt-5 border-t-2 border-slate-50 flex items-center justify-between relative">
+                {/* SAFETY CERT LIST - FULL WIDTH DISPLAY */}
+                {safetyCertLines.length > 0 && (
+                  <div className="mt-2 mb-6 pt-4 border-t border-slate-50">
+                    <div className="flex items-center gap-1.5 mb-2 text-blue-600">
+                      <ShieldCheck size={14} />
+                      <span className="text-[10px] font-black uppercase tracking-widest">{t({ en: 'Certifications', zh: '安規認證詳情' })}</span>
+                    </div>
+                    <ul className="space-y-1.5">
+                      {safetyCertLines.map((line, idx) => (
+                        <li key={idx} className="flex items-start gap-2 text-[11px] text-slate-700 font-bold leading-tight bg-blue-50/50 p-1.5 rounded-lg border border-blue-100/50">
+                          <Check size={12} className="mt-0.5 text-emerald-500 shrink-0" strokeWidth={3} />
+                          <span>{line}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
+                <div className="mt-auto pt-5 border-t-2 border-slate-50 flex items-center justify-between relative">
                   <div className="flex flex-col"><span className="text-[10px] font-black text-slate-300 uppercase tracking-[0.2em] mb-1">SKU Identity</span><span className="text-sm font-bold text-slate-800 font-mono tracking-tight">{p.sku}</span></div>
                   
                   <div className="flex items-center gap-3">
-                    {/* SAFETY CERT BADGE */}
-                    {p.safetyCert && (
-                      <div className="relative">
-                        <button 
-                          onMouseEnter={() => setHoveredSafetyId(p.id)}
-                          onMouseLeave={() => setHoveredSafetyId(null)}
-                          className="w-8 h-8 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center border border-blue-100 hover:bg-blue-100 transition-colors shadow-sm"
-                        >
-                          <ShieldCheck size={18} strokeWidth={2.5} />
-                        </button>
-                        
-                        {hoveredSafetyId === p.id && (
-                          <div className="absolute bottom-full right-0 mb-4 w-56 p-4 bg-slate-900 text-white rounded-2xl shadow-2xl z-[60] animate-fade-in border border-slate-700/50 backdrop-blur-md">
-                            <div className="flex items-center gap-2 mb-2 border-b border-white/10 pb-2">
-                                <ShieldCheck size={14} className="text-blue-400" />
-                                <span className="text-[10px] font-black uppercase tracking-widest text-slate-300">{t({ en: 'Safety Certification', zh: '安規認證詳情' })}</span>
-                            </div>
-                            <p className="text-[11px] font-bold text-slate-100 leading-relaxed">{p.safetyCert}</p>
-                          </div>
-                        )}
-                      </div>
-                    )}
-
                     {/* STATUS LIGHT */}
                     <div className="relative">
                       <button 
@@ -544,15 +541,15 @@ export const Dashboard: React.FC<DashboardProps> = ({
                       <h3 className="text-sm font-black uppercase tracking-widest">{t({ en: 'Product Specific Settings', zh: '產品進階屬性設定' })}</h3>
                    </div>
                    <div className="space-y-6">
-                      {/* SAFETY CERT FIELD */}
+                      {/* SAFETY CERT FIELD - NOW TEXTAREA FOR MULTI-LINE SUPPORT */}
                       <div>
-                        <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">{t({ en: 'Safety Certification Status', zh: '安規認證狀態內容' })}</label>
-                        <input 
-                          type="text" 
-                          placeholder={t({ en: 'e.g. CE / Passed 2024-01-01', zh: '例如：CE / 通過日期：2024-01-01' })}
+                        <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">{t({ en: 'Safety Certification Status (Supports Line Breaks)', zh: '安規認證狀態內容 (可換行輸入條列)' })}</label>
+                        <textarea 
+                          rows={3}
+                          placeholder={t({ en: 'e.g. CE\nPassed 2024-01-01', zh: '例如：CE\n通過日期：2024-01-01' })}
                           value={formData.safetyCert} 
                           onChange={(e) => setFormData({...formData, safetyCert: e.target.value})} 
-                          className="w-full px-4 py-2 bg-white border border-slate-200 rounded-xl focus:border-intenza-600 outline-none text-xs font-bold"
+                          className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl focus:border-intenza-600 outline-none text-xs font-bold resize-none"
                         />
                       </div>
 
