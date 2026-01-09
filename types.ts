@@ -15,12 +15,24 @@ export const DEFAULT_SERIES: LocalizedString[] = [
   { en: 'Strength Series', zh: '力量系列' }
 ];
 
+export interface UserPermissions {
+  allowedSeries: string[]; // Series names
+  skuPermissions: {
+    [sku: string]: {
+      design: boolean;
+      ergo: boolean;
+      durability: boolean;
+    }
+  };
+}
+
 export interface UserAccount {
   id: string;
   username: string;
   password: string;
   role: 'admin' | 'user' | 'uploader' | 'viewer';
   lastLogin?: string;
+  granularPermissions?: UserPermissions;
 }
 
 export enum TestStatus {

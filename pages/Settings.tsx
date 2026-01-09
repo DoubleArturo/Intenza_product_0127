@@ -1,7 +1,7 @@
 
 import React, { useState, useRef, useContext, useEffect, useMemo } from 'react';
-import { Plus, X, Save, Download, Upload, AlertTriangle, CheckCircle, Pencil, History, Sparkles, Shield, User, Trash2, Eye, EyeOff, Key, Database, HardDrive, Info, Cloud, LogOut, Loader2, Link as LinkIcon, Activity, Layers, ImageIcon, RotateCcw, Settings2, LayoutGrid, Maximize, Palette, MousePointer2, ClipboardList, Clock, Search, ChevronRight, Filter, UserRound, ArrowDown } from 'lucide-react';
-import { AppState, LocalizedString, UserAccount, AuditLog } from '../types';
+import { Plus, X, Save, Download, Upload, AlertTriangle, CheckCircle, Pencil, History, Sparkles, Shield, User, Trash2, Eye, EyeOff, Key, Database, HardDrive, Info, Cloud, LogOut, Loader2, Link as LinkIcon, Activity, Layers, ImageIcon, RotateCcw, Settings2, LayoutGrid, Maximize, Palette, MousePointer2, ClipboardList, Clock, Search, ChevronRight, Filter, UserRound, ArrowDown, GitCommit, UserCheck } from 'lucide-react';
+import { AppState, LocalizedString, UserAccount, AuditLog, UserPermissions, ProductModel } from '../types';
 import { LanguageContext } from '../App';
 import { api } from '../services/api';
 
@@ -50,6 +50,7 @@ const Settings: React.FC<SettingsProps> = ({
   // Modals
   const [isUserModalOpen, setIsUserModalOpen] = useState(false);
   const [isLogBrowserOpen, setIsLogBrowserOpen] = useState(false);
+  const [isPermissionsModalOpen, setIsPermissionsModalOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<UserAccount | null>(null);
   const [showPasswordMap, setShowPasswordMap] = useState<Record<string, boolean>>({});
 
@@ -340,7 +341,11 @@ const Settings: React.FC<SettingsProps> = ({
                         <td className="px-6 py-4"><div className="flex items-center gap-3"><div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-500"><User size={16} /></div><span className="font-bold text-slate-700">{user.username}</span></div></td>
                         <td className="px-6 py-4"><span className={`px-2 py-1 rounded text-[10px] font-bold uppercase ${user.role === 'admin' ? 'bg-intenza-100 text-intenza-700' : user.role === 'uploader' ? 'bg-emerald-100 text-emerald-700' : user.role === 'viewer' ? 'bg-amber-100 text-amber-700' : 'bg-slate-100 text-slate-600'}`}>{user.role}</span></td>
                         <td className="px-6 py-4"><div className="flex items-center gap-2 font-mono text-sm text-slate-400"><span>{showPasswordMap[user.id] ? user.password : '••••••••'}</span><button onClick={() => setShowPasswordMap(p => ({...p, [user.id]: !p[user.id]}))} className="hover:text-slate-600 transition-colors">{showPasswordMap[user.id] ? <EyeOff size={14} /> : <Eye size={14} />}</button></div></td>
-                        <td className="px-6 py-4 text-right"><div className="flex items-center justify-end gap-1"><button onClick={() => { setEditingUser(user); setIsUserModalOpen(true); }} className="p-2 text-slate-400 hover:text-intenza-600 transition-colors rounded-lg hover:bg-white"><Pencil size={16} /></button><button onClick={() => { if(window.confirm(`確定要刪除用戶 ${user.username}？`)) onDeleteUser(user.id); }} className="p-2 text-slate-400 hover:text-red-600 transition-colors rounded-lg hover:bg-white"><Trash2 size={16} /></button></div></td>
+                        <td className="px-6 py-4 text-right"><div className="flex items-center justify-end gap-1">
+                          <button onClick={() => { setEditingUser(user); setIsPermissionsModalOpen(true); }} className="p-2 text-slate-400 hover:text-indigo-600 transition-colors rounded-lg hover:bg-white" title="Granular Permissions"><Shield size={16} /></button>
+                          <button onClick={() => { setEditingUser(user); setIsUserModalOpen(true); }} className="p-2 text-slate-400 hover:text-intenza-600 transition-colors rounded-lg hover:bg-white"><Pencil size={16} /></button>
+                          <button onClick={() => { if(window.confirm(`確定要刪除用戶 ${user.username}？`)) onDeleteUser(user.id); }} className="p-2 text-slate-400 hover:text-red-600 transition-colors rounded-lg hover:bg-white"><Trash2 size={16} /></button>
+                        </div></td>
                       </tr>
                     ))}
                   </tbody>
@@ -450,6 +455,20 @@ const Settings: React.FC<SettingsProps> = ({
         />
       )}
 
+      {isPermissionsModalOpen && editingUser && (
+        <PermissionsModal 
+          isOpen={isPermissionsModalOpen}
+          onClose={() => setIsPermissionsModalOpen(false)}
+          user={editingUser}
+          products={currentAppState.products}
+          seriesList={seriesList}
+          onSave={(perms) => {
+            onUpdateUser({ ...editingUser, granularPermissions: perms });
+            setIsPermissionsModalOpen(false);
+          }}
+        />
+      )}
+
       {isLogBrowserOpen && (
           <AuditLogBrowserModal 
             isOpen={isLogBrowserOpen}
@@ -495,8 +514,181 @@ const UserAccountModal: React.FC<{
 };
 
 /**
+ * NEW: Granular Permissions Modal
+ * Allows administrators to set permissions by Series, SKU, and Module.
+ */
+const PermissionsModal: React.FC<{
+  isOpen: boolean;
+  onClose: () => void;
+  user: UserAccount;
+  products: ProductModel[];
+  seriesList: LocalizedString[];
+  onSave: (perms: UserPermissions) => void;
+}> = ({ isOpen, onClose, user, products, seriesList, onSave }) => {
+  const { t } = useContext(LanguageContext);
+  const [allowedSeries, setAllowedSeries] = useState<string[]>(user.granularPermissions?.allowedSeries || []);
+  const [skuPermissions, setSkuPermissions] = useState<UserPermissions['skuPermissions']>(user.granularPermissions?.skuPermissions || {});
+  const [searchTerm, setSearchTerm] = useState('');
+
+  const handleToggleSeries = (seriesName: string) => {
+    setAllowedSeries(prev => prev.includes(seriesName) ? prev.filter(s => s !== seriesName) : [...prev, seriesName]);
+  };
+
+  const handleToggleModule = (sku: string, module: 'design' | 'ergo' | 'durability') => {
+    setSkuPermissions(prev => {
+      const current = prev[sku] || { design: false, ergo: false, durability: false };
+      return {
+        ...prev,
+        [sku]: { ...current, [module]: !current[module] }
+      };
+    });
+  };
+
+  const filteredProducts = products.filter(p => 
+    t(p.modelName).toLowerCase().includes(searchTerm.toLowerCase()) || 
+    p.sku.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    t(p.series).toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  return (
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md animate-fade-in">
+      <div className="bg-white rounded-[2.5rem] shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col animate-slide-up border border-white/20">
+        <header className="p-8 border-b border-slate-100 flex justify-between items-center bg-white sticky top-0 z-10">
+          <div>
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-indigo-600 text-white rounded-xl shadow-lg shadow-indigo-600/20"><Shield size={24} /></div>
+              <h2 className="text-2xl font-black text-slate-900 tracking-tight uppercase">Granular Permissions</h2>
+            </div>
+            <p className="text-slate-400 text-xs font-bold mt-1 uppercase tracking-widest">Managing access for: {user.username}</p>
+          </div>
+          <button onClick={onClose} className="p-3 bg-slate-50 text-slate-500 rounded-full hover:bg-slate-100 transition-colors"><X size={24} /></button>
+        </header>
+
+        <div className="flex-1 overflow-y-auto p-8 space-y-12 custom-scrollbar">
+          {/* Series Access */}
+          <section>
+            <div className="flex items-center gap-2 mb-4">
+              <Layers className="text-indigo-500" size={18} />
+              <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest">Series Level Authorization</h3>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {seriesList.map(s => {
+                const sName = t(s);
+                const isSelected = allowedSeries.includes(sName);
+                return (
+                  <button 
+                    key={sName}
+                    onClick={() => handleToggleSeries(sName)}
+                    className={`flex items-center justify-between p-4 rounded-2xl border-2 transition-all ${
+                      isSelected ? 'bg-indigo-50 border-indigo-500 text-indigo-700 shadow-md' : 'bg-slate-50 border-slate-50 text-slate-500 hover:border-slate-200'
+                    }`}
+                  >
+                    <span className="font-bold text-xs uppercase">{sName}</span>
+                    <div className={`w-5 h-5 rounded-full flex items-center justify-center border ${isSelected ? 'bg-indigo-500 border-indigo-400 text-white' : 'border-slate-200'}`}>
+                      {isSelected && <CheckCircle size={12} strokeWidth={4} />}
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          </section>
+
+          {/* SKU / Module Access */}
+          <section>
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+              <div className="flex items-center gap-2">
+                <Settings2 className="text-slate-900" size={18} />
+                <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest">Specific SKU & Module Control</h3>
+              </div>
+              <div className="relative w-full md:w-64">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={14} />
+                <input 
+                  type="text" 
+                  placeholder="Filter SKUs..." 
+                  value={searchTerm}
+                  onChange={e => setSearchTerm(e.target.value)}
+                  className="w-full pl-10 pr-4 py-2 bg-slate-100 border-none rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-indigo-500/20"
+                />
+              </div>
+            </div>
+
+            <div className="border border-slate-100 rounded-3xl overflow-hidden shadow-sm bg-slate-50/50">
+              <table className="w-full text-left">
+                <thead>
+                  <tr className="bg-white text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] border-b border-slate-100">
+                    <th className="px-6 py-4">Product Detail</th>
+                    <th className="px-6 py-4 text-center">Design / ECO</th>
+                    <th className="px-6 py-4 text-center">Ergonomics</th>
+                    <th className="px-6 py-4 text-center">Durability</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {filteredProducts.map(p => {
+                    const perms = skuPermissions[p.sku] || { design: false, ergo: false, durability: false };
+                    return (
+                      <tr key={p.id} className="hover:bg-white transition-colors">
+                        <td className="px-6 py-4">
+                          <div className="flex items-center gap-3">
+                            <div className="w-8 h-8 rounded-lg bg-white border border-slate-100 flex items-center justify-center overflow-hidden">
+                              {p.imageUrl ? <img src={p.imageUrl} className="w-full h-full object-contain" /> : <ImageIcon size={14} className="text-slate-200" />}
+                            </div>
+                            <div>
+                              <div className="text-xs font-black text-slate-900 leading-none">{t(p.modelName)}</div>
+                              <div className="text-[10px] font-bold text-slate-400 mt-1 uppercase tracking-tighter">{p.sku}</div>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 text-center">
+                          <ModuleToggle active={perms.design} onClick={() => handleToggleModule(p.sku, 'design')} icon={<GitCommit size={14} />} color="indigo" />
+                        </td>
+                        <td className="px-6 py-4 text-center">
+                          <ModuleToggle active={perms.ergo} onClick={() => handleToggleModule(p.sku, 'ergo')} icon={<UserCheck size={14} />} color="emerald" />
+                        </td>
+                        <td className="px-6 py-4 text-center">
+                          <ModuleToggle active={perms.durability} onClick={() => handleToggleModule(p.sku, 'durability')} icon={<Activity size={14} />} color="rose" />
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </section>
+        </div>
+
+        <footer className="p-8 border-t border-slate-100 bg-white flex gap-4">
+          <button onClick={onClose} className="flex-1 py-4 text-slate-400 font-black uppercase tracking-widest hover:bg-slate-50 rounded-2xl transition-all">Cancel</button>
+          <button 
+            onClick={() => onSave({ allowedSeries, skuPermissions })} 
+            className="flex-1 py-4 bg-slate-900 text-white font-black uppercase tracking-widest rounded-2xl hover:bg-slate-800 transition-all shadow-xl shadow-slate-900/20 active:scale-[0.98]"
+          >
+            Save Permissions
+          </button>
+        </footer>
+      </div>
+    </div>
+  );
+};
+
+const ModuleToggle = ({ active, onClick, icon, color }: { active: boolean, onClick: () => void, icon: React.ReactNode, color: string }) => {
+  const colors: Record<string, string> = {
+    indigo: active ? 'bg-indigo-600 text-white shadow-indigo-600/20' : 'bg-white text-slate-300 border-slate-100',
+    emerald: active ? 'bg-emerald-600 text-white shadow-emerald-600/20' : 'bg-white text-slate-300 border-slate-100',
+    rose: active ? 'bg-rose-600 text-white shadow-rose-600/20' : 'bg-white text-slate-300 border-slate-100',
+  };
+
+  return (
+    <button 
+      onClick={onClick}
+      className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all shadow-sm border ${colors[color]} hover:scale-110 active:scale-95 mx-auto`}
+    >
+      {icon}
+    </button>
+  );
+};
+
+/**
  * REFACTORED BROWSER MODAL FOR AUDIT LOGS
- * Provides a dedicated interface for browsing, filtering, and managing session logs.
  */
 const AuditLogBrowserModal: React.FC<{
     isOpen: boolean;
@@ -521,7 +713,6 @@ const AuditLogBrowserModal: React.FC<{
             });
     }, [logs, searchTerm, filterStatus]);
 
-    // Fix: Calculate activeSessions within the modal scope to resolve 'Cannot find name' error
     const activeSessions = useMemo(() => logs.filter(l => !l.logoutTime).length, [logs]);
 
     if (!isOpen) return null;
@@ -584,9 +775,7 @@ const AuditLogBrowserModal: React.FC<{
                         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
                             {filteredLogs.length > 0 ? filteredLogs.map((log) => (
                                 <div key={log.id} className="bg-white rounded-3xl border-2 border-slate-50 p-6 hover:border-indigo-100 hover:shadow-xl hover:shadow-indigo-500/5 transition-all group relative overflow-hidden">
-                                    {/* Status Indicator */}
                                     <div className={`absolute top-0 right-0 w-16 h-1 bg-gradient-to-l ${!log.logoutTime ? 'from-emerald-500 to-emerald-300' : 'from-slate-200 to-slate-100'}`} />
-                                    
                                     <div className="flex justify-between items-start mb-6">
                                         <div className="flex items-center gap-4">
                                             <div className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-colors shadow-sm ${!log.logoutTime ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-100 text-slate-400'}`}>
@@ -607,7 +796,6 @@ const AuditLogBrowserModal: React.FC<{
                                             </div>
                                         </div>
                                     </div>
-
                                     <div className="space-y-4">
                                         <div className="grid grid-cols-2 gap-4 border-t border-slate-50 pt-4">
                                             <div>
@@ -619,7 +807,6 @@ const AuditLogBrowserModal: React.FC<{
                                                 <span className="text-[11px] font-bold text-slate-700 leading-tight">{log.logoutTime || '-'}</span>
                                             </div>
                                         </div>
-
                                         <div className="bg-slate-50 rounded-2xl p-4 flex items-center justify-between border border-slate-100 shadow-inner">
                                             <div className="flex items-center gap-2">
                                                 <Clock size={16} className="text-indigo-400" />
@@ -630,7 +817,6 @@ const AuditLogBrowserModal: React.FC<{
                                             </span>
                                         </div>
                                     </div>
-                                    
                                     <div className="mt-6 pt-4 border-t border-slate-50 opacity-0 group-hover:opacity-100 transition-opacity flex justify-end">
                                         <div className="text-[8px] font-black text-slate-300 uppercase tracking-tighter">Session ID: {log.id}</div>
                                     </div>
@@ -645,7 +831,6 @@ const AuditLogBrowserModal: React.FC<{
                     </div>
                 </div>
 
-                {/* Footer Footer Info */}
                 <footer className="p-6 bg-slate-900 text-white flex flex-col sm:flex-row items-center justify-between gap-4">
                     <div className="flex items-center gap-4">
                         <div className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Analytics Insights</div>

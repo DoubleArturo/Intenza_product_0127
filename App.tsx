@@ -6,7 +6,6 @@ import { ProductModel, Language, LocalizedString, Tester, ShipmentData, DEFAULT_
 import { api } from './services/api';
 import { Cloud, CloudCheck, CloudOff, Loader2, CheckCircle, AlertCircle } from 'lucide-react';
 
-// Using React.lazy for route-based code splitting
 const Dashboard = lazy(() => import('./pages/Dashboard').then(module => ({ default: module.Dashboard })));
 const ProductDetail = lazy(() => import('./pages/ProductDetail'));
 const Analytics = lazy(() => import('./pages/Analytics'));
@@ -36,9 +35,9 @@ const PageLoader = () => (
 );
 
 const App = () => {
-  const [language, setLanguage] = useState<Language>('en'); // Default to English
+  const [language, setLanguage] = useState<Language>('en');
   const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [currentUser, setCurrentUser] = useState<{username: string, role: 'admin' | 'user' | 'uploader' | 'viewer'} | null>(null);
+  const [currentUser, setCurrentUser] = useState<UserAccount | null>(null);
   
   const [products, setProducts] = useState<ProductModel[]>(MOCK_PRODUCTS);
   const [seriesList, setSeriesList] = useState<LocalizedString[]>(DEFAULT_SERIES);
@@ -54,9 +53,9 @@ const App = () => {
   const [dashboardColumns, setDashboardColumns] = useState<number>(4);
   const [cardAspectRatio, setCardAspectRatio] = useState<string>('3/4');
   const [chartColorStyle, setChartColorStyle] = useState<'COLORFUL' | 'MONOCHROME' | 'SLATE'>('COLORFUL');
-  const [analyticsTooltipScale, setAnalyticsTooltipScale] = useState<number>(2); // Default to 2x as requested
+  const [analyticsTooltipScale, setAnalyticsTooltipScale] = useState<number>(2);
   const [analyticsTooltipPosition, setAnalyticsTooltipPosition] = useState<'TOP_LEFT' | 'TOP_RIGHT' | 'BOTTOM_LEFT' | 'BOTTOM_RIGHT' | 'FOLLOW'>('TOP_LEFT');
-  const [evaluationModalYOffset, setEvaluationModalYOffset] = useState<number>(100); // Default to 100px from top
+  const [evaluationModalYOffset, setEvaluationModalYOffset] = useState<number>(100);
 
   const [syncStatus, setSyncStatus] = useState<'idle' | 'saving' | 'success' | 'error'>('idle');
   const [errorDetail, setErrorDetail] = useState<string>('');
@@ -64,7 +63,6 @@ const App = () => {
   const isSyncingRef = useRef(false);
   const initialLoadDone = useRef(false);
 
-  // Ref to track the latest state for the window-close handler
   const latestStateRef = useRef<AppState | null>(null);
   useEffect(() => {
     latestStateRef.current = {
@@ -104,7 +102,6 @@ const App = () => {
 
   const handleLogout = useCallback(async () => {
     if (currentUser) {
-      // Find the last login entry for this user that hasn't logged out yet
       setAuditLogs(prev => {
         const logs = [...prev];
         const lastIndex = [...logs].reverse().findIndex(l => l.username === currentUser.username && !l.logoutTime);
@@ -124,7 +121,6 @@ const App = () => {
         return logs;
       });
       
-      // Wait a tiny bit for state to settle then attempt a final sync before closing session
       setTimeout(() => {
         setIsLoggedIn(false);
         setCurrentUser(null);
@@ -135,7 +131,6 @@ const App = () => {
     }
   }, [currentUser]);
 
-  // Handle automatic logout when browser tab/window is closed
   useEffect(() => {
     const handleBrowserClose = () => {
       if (!isLoggedIn || !currentUser || !latestStateRef.current) return;
@@ -162,7 +157,6 @@ const App = () => {
           auditLogs: logs
         };
 
-        // Use keepalive fetch to ensure the sync completes even as tab closes
         fetch('/api/workspace', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -176,16 +170,19 @@ const App = () => {
     return () => window.removeEventListener('beforeunload', handleBrowserClose);
   }, [isLoggedIn, currentUser]);
 
-  const handleLoginSuccess = useCallback((user: any) => {
+  const handleLoginSuccess = useCallback((user: UserAccount) => {
     const newLog: AuditLog = {
       id: `log-${Date.now()}`,
       username: user.username,
       loginTime: new Date().toLocaleString()
     };
     setAuditLogs(prev => [...prev, newLog]);
-    setCurrentUser(user);
+    
+    // Find matching full user record for permissions
+    const fullUser = users.find(u => u.username === user.username) || user;
+    setCurrentUser(fullUser);
     setIsLoggedIn(true);
-  }, []);
+  }, [users]);
 
   const handleLoadFromCloud = useCallback(async () => {
     if (isSyncingRef.current) return;
@@ -280,6 +277,7 @@ const App = () => {
                   <Dashboard 
                     products={products} seriesList={seriesList} 
                     userRole={currentUser?.role}
+                    currentUser={currentUser}
                     globalStatusLightSize={globalStatusLightSize}
                     dashboardColumns={dashboardColumns}
                     cardAspectRatio={cardAspectRatio}
@@ -301,7 +299,9 @@ const App = () => {
                 <Route path="/product/:id" element={
                   <ProductDetail 
                     products={products} shipments={shipments} testers={testers} testerGroups={testerGroups} 
-                    userRole={currentUser?.role} onUpdateProduct={async (p) => setProducts(products.map(old => old.id === p.id ? p : old))} 
+                    userRole={currentUser?.role} 
+                    currentUser={currentUser}
+                    onUpdateProduct={async (p) => setProducts(products.map(old => old.id === p.id ? p : old))} 
                     showAiInsights={showAiInsights} 
                     evaluationModalYOffset={evaluationModalYOffset}
                   />

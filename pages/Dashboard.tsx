@@ -2,7 +2,7 @@
 import React, { useState, useRef, useEffect, useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Plus, Search, ChevronRight, X, Upload, Pencil, Save, Star, Trash2, Image as ImageIcon, Loader2, ArrowUpDown, Calendar, Info, Settings2, Check, ShieldCheck } from 'lucide-react';
-import { ProductModel, LocalizedString, EcoStatus } from '../types';
+import { ProductModel, LocalizedString, EcoStatus, UserAccount } from '../types';
 import { LanguageContext } from '../App';
 import { api } from '../services/api';
 
@@ -10,6 +10,7 @@ interface DashboardProps {
   products: ProductModel[];
   seriesList: LocalizedString[];
   userRole?: 'admin' | 'user' | 'uploader' | 'viewer';
+  currentUser?: UserAccount | null;
   globalStatusLightSize: 'SMALL' | 'NORMAL' | 'LARGE';
   dashboardColumns: number;
   cardAspectRatio: string;
@@ -40,7 +41,7 @@ const aspectClassMap: Record<string, string> = {
 };
 
 export const Dashboard: React.FC<DashboardProps> = ({ 
-  products, seriesList, userRole, globalStatusLightSize, dashboardColumns, cardAspectRatio,
+  products, seriesList, userRole, currentUser, globalStatusLightSize, dashboardColumns, cardAspectRatio,
   onAddProduct, onUpdateProduct, onToggleWatch, onDeleteProduct 
 }) => {
   const navigate = useNavigate();
@@ -76,9 +77,31 @@ export const Dashboard: React.FC<DashboardProps> = ({
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const isViewer = userRole === 'viewer';
-  const isUploader = userRole === 'uploader';
   const isAdmin = userRole === 'admin';
+  const isUploader = userRole === 'uploader';
   const isStandard = userRole === 'user';
+  
+  // Helper to check permission for a specific SKU/Series
+  const canModifyProduct = (p: ProductModel) => {
+    if (isAdmin) return true;
+    if (isViewer) return false;
+    
+    const perms = currentUser?.granularPermissions;
+    if (!perms) return isAdmin || isStandard || isUploader; // Default to old behavior if no perms set
+    
+    // Series permission
+    const seriesName = t(p.series);
+    if (perms.allowedSeries.includes(seriesName)) return true;
+    
+    // SKU module permission (Any module access granted means they can edit basic info)
+    const skuPerm = perms.skuPermissions[p.sku];
+    if (skuPerm && (skuPerm.design || skuPerm.ergo || skuPerm.durability)) return true;
+    
+    return false;
+  };
+
+  const canAddProduct = isAdmin || isStandard || isUploader; // Keeping basic role check for adding new ones
+
   const canEditLight = isAdmin || isStandard;
   
   useEffect(() => {
@@ -235,7 +258,8 @@ export const Dashboard: React.FC<DashboardProps> = ({
 
   const handleStatusLightClick = (e: React.MouseEvent, p: ProductModel) => {
     e.stopPropagation();
-    if (!canEditLight) {
+    // Check permission to modify the status light for this specific SKU
+    if (!canModifyProduct(p) || !canEditLight) {
         navigate(`/product/${p.id}`);
         return;
     }
@@ -262,7 +286,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
           <h1 className="text-4xl font-black text-slate-900 tracking-tight">{t({ en: 'Product Design Status', zh: '產品設計狀態'})}</h1>
           <p className="text-slate-500 mt-2 font-medium">{t({ en: 'Manage design quality across all series.', zh: '管理所有系列的設計品質。'})}</p>
         </div>
-        {!isViewer && !isUploader && (
+        {canAddProduct && (
           <button 
             onClick={() => setIsModalOpen(true)}
             className="bg-slate-900 hover:bg-slate-800 text-white px-6 py-3 rounded-2xl font-bold flex items-center gap-2 transition-all shadow-xl shadow-slate-900/20 active:scale-95"
@@ -324,13 +348,11 @@ export const Dashboard: React.FC<DashboardProps> = ({
           const productionInfo = getCurrentProductionInfo(p);
           const displayVersion = p.currentVersion;
           const statusColor = getProductStatusColor(p);
+          const canEditThisProduct = canModifyProduct(p);
           
           const dotSizeClass = globalStatusLightSize === 'SMALL' ? 'w-3 h-3' : globalStatusLightSize === 'LARGE' ? 'w-6 h-6' : 'w-4 h-4';
           
-          // Split description by new lines for auto-bulleted list
           const descriptionLines = t(p.description).split('\n').filter(l => l.trim().length > 0);
-          
-          // Split safetyCert by new lines for full-width list overlay
           const safetyCertLines = (p.safetyCert || '').split('\n').filter(l => l.trim().length > 0);
 
           return (
@@ -339,7 +361,6 @@ export const Dashboard: React.FC<DashboardProps> = ({
               className="group bg-white rounded-[2rem] border-2 border-slate-100 shadow-sm hover:shadow-2xl hover:shadow-slate-200/60 hover:border-slate-200 transition-all duration-300 overflow-hidden flex flex-col cursor-pointer active:scale-[0.98] relative"
               onClick={() => navigate(`/product/${p.id}`)}
             >
-              {/* FULL WIDTH SAFETY CERT OVERLAY ON HOVER - Fixed with pointer-events-none */}
               {hoveredSafetyId === p.id && safetyCertLines.length > 0 && (
                 <div className="absolute inset-x-0 bottom-0 top-0 bg-slate-900/95 backdrop-blur-md z-[60] p-8 animate-fade-in flex flex-col pointer-events-none">
                   <div className="flex items-center justify-between mb-6 border-b border-white/10 pb-4">
@@ -365,7 +386,6 @@ export const Dashboard: React.FC<DashboardProps> = ({
                 </div>
               )}
 
-              {/* Product Card Ratio dynamic based on setting */}
               <div className={`relative ${aspectClassMap[cardAspectRatio] || 'aspect-[3/4]'} bg-slate-50 p-6 flex items-center justify-center overflow-hidden border-b border-slate-50`}>
                 {p.imageUrl ? (
                   <img src={p.imageUrl} alt={t(p.modelName)} className="w-full h-full object-contain transition-transform duration-500 group-hover:scale-105" />
@@ -376,7 +396,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                   </div>
                 )}
                 
-                {!isViewer && !isUploader && (
+                {canEditThisProduct && (
                   <div className="absolute top-4 right-4 flex flex-col gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-10">
                     <button onClick={(e) => { e.stopPropagation(); onToggleWatch(p.id); }} className={`p-2.5 rounded-full transition-all shadow-lg border ${p.isWatched ? 'bg-amber-400 text-white border-amber-300' : 'bg-white/95 text-slate-400 border-slate-100 hover:text-amber-500'}`}>
                       <Star size={18} fill={p.isWatched ? 'currentColor' : 'none'} strokeWidth={2.5} />
@@ -404,7 +424,6 @@ export const Dashboard: React.FC<DashboardProps> = ({
                   </div>
                 </div>
                 
-                {/* AUTO-BULLETED DESCRIPTION */}
                 <div className="flex-1 mb-6">
                   {descriptionLines.length > 0 ? (
                     <ul className="space-y-1">
@@ -424,7 +443,6 @@ export const Dashboard: React.FC<DashboardProps> = ({
                   <div className="flex flex-col"><span className="text-[10px] font-black text-slate-300 uppercase tracking-[0.2em] mb-1">SKU Identity</span><span className="text-sm font-bold text-slate-800 font-mono tracking-tight">{p.sku}</span></div>
                   
                   <div className="flex items-center gap-3">
-                    {/* SAFETY CERT ICON - Positioned next to Status Light */}
                     {p.safetyCert && (
                       <div 
                         onMouseEnter={() => setHoveredSafetyId(p.id)}
@@ -435,14 +453,13 @@ export const Dashboard: React.FC<DashboardProps> = ({
                       </div>
                     )}
 
-                    {/* STATUS LIGHT */}
                     <div className="relative">
                       <button 
                         onClick={(e) => handleStatusLightClick(e, p)}
                         onMouseEnter={() => handleMouseEnterLight(p.id)}
                         onMouseLeave={handleMouseLeaveLight}
                         className={`w-10 h-10 rounded-full flex items-center justify-center transition-all shadow-inner relative z-20 ${
-                          canEditLight ? 'hover:scale-110 active:scale-95' : 'cursor-pointer'
+                          (canEditThisProduct && canEditLight) ? 'hover:scale-110 active:scale-95' : 'cursor-pointer'
                         } ${
                           statusColor === 'red' ? 'bg-rose-50 hover:bg-rose-100 shadow-rose-200' :
                           statusColor === 'blue' ? 'bg-blue-50 hover:bg-blue-100 shadow-blue-200' :
@@ -529,7 +546,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
         })}
       </div>
 
-      {isModalOpen && !isViewer && !isUploader && (
+      {isModalOpen && canAddProduct && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md animate-fade-in">
           <div className="bg-white rounded-[2.5rem] shadow-2xl w-full max-w-xl animate-slide-up overflow-hidden border border-white/20">
             <div className="flex justify-between items-center p-8 border-b border-slate-100 bg-white sticky top-0 z-10">
@@ -561,7 +578,6 @@ export const Dashboard: React.FC<DashboardProps> = ({
                       <h3 className="text-sm font-black uppercase tracking-widest">{t({ en: 'Product Attributes', zh: '產品屬性設定' })}</h3>
                    </div>
                    <div className="space-y-6">
-                      {/* SAFETY CERT FIELD - TEXTAREA FOR MULTI-LINE SUPPORT */}
                       <div>
                         <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">{t({ en: 'Safety Cert (Supports Multi-line)', zh: '安規認證詳情 (可換行輸入條列)' })}</label>
                         <textarea 
