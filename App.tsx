@@ -38,7 +38,7 @@ const PageLoader = () => (
 const App = () => {
   const [language, setLanguage] = useState<Language>('en'); // Default to English
   const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [currentUser, setCurrentUser] = useState<UserAccount | null>(null);
+  const [currentUser, setCurrentUser] = useState<{username: string, role: 'admin' | 'user' | 'uploader' | 'viewer'} | null>(null);
   
   const [products, setProducts] = useState<ProductModel[]>(MOCK_PRODUCTS);
   const [seriesList, setSeriesList] = useState<LocalizedString[]>(DEFAULT_SERIES);
@@ -279,7 +279,7 @@ const App = () => {
                 <Route path="/" element={
                   <Dashboard 
                     products={products} seriesList={seriesList} 
-                    currentUser={currentUser}
+                    userRole={currentUser?.role}
                     globalStatusLightSize={globalStatusLightSize}
                     dashboardColumns={dashboardColumns}
                     cardAspectRatio={cardAspectRatio}
@@ -301,14 +301,14 @@ const App = () => {
                 <Route path="/product/:id" element={
                   <ProductDetail 
                     products={products} shipments={shipments} testers={testers} testerGroups={testerGroups} 
-                    currentUser={currentUser} onUpdateProduct={async (p) => setProducts(products.map(old => old.id === p.id ? p : old))} 
+                    userRole={currentUser?.role} onUpdateProduct={async (p) => setProducts(products.map(old => old.id === p.id ? p : old))} 
                     showAiInsights={showAiInsights} 
                     evaluationModalYOffset={evaluationModalYOffset}
                   />
                 } />
                 <Route path="/analytics" element={
                   <Analytics 
-                    products={products} shipments={shipments} testers={testers} onImportData={(data) => setShipments([...shipments, ...data])} onBatchAddProducts={(newPs) => setProducts([...products, ...newPs])} showAiInsights={showAiInsights} currentUser={currentUser} chartColorStyle={chartColorStyle} 
+                    products={products} shipments={shipments} testers={testers} onImportData={(data) => setShipments([...shipments, ...data])} onBatchAddProducts={(newPs) => setProducts([...products, ...newPs])} showAiInsights={showAiInsights} userRole={currentUser?.role} chartColorStyle={chartColorStyle} 
                     tooltipScale={analyticsTooltipScale} tooltipPosition={analyticsTooltipPosition}
                   />
                 } />
@@ -362,7 +362,7 @@ const App = () => {
                     testers={testers} 
                     testerGroups={testerGroups}
                     cardAspectRatio={cardAspectRatio}
-                    currentUser={currentUser} 
+                    userRole={currentUser?.role} 
                     onAddTester={(t) => setTesters([...testers, { ...t, id: Date.now().toString() }])} 
                     onUpdateTester={(t) => setTesters(testers.map(old => old.id === t.id ? t : old))} 
                     onDeleteTester={(id) => setTesters(testers.filter(t => t.id !== id))}
