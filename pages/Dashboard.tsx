@@ -51,6 +51,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
   
   // Tooltip State
   const [hoveredLightId, setHoveredLightId] = useState<string | null>(null);
+  const [hoveredSafetyId, setHoveredSafetyId] = useState<string | null>(null);
   const hoverTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Direct Selection State
@@ -329,15 +330,41 @@ export const Dashboard: React.FC<DashboardProps> = ({
           // Split description by new lines for auto-bulleted list
           const descriptionLines = t(p.description).split('\n').filter(l => l.trim().length > 0);
           
-          // Split safetyCert by new lines for bulleted list
+          // Split safetyCert by new lines for full-width list overlay
           const safetyCertLines = (p.safetyCert || '').split('\n').filter(l => l.trim().length > 0);
 
           return (
             <div 
               key={p.id} 
-              className="group bg-white rounded-[2rem] border-2 border-slate-100 shadow-sm hover:shadow-2xl hover:shadow-slate-200/60 hover:border-slate-200 transition-all duration-300 overflow-hidden flex flex-col cursor-pointer active:scale-[0.98]"
+              className="group bg-white rounded-[2rem] border-2 border-slate-100 shadow-sm hover:shadow-2xl hover:shadow-slate-200/60 hover:border-slate-200 transition-all duration-300 overflow-hidden flex flex-col cursor-pointer active:scale-[0.98] relative"
               onClick={() => navigate(`/product/${p.id}`)}
             >
+              {/* FULL WIDTH SAFETY CERT OVERLAY ON HOVER */}
+              {hoveredSafetyId === p.id && safetyCertLines.length > 0 && (
+                <div className="absolute inset-x-0 bottom-0 top-0 bg-slate-900/95 backdrop-blur-md z-[60] p-8 animate-fade-in flex flex-col">
+                  <div className="flex items-center justify-between mb-6 border-b border-white/10 pb-4">
+                    <div className="flex items-center gap-3">
+                      <ShieldCheck size={24} className="text-blue-400" />
+                      <h4 className="text-lg font-black text-white uppercase tracking-wider">{t({ en: 'Certification Details', zh: '安規認證詳情' })}</h4>
+                    </div>
+                    <div className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Intenza Verified</div>
+                  </div>
+                  <ul className="space-y-4 overflow-y-auto custom-scrollbar flex-1 pr-2">
+                    {safetyCertLines.map((line, idx) => (
+                      <li key={idx} className="flex items-start gap-4 p-3 bg-white/5 rounded-xl border border-white/5 hover:bg-white/10 transition-colors group/item">
+                        <div className="mt-1 w-5 h-5 rounded-full bg-emerald-500/20 flex items-center justify-center border border-emerald-500/30 group-hover/item:bg-emerald-500 transition-colors">
+                          <Check size={12} className="text-emerald-500 group-hover/item:text-white" strokeWidth={4} />
+                        </div>
+                        <span className="text-sm font-bold text-slate-100 leading-relaxed">{line}</span>
+                      </li>
+                    ))}
+                  </ul>
+                  <div className="mt-6 pt-4 border-t border-white/5 text-center">
+                    <p className="text-[10px] font-bold text-slate-500 uppercase tracking-[0.2em]">Release to close this view</p>
+                  </div>
+                </div>
+              )}
+
               {/* Product Card Ratio dynamic based on setting */}
               <div className={`relative ${aspectClassMap[cardAspectRatio] || 'aspect-[3/4]'} bg-slate-50 p-6 flex items-center justify-center overflow-hidden border-b border-slate-50`}>
                 {p.imageUrl ? (
@@ -378,7 +405,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                 </div>
                 
                 {/* AUTO-BULLETED DESCRIPTION */}
-                <div className="space-y-1 mb-4">
+                <div className="flex-1 mb-6">
                   {descriptionLines.length > 0 ? (
                     <ul className="space-y-1">
                       {descriptionLines.map((line, idx) => (
@@ -393,28 +420,21 @@ export const Dashboard: React.FC<DashboardProps> = ({
                   )}
                 </div>
 
-                {/* SAFETY CERT LIST - FULL WIDTH DISPLAY */}
-                {safetyCertLines.length > 0 && (
-                  <div className="mt-2 mb-6 pt-4 border-t border-slate-50">
-                    <div className="flex items-center gap-1.5 mb-2 text-blue-600">
-                      <ShieldCheck size={14} />
-                      <span className="text-[10px] font-black uppercase tracking-widest">{t({ en: 'Certifications', zh: '安規認證詳情' })}</span>
-                    </div>
-                    <ul className="space-y-1.5">
-                      {safetyCertLines.map((line, idx) => (
-                        <li key={idx} className="flex items-start gap-2 text-[11px] text-slate-700 font-bold leading-tight bg-blue-50/50 p-1.5 rounded-lg border border-blue-100/50">
-                          <Check size={12} className="mt-0.5 text-emerald-500 shrink-0" strokeWidth={3} />
-                          <span>{line}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-
-                <div className="mt-auto pt-5 border-t-2 border-slate-50 flex items-center justify-between relative">
+                <div className="pt-5 border-t-2 border-slate-50 flex items-center justify-between relative">
                   <div className="flex flex-col"><span className="text-[10px] font-black text-slate-300 uppercase tracking-[0.2em] mb-1">SKU Identity</span><span className="text-sm font-bold text-slate-800 font-mono tracking-tight">{p.sku}</span></div>
                   
                   <div className="flex items-center gap-3">
+                    {/* SAFETY CERT ICON - Positioned next to Status Light */}
+                    {p.safetyCert && (
+                      <div 
+                        onMouseEnter={() => setHoveredSafetyId(p.id)}
+                        onMouseLeave={() => setHoveredSafetyId(null)}
+                        className="w-10 h-10 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center border border-blue-100 hover:bg-blue-100 transition-colors shadow-sm cursor-help relative z-10"
+                      >
+                        <ShieldCheck size={20} strokeWidth={2.5} />
+                      </div>
+                    )}
+
                     {/* STATUS LIGHT */}
                     <div className="relative">
                       <button 
@@ -510,7 +530,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
       </div>
 
       {isModalOpen && !isViewer && !isUploader && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md animate-fade-in">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md animate-fade-in">
           <div className="bg-white rounded-[2.5rem] shadow-2xl w-full max-w-xl animate-slide-up overflow-hidden border border-white/20">
             <div className="flex justify-between items-center p-8 border-b border-slate-100 bg-white sticky top-0 z-10">
               <h2 className="text-2xl font-black text-slate-900 tracking-tight">{editingProduct ? t({en: 'Edit Product', zh: '編輯產品'}) : t({en: 'Create New Product', zh: '新增產品'})}</h2>
@@ -538,15 +558,15 @@ export const Dashboard: React.FC<DashboardProps> = ({
               <div className="bg-slate-50 p-6 rounded-3xl border-2 border-slate-100">
                    <div className="flex items-center gap-2 mb-4 text-slate-900">
                       <Settings2 size={18} />
-                      <h3 className="text-sm font-black uppercase tracking-widest">{t({ en: 'Product Specific Settings', zh: '產品進階屬性設定' })}</h3>
+                      <h3 className="text-sm font-black uppercase tracking-widest">{t({ en: 'Product Attributes', zh: '產品屬性設定' })}</h3>
                    </div>
                    <div className="space-y-6">
-                      {/* SAFETY CERT FIELD - NOW TEXTAREA FOR MULTI-LINE SUPPORT */}
+                      {/* SAFETY CERT FIELD - NOW TEXTAREA */}
                       <div>
-                        <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">{t({ en: 'Safety Certification Status (Supports Line Breaks)', zh: '安規認證狀態內容 (可換行輸入條列)' })}</label>
+                        <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">{t({ en: 'Safety Cert (Supports Multi-line)', zh: '安規認證詳情 (可換行輸入條列)' })}</label>
                         <textarea 
                           rows={3}
-                          placeholder={t({ en: 'e.g. CE\nPassed 2024-01-01', zh: '例如：CE\n通過日期：2024-01-01' })}
+                          placeholder={t({ en: 'e.g. CE / ISO 9001\nPassed Oct 2023', zh: '例如：CE / ISO 9001\n通過日期：2023年10月' })}
                           value={formData.safetyCert} 
                           onChange={(e) => setFormData({...formData, safetyCert: e.target.value})} 
                           className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl focus:border-intenza-600 outline-none text-xs font-bold resize-none"
@@ -555,7 +575,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
 
                       {canEditLight && (
                         <div>
-                          <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">{t({ en: 'Light Color / Mode Overrides', zh: '燈號顏色 / 模式手動覆蓋' })}</label>
+                          <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">{t({ en: 'Light Override', zh: '指示燈狀態手動覆蓋' })}</label>
                           <div className="grid grid-cols-4 gap-2">
                               {['AUTO', 'RED', 'BLUE', 'GREEN'].map(mode => (
                                 <button 
@@ -568,7 +588,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                                       : 'bg-white text-slate-500 border-slate-100 hover:border-slate-300'
                                   }`}
                                 >
-                                    {mode === 'AUTO' ? t({ en: 'Auto Calc', zh: '系統自動' }) : mode}
+                                    {mode === 'AUTO' ? t({ en: 'Auto', zh: '自動' }) : mode}
                                 </button>
                               ))}
                           </div>
@@ -595,8 +615,8 @@ export const Dashboard: React.FC<DashboardProps> = ({
               </div>
 
               <div>
-                <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-3">Product Description (Supports Line Breaks for Bullets)</label>
-                <textarea rows={6} value={formData.description} onChange={(e) => setFormData({...formData, description: e.target.value})} className="w-full px-5 py-3.5 bg-slate-50 border-2 border-slate-100 rounded-2xl focus:border-slate-900 focus:bg-white outline-none transition-all resize-none font-medium" placeholder="Each line will appear as a bullet point..." />
+                <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-3">Product Description</label>
+                <textarea rows={6} value={formData.description} onChange={(e) => setFormData({...formData, description: e.target.value})} className="w-full px-5 py-3.5 bg-slate-50 border-2 border-slate-100 rounded-2xl focus:border-slate-900 focus:bg-white outline-none transition-all resize-none font-medium" placeholder="Describe main features..." />
               </div>
 
               <div className="flex gap-4 pt-6 sticky bottom-0 bg-white/80 backdrop-blur-md">
