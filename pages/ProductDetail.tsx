@@ -748,7 +748,7 @@ const DesignSection = ({ product, shipments, userRole, canEdit, onAddEco, onEdit
       </div>
       <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden min-h-[400px]">
         <div className="flex items-center gap-8 px-6 border-b border-slate-100 overflow-x-auto bg-slate-50/50">
-          {versions.map((v) => (
+          {versions.map((v: string) => (
             <button key={v} onClick={() => setSelectedVersion(v)} className={`py-4 text-sm font-medium border-b-2 transition-all whitespace-nowrap px-2 ${selectedVersion === v ? 'border-intenza-600 text-intenza-600' : 'border-transparent text-slate-400 hover:text-slate-600 hover:border-slate-200'}`}>{v}</button>
           ))}
         </div>
@@ -787,7 +787,7 @@ const DesignSection = ({ product, shipments, userRole, canEdit, onAddEco, onEdit
                         <div className="flex flex-col md:flex-row gap-8">
                             <div className="md:w-48 flex-shrink-0">
                                 <span className="font-mono text-sm font-black text-intenza-600 bg-intenza-50 px-2 py-1 rounded border border-intenza-100 shadow-sm">{change.ecoNumber || change.ecrNumber || 'N/A'}</span>
-                                <div className={`mt-3 px-2 py-1 rounded-md text-[10px] font-black uppercase w-fit border shadow-sm ${ecoStatusStyles[change.status as EcoStatus]}`}>
+                                <div className={`mt-3 px-2 py-1 rounded-md text-[10px] font-black uppercase tracking-widest w-fit border shadow-sm ${ecoStatusStyles[change.status as EcoStatus]}`}>
                                     {ecoStatusTranslations[change.status as EcoStatus]}
                                 </div>
                                 <div className="flex flex-col gap-2 text-slate-400 text-[10px] font-bold uppercase tracking-widest mt-4">
@@ -1028,10 +1028,8 @@ const ErgoSection = ({ product, testers, testerGroups, onUpdateProduct, highligh
             <div 
               onClick={() => setIsFeedbackPanelOpen(true)}
               className="flex-1 flex flex-col items-center py-8 cursor-pointer hover:bg-slate-50 transition-all group"
-            ) : (
-                <MessageSquare size={20} className="text-slate-400 group-hover:text-intenza-600 mb-6 transition-colors" />
-              )}
-              
+            >
+              <MessageSquare size={20} className="text-slate-400 group-hover:text-intenza-600 mb-6 transition-colors" />
               <div className="flex-1 flex items-center justify-center">
                 <span className="text-[10px] font-black text-slate-300 group-hover:text-slate-500 uppercase tracking-[0.3em] rotate-90 whitespace-nowrap transition-colors">
                   Customer Feedback
@@ -1257,7 +1255,7 @@ const EcoModal = ({ isOpen, onClose, onSave, eco, productVersions }: any) => {
     if (!files) return;
     setIsUploading(true);
     try {
-      const urls = await Promise.all(Array.from(files).map(file => api.uploadImage(file)));
+      const urls = await Promise.all(Array.from(files).map(file => api.uploadImage(file as File)));
       setFormData({ ...formData, imageUrls: [...formData.imageUrls, ...urls] });
     } catch (err) {
       alert('Upload failed');
@@ -1356,7 +1354,7 @@ const TestModal = ({ isOpen, onClose, onSave, test, productVersions }: any) => {
     if (!files) return;
     setIsUploading(true);
     try {
-      const urls = await Promise.all(Array.from(files).map(file => api.uploadImage(file)));
+      const urls = await Promise.all(Array.from(files).map(file => api.uploadImage(file as File)));
       setFormData({ ...formData, attachmentUrls: [...formData.attachmentUrls, ...urls] });
     } catch (err) {
       alert('Upload failed');
