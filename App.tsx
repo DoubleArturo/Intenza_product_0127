@@ -76,18 +76,23 @@ const App = () => {
     return str[language] || str.en || str.zh || '';
   }, [language]);
 
-  const handleSyncToCloud = useCallback(async (isAutoSync = false) => {
+  /**
+   * 改良後的 handleSyncToCloud 支援「部分更新」
+   * 若傳入 partialData，則僅上傳該部分資料
+   */
+  const handleSyncToCloud = useCallback(async (isAutoSync = false, partialData?: Partial<AppState>) => {
     if (isSyncingRef.current || !isLoggedIn || currentUser?.role === 'viewer') return;
     
     isSyncingRef.current = true;
     setSyncStatus('saving');
     
-    const state: AppState = {
+    // 如果沒有提供部分資料，則預設發送當前所有狀態
+    const payload = partialData || {
       products, seriesList, shipments, testers, testerGroups, users, auditLogs, language, showAiInsights, maxHistorySteps, customLogoUrl, globalStatusLightSize, dashboardColumns, cardAspectRatio, chartColorStyle, analyticsTooltipScale, analyticsTooltipPosition, evaluationModalYOffset
     };
 
     try {
-      await api.saveData(state);
+      await api.saveData(payload as any);
       setSyncStatus('success');
       setTimeout(() => {
         setSyncStatus('idle');
@@ -102,6 +107,7 @@ const App = () => {
 
   const handleLogout = useCallback(async () => {
     if (currentUser) {
+      let updatedLogs: AuditLog[] = [];
       setAuditLogs(prev => {
         const logs = [...prev];
         const lastIndex = [...logs].reverse().findIndex(l => l.username === currentUser.username && !l.logoutTime);
@@ -118,9 +124,13 @@ const App = () => {
                 durationMinutes: diffMins
             };
         }
+        updatedLogs = logs;
         return logs;
       });
       
+      // 登出時觸發「部分更新」，僅更新 auditLogs
+      handleSyncToCloud(true, { auditLogs: updatedLogs });
+
       setTimeout(() => {
         setIsLoggedIn(false);
         setCurrentUser(null);
@@ -129,7 +139,7 @@ const App = () => {
       setIsLoggedIn(false);
       setCurrentUser(null);
     }
-  }, [currentUser]);
+  }, [currentUser, handleSyncToCloud]);
 
   useEffect(() => {
     const handleBrowserClose = () => {
@@ -152,15 +162,13 @@ const App = () => {
           durationMinutes: diffMins
         };
 
-        const finalState: AppState = {
-          ...currentState,
-          auditLogs: logs
-        };
+        // 在瀏覽器關閉前發送「部分更新」
+        const partialPayload = { auditLogs: logs };
 
         fetch('/api/workspace', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(finalState),
+          body: JSON.stringify(partialPayload),
           keepalive: true
         });
       }
@@ -176,13 +184,18 @@ const App = () => {
       username: user.username,
       loginTime: new Date().toLocaleString()
     };
-    setAuditLogs(prev => [...prev, newLog]);
     
-    // Find matching full user record for permissions
+    setAuditLogs(prev => {
+      const next = [...prev, newLog];
+      // 登入後觸發「部分更新」，僅添加新日誌
+      handleSyncToCloud(true, { auditLogs: next });
+      return next;
+    });
+    
     const fullUser = users.find(u => u.username === user.username) || user;
     setCurrentUser(fullUser);
     setIsLoggedIn(true);
-  }, [users]);
+  }, [users, handleSyncToCloud]);
 
   const handleLoadFromCloud = useCallback(async () => {
     if (isSyncingRef.current) return;
@@ -224,7 +237,8 @@ const App = () => {
   const handleResetShipments = useCallback(() => {
     if (currentUser?.role === 'viewer') return;
     setShipments([]);
-    setTimeout(() => handleSyncToCloud(true), 100);
+    // 使用部分更新來清空 shipments
+    setTimeout(() => handleSyncToCloud(true, { shipments: [] }), 100);
   }, [handleSyncToCloud, currentUser]);
 
   useEffect(() => {
@@ -246,6 +260,7 @@ const App = () => {
     }
   }, [handleLoadFromCloud]);
 
+  // 自動同步逻辑保持不變，但後端現在會智能合併 top-level keys
   useEffect(() => {
     if (isLoggedIn && initialLoadDone.current && currentUser?.role !== 'viewer') {
       const timer = setTimeout(() => handleSyncToCloud(true), 2000);

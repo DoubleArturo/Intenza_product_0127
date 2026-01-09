@@ -29,26 +29,33 @@ export default async function handler(request: VercelRequest, response: VercelRe
       return response.status(200).json(rows[0].content);
     }
     
-    // 2. 儲存資料 (POST)
+    // 2. 儲存資料 (POST) - 改為部分更新 (Partial Update) 邏輯
     if (request.method === 'POST') {
-      const state = request.body;
+      const partialState = request.body;
       
-      if (!state) {
+      if (!partialState) {
         return response.status(400).json({ error: 'Payload is empty' });
       }
 
-      const jsonString = JSON.stringify(state);
+      const jsonString = JSON.stringify(partialState);
       
       // 檢查體積 (Vercel Postgres 有單一欄位限制，Serverless Function 有 4.5MB 限制)
       if (jsonString.length > 4 * 1024 * 1024) {
          return response.status(413).json({ error: 'Payload too large. Try reducing image sizes.' });
       }
 
+      /**
+       * 使用 jsonb_merge_patch 實現「部分更新」。
+       * 如果 partialState 包含 { "auditLogs": [...] }，則只會更新 auditLogs 鍵值，其餘保留。
+       * 如果資料庫尚無資料 (id='global_state' 不存在)，則直接插入。
+       */
       await client.sql`
         INSERT INTO workspace_storage (id, content, updated_at)
         VALUES ('global_state', ${jsonString}, NOW())
         ON CONFLICT (id) 
-        DO UPDATE SET content = ${jsonString}, updated_at = NOW()
+        DO UPDATE SET 
+          content = jsonb_merge_patch(COALESCE(workspace_storage.content, '{}'::jsonb), ${jsonString}::jsonb), 
+          updated_at = NOW()
       `;
       
       return response.status(200).json({ success: true });
