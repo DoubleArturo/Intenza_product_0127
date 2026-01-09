@@ -15,33 +15,12 @@ export const DEFAULT_SERIES: LocalizedString[] = [
   { en: 'Strength Series', zh: '力量系列' }
 ];
 
-// 細分權限定義
-export interface ModulePermissions {
-  canEdit: boolean;
-  canSync: boolean;
-}
-
-export interface UserPermissions {
-  canSyncShipments: boolean; // 出貨資料上傳同步權限
-  seriesAccess: {
-    [seriesName: string]: ModulePermissions;
-  };
-  skuAccess: {
-    [sku: string]: {
-      design: ModulePermissions;
-      ergo: ModulePermissions;
-      durability: ModulePermissions;
-    };
-  };
-}
-
 export interface UserAccount {
   id: string;
   username: string;
   password: string;
   role: 'admin' | 'user' | 'uploader' | 'viewer';
   lastLogin?: string;
-  permissions?: UserPermissions; // 新增權限欄位
 }
 
 export enum TestStatus {

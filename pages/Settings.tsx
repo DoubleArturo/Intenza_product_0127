@@ -1,8 +1,7 @@
 
 import React, { useState, useRef, useContext, useEffect, useMemo } from 'react';
-// FIX: Added GitCommit and UserCheck to imports
-import { Plus, X, Save, Download, Upload, AlertTriangle, CheckCircle, Pencil, History, Sparkles, Shield, User, Trash2, Eye, EyeOff, Key, Database, HardDrive, Info, Cloud, LogOut, Loader2, Link as LinkIcon, Activity, Layers, ImageIcon, RotateCcw, Settings2, LayoutGrid, Maximize, Palette, MousePointer2, ClipboardList, Clock, Search, ChevronRight, Filter, UserRound, ArrowDown, Lock, Unlock, FileUp, GitCommit, UserCheck } from 'lucide-react';
-import { AppState, LocalizedString, UserAccount, AuditLog, UserPermissions, ModulePermissions } from '../types';
+import { Plus, X, Save, Download, Upload, AlertTriangle, CheckCircle, Pencil, History, Sparkles, Shield, User, Trash2, Eye, EyeOff, Key, Database, HardDrive, Info, Cloud, LogOut, Loader2, Link as LinkIcon, Activity, Layers, ImageIcon, RotateCcw, Settings2, LayoutGrid, Maximize, Palette, MousePointer2, ClipboardList, Clock, Search, ChevronRight, Filter, UserRound, ArrowDown } from 'lucide-react';
+import { AppState, LocalizedString, UserAccount, AuditLog } from '../types';
 import { LanguageContext } from '../App';
 import { api } from '../services/api';
 
@@ -50,7 +49,6 @@ const Settings: React.FC<SettingsProps> = ({
 
   // Modals
   const [isUserModalOpen, setIsUserModalOpen] = useState(false);
-  const [isPermissionModalOpen, setIsPermissionModalOpen] = useState(false);
   const [isLogBrowserOpen, setIsLogBrowserOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<UserAccount | null>(null);
   const [showPasswordMap, setShowPasswordMap] = useState<Record<string, boolean>>({});
@@ -68,9 +66,22 @@ const Settings: React.FC<SettingsProps> = ({
     const sizeInMB = sizeInBytes / (1024 * 1024);
     const sizeLimitMB = 4.5; 
     const sizePercent = Math.min(100, (sizeInMB / sizeLimitMB) * 100);
+    let base64Count = 0;
+    let blobFilesCount = 0;
+    const analyzeUrl = (url?: string) => {
+      if (!url) return;
+      if (url.startsWith('data:')) base64Count++;
+      else if (url.includes('vercel-storage.com')) blobFilesCount++;
+    };
+    currentAppState.products?.forEach(p => {
+      analyzeUrl(p.imageUrl);
+      p.designHistory?.forEach(eco => eco.imageUrls?.forEach(analyzeUrl));
+    });
+    analyzeUrl(currentAppState.customLogoUrl);
     return { 
       rowCount, rowLimit, rowPercent, 
-      sizeInMB, sizeLimitMB, sizePercent
+      sizeInMB, sizeLimitMB, sizePercent,
+      base64Count, blobFilesCount 
     };
   }, [currentAppState]);
 
@@ -86,11 +97,12 @@ const Settings: React.FC<SettingsProps> = ({
     try {
       const url = await api.uploadImage(file);
       onUpdateLogo(url);
-      showNotification('Logo 已更新', 'success');
+      showNotification('Logo 已更新，請手動同步雲端', 'success');
     } catch (err) {
       showNotification('Logo 上傳失敗', 'error');
     } finally {
       setIsUploadingLogo(false);
+      if (logoInputRef.current) logoInputRef.current.value = '';
     }
   };
 
@@ -144,13 +156,18 @@ const Settings: React.FC<SettingsProps> = ({
       }
     };
     reader.readAsText(file);
+    if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
   const handleResetShipments = () => {
-    const confirmed = window.confirm(language === 'zh' ? '確定要清空所有出貨數據嗎？' : 'Reset all shipment data?');
+    const confirmed = window.confirm(
+      language === 'zh' 
+        ? '⚠️ 警告：這將會清空所有出貨數據（產品儀表板內容）。此動作無法復原，您確定嗎？' 
+        : '⚠️ WARNING: This will permanently delete all shipment data (Product Dashboard contents). This action cannot be undone. Are you sure?'
+    );
     if (confirmed && onResetDashboard) {
       onResetDashboard();
-      showNotification('出貨數據已重置', 'success');
+      showNotification(language === 'zh' ? '儀表板數據已清空' : 'Dashboard data has been reset', 'success');
     }
   };
 
@@ -167,6 +184,15 @@ const Settings: React.FC<SettingsProps> = ({
     { label: t({ en: 'Cinematic (16:9)', zh: '寬螢幕 (16:9)' }), value: '16/9' },
   ];
 
+  const tooltipPositions = [
+    { label: 'TOP-L', value: 'TOP_LEFT' },
+    { label: 'TOP-R', value: 'TOP_RIGHT' },
+    { label: 'BTM-L', value: 'BOTTOM_LEFT' },
+    { label: 'BTM-R', value: 'BOTTOM_RIGHT' },
+    { label: 'FOLLOW', value: 'FOLLOW' },
+  ];
+
+  // Logs derived stats
   const logsCount = currentAppState.auditLogs?.length || 0;
   const lastLog = logsCount > 0 ? (currentAppState.auditLogs || [])[(currentAppState.auditLogs || []).length - 1] : null;
   const activeSessions = (currentAppState.auditLogs || []).filter(l => !l.logoutTime).length;
@@ -178,13 +204,18 @@ const Settings: React.FC<SettingsProps> = ({
           <h1 className="text-3xl font-bold text-slate-900">System Settings</h1>
           <p className="text-slate-500 mt-1">系統配置、帳號管理與雲端存儲監控。</p>
         </div>
-        <button onClick={onLogout} className="flex items-center gap-2 px-4 py-2 text-sm font-bold text-red-600 hover:bg-red-50 rounded-xl transition-colors border border-transparent hover:border-red-100">
+        <button 
+          onClick={onLogout}
+          className="flex items-center gap-2 px-4 py-2 text-sm font-bold text-red-600 hover:bg-red-50 rounded-xl transition-colors border border-transparent hover:border-red-100"
+        >
           <LogOut size={18} /> 登出系統
         </button>
       </header>
 
       {notification && (
-        <div className={`fixed top-8 right-8 px-6 py-3 rounded-xl shadow-lg flex items-center gap-3 animate-slide-up z-[100] ${notification.type === 'success' ? 'bg-green-50 text-green-700 border border-green-200' : 'bg-red-50 text-red-700 border border-red-200'}`}>
+        <div className={`fixed top-8 right-8 px-6 py-3 rounded-xl shadow-lg flex items-center gap-3 animate-slide-up z-50 ${
+          notification.type === 'success' ? 'bg-green-50 text-green-700 border border-green-200' : 'bg-red-50 text-red-700 border border-red-200'
+        }`}>
           {notification.type === 'success' ? <CheckCircle size={18} /> : <AlertTriangle size={18} />}
           <span className="font-medium">{notification.msg}</span>
         </div>
@@ -192,23 +223,109 @@ const Settings: React.FC<SettingsProps> = ({
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <div className="lg:col-span-2 space-y-8">
-          {/* Logo & UI Settings */}
           <section className="bg-white rounded-2xl border border-slate-200 p-8 shadow-sm">
-             <div className="flex items-center gap-2 mb-6"><Settings2 className="text-intenza-600" size={20} /><h2 className="text-xl font-bold text-slate-900">品牌視覺配置 (Login Logo)</h2></div>
+             <div className="flex items-center gap-2 mb-6">
+                 <Settings2 className="text-intenza-600" size={20} />
+                 <h2 className="text-xl font-bold text-slate-900">品牌視覺配置 (Login Logo)</h2>
+             </div>
              <div className="flex flex-col md:flex-row gap-8 items-center">
-                <div className="w-32 h-32 rounded-2xl bg-slate-900 flex items-center justify-center overflow-hidden shadow-inner">
-                    {currentAppState.customLogoUrl ? <img src={currentAppState.customLogoUrl} alt="Logo" className="w-full h-full object-contain p-2" /> : <div className="text-white font-bold text-4xl">I</div>}
+                <div className="w-32 h-32 rounded-2xl bg-slate-900 border-2 border-slate-800 flex items-center justify-center overflow-hidden relative group shadow-inner">
+                    {currentAppState.customLogoUrl ? (
+                        <img src={currentAppState.customLogoUrl} alt="Logo Preview" className="w-full h-full object-contain p-2" />
+                    ) : (
+                        <div className="text-white font-bold text-4xl">I</div>
+                    )}
+                    {isUploadingLogo && <div className="absolute inset-0 bg-slate-900/80 flex items-center justify-center"><Loader2 className="animate-spin text-white" /></div>}
                 </div>
                 <div className="flex-1 space-y-4">
+                    <p className="text-sm text-slate-500">上傳您的公司 Logo。建議上傳具備對比度的標誌。</p>
                     <div className="flex gap-3">
-                        <button onClick={() => logoInputRef.current?.click()} className="bg-slate-900 text-white px-5 py-2 rounded-xl text-sm font-bold hover:bg-slate-800 transition-colors flex items-center gap-2"><Upload size={16} /> 上傳新 Logo</button>
+                        <button onClick={() => logoInputRef.current?.click()} disabled={isUploadingLogo} className="bg-slate-900 text-white px-5 py-2 rounded-xl text-sm font-bold hover:bg-slate-800 transition-colors flex items-center gap-2"><Upload size={16} /> 上傳新 Logo</button>
+                        {currentAppState.customLogoUrl && <button onClick={() => onUpdateLogo(undefined)} className="px-5 py-2 border border-slate-200 rounded-xl text-sm font-bold text-slate-600 hover:bg-slate-50 transition-colors flex items-center gap-2"><RotateCcw size={16} /> 重置預設</button>}
                         <input ref={logoInputRef} type="file" accept="image/*" className="hidden" onChange={handleLogoUpload} />
                     </div>
                 </div>
              </div>
           </section>
 
-          {/* User Management Section */}
+          <section className="bg-white rounded-2xl border border-slate-200 p-8 shadow-sm">
+             <div className="flex items-center gap-2 mb-6 text-slate-900">
+                <Settings2 className="text-intenza-600" size={20} />
+                <h2 className="text-xl font-bold">{t({ en: 'Global UI Configuration', zh: '系統全域 UI 配置' })}</h2>
+             </div>
+             <div className="space-y-10">
+                <div>
+                   <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-4">{t({ en: 'Status Light Size (Unified)', zh: '產品指示燈大小 (一次統一調整)' })}</label>
+                   <div className="flex gap-4">
+                      {['SMALL', 'NORMAL', 'LARGE'].map(sz => (
+                         <button key={sz} type="button" onClick={() => onUpdateStatusLightSize(sz as any)} className={`flex-1 py-3 px-4 rounded-xl text-xs font-bold border-2 transition-all ${currentAppState.globalStatusLightSize === sz ? 'bg-slate-900 text-white border-slate-900 shadow-lg' : 'bg-white text-slate-500 border-slate-100 hover:border-slate-300'}`}>{sz}</button>
+                      ))}
+                   </div>
+                </div>
+
+                <div>
+                   <label className="flex items-center gap-2 text-xs font-black text-slate-400 uppercase tracking-widest mb-4"><LayoutGrid size={14} />{t({ en: 'Dashboard Max Columns', zh: '產品卡片呈現數量 (畫面最大化時)' })}</label>
+                   <div className="flex gap-2">
+                      {[2, 3, 4, 5, 6].map(count => (
+                         <button key={count} type="button" onClick={() => onUpdateDashboardColumns(count)} className={`flex-1 py-3 px-4 rounded-xl text-xs font-bold border-2 transition-all ${(currentAppState.dashboardColumns || 4) === count ? 'bg-intenza-600 text-white border-intenza-600 shadow-lg' : 'bg-white text-slate-500 border-slate-100 hover:border-slate-300'}`}>{count} {t({ en: 'Cols', zh: '欄' })}</button>
+                      ))}
+                   </div>
+                </div>
+
+                <div>
+                   <label className="flex items-center gap-2 text-xs font-black text-slate-400 uppercase tracking-widest mb-4"><Maximize size={14} />{t({ en: 'Product Card Proportions', zh: '產品卡片長寬比例 (自訂調整)' })}</label>
+                   <div className="grid grid-cols-2 gap-3">
+                      {aspectRatios.map(ratio => (
+                         <button key={ratio.value} type="button" onClick={() => onUpdateCardAspectRatio(ratio.value)} className={`py-3 px-4 rounded-xl text-xs font-bold border-2 transition-all ${(currentAppState.cardAspectRatio || '3/4') === ratio.value ? 'bg-slate-900 text-white border-slate-900 shadow-lg' : 'bg-white text-slate-500 border-slate-100 hover:border-slate-300'}`}>{ratio.label}</button>
+                      ))}
+                   </div>
+                </div>
+
+                <div>
+                   <label className="flex items-center gap-2 text-xs font-black text-slate-400 uppercase tracking-widest mb-4"><Palette size={14} />{t({ en: 'Dashboard Chart Theme', zh: '儀表板圖表顏色風格' })}</label>
+                   <div className="flex gap-3">
+                      {(['COLORFUL', 'MONOCHROME', 'SLATE'] as const).map(style => (
+                         <button 
+                           key={style} 
+                           type="button" 
+                           onClick={() => onUpdateChartColorStyle(style)} 
+                           className={`flex-1 py-3 px-4 rounded-xl text-xs font-bold border-2 transition-all ${
+                             (currentAppState.chartColorStyle || 'COLORFUL') === style 
+                             ? 'bg-slate-900 text-white border-slate-900 shadow-lg' 
+                             : 'bg-white text-slate-500 border-slate-100 hover:border-slate-300'
+                           }`}
+                         >
+                           {style === 'COLORFUL' ? t({en: 'Colorful', zh: '多彩(可自訂多主色)'}) : style === 'MONOCHROME' ? t({en: 'Monochrome', zh: '同色系(可自訂主色系)'}) : t({en: 'Slate', zh: '多主色系(可自訂多主色)'})}
+                         </button>
+                      ))}
+                   </div>
+                </div>
+
+                <div className="pt-6 border-t border-slate-100 space-y-6">
+                   <div className="flex items-center gap-2 text-slate-900">
+                      <Settings2 className="text-intenza-600" size={18} />
+                      <h3 className="text-sm font-black uppercase tracking-widest">Global Layout & Precision</h3>
+                   </div>
+                   <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                      <div>
+                         <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 flex items-center gap-2"><ArrowDown size={14} /> Evaluation Dialog Y-Offset (px)</label>
+                         <div className="flex items-center gap-4">
+                            <input type="range" min="0" max="600" step="10" value={currentAppState.evaluationModalYOffset || 100} onChange={(e) => onUpdateEvaluationModalYOffset?.(Number(e.target.value))} className="flex-1 accent-intenza-600" />
+                            <span className="text-xs font-black font-mono bg-slate-100 px-3 py-1 rounded-lg">{(currentAppState.evaluationModalYOffset || 100)}px</span>
+                         </div>
+                      </div>
+                      <div>
+                         <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 flex items-center gap-2"><MousePointer2 size={14} /> Analytics Tooltip Scale</label>
+                         <div className="flex items-center gap-4">
+                            <input type="range" min="1" max="4" step="0.5" value={currentAppState.analyticsTooltipScale || 2} onChange={(e) => onUpdateAnalyticsTooltipScale?.(Number(e.target.value))} className="flex-1 accent-slate-900" />
+                            <span className="text-xs font-black font-mono bg-slate-100 px-3 py-1 rounded-lg">{(currentAppState.analyticsTooltipScale || 2).toFixed(1)}x</span>
+                         </div>
+                      </div>
+                   </div>
+                </div>
+             </div>
+          </section>
+
           <section className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
              <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
                 <div className="flex items-center gap-2"><Shield className="text-intenza-600" size={20} /><h2 className="text-xl font-bold text-slate-900">帳號管理</h2></div>
@@ -216,282 +333,132 @@ const Settings: React.FC<SettingsProps> = ({
              </div>
              <div className="overflow-x-auto">
                 <table className="w-full text-left">
-                  <thead className="bg-slate-50 text-slate-500 text-[10px] font-bold uppercase tracking-wider"><tr><th className="px-6 py-4">使用者名稱</th><th className="px-6 py-4">權限</th><th className="px-6 py-4">操作</th></tr></thead>
+                  <thead className="bg-slate-50 text-slate-500 text-[10px] font-bold uppercase tracking-wider"><tr><th className="px-6 py-4">使用者名稱</th><th className="px-6 py-4">權限</th><th className="px-6 py-4">密碼</th><th className="px-6 py-4 text-right">操作</th></tr></thead>
                   <tbody className="divide-y divide-slate-100">
                     {currentAppState.users?.map((user) => (
                       <tr key={user.id} className="hover:bg-slate-50 transition-colors">
-                        <td className="px-6 py-4 font-bold text-slate-700">{user.username}</td>
-                        <td className="px-6 py-4 text-xs font-bold uppercase">{user.role}</td>
-                        <td className="px-6 py-4 text-right flex items-center justify-end gap-2">
-                          {user.role !== 'admin' && (
-                             <button 
-                               onClick={() => { setEditingUser(user); setIsPermissionModalOpen(true); }}
-                               className="p-2 text-indigo-600 hover:bg-indigo-50 rounded-lg transition-all"
-                               title="權限配置"
-                             >
-                               <Lock size={16} />
-                             </button>
-                          )}
-                          <button onClick={() => { setEditingUser(user); setIsUserModalOpen(true); }} className="p-2 text-slate-400 hover:text-slate-600 rounded-lg"><Pencil size={16} /></button>
-                          <button onClick={() => { if(window.confirm('確定刪除？')) onDeleteUser(user.id); }} className="p-2 text-red-400 hover:text-red-600 rounded-lg"><Trash2 size={16} /></button>
-                        </td>
+                        <td className="px-6 py-4"><div className="flex items-center gap-3"><div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-500"><User size={16} /></div><span className="font-bold text-slate-700">{user.username}</span></div></td>
+                        <td className="px-6 py-4"><span className={`px-2 py-1 rounded text-[10px] font-bold uppercase ${user.role === 'admin' ? 'bg-intenza-100 text-intenza-700' : user.role === 'uploader' ? 'bg-emerald-100 text-emerald-700' : user.role === 'viewer' ? 'bg-amber-100 text-amber-700' : 'bg-slate-100 text-slate-600'}`}>{user.role}</span></td>
+                        <td className="px-6 py-4"><div className="flex items-center gap-2 font-mono text-sm text-slate-400"><span>{showPasswordMap[user.id] ? user.password : '••••••••'}</span><button onClick={() => setShowPasswordMap(p => ({...p, [user.id]: !p[user.id]}))} className="hover:text-slate-600 transition-colors">{showPasswordMap[user.id] ? <EyeOff size={14} /> : <Eye size={14} />}</button></div></td>
+                        <td className="px-6 py-4 text-right"><div className="flex items-center justify-end gap-1"><button onClick={() => { setEditingUser(user); setIsUserModalOpen(true); }} className="p-2 text-slate-400 hover:text-intenza-600 transition-colors rounded-lg hover:bg-white"><Pencil size={16} /></button><button onClick={() => { if(window.confirm(`確定要刪除用戶 ${user.username}？`)) onDeleteUser(user.id); }} className="p-2 text-slate-400 hover:text-red-600 transition-colors rounded-lg hover:bg-white"><Trash2 size={16} /></button></div></td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
              </div>
           </section>
+
+          {/* REFACTORED: ACCOUNT SESSION TRACKING LOGS (Summary View) */}
+          <section className="bg-white rounded-2xl border border-slate-200 p-8 shadow-sm group">
+             <div className="flex items-center justify-between mb-8 pb-4 border-b border-slate-100">
+                <div className="flex items-center gap-2">
+                    <ClipboardList className="text-indigo-600" size={22} />
+                    <h2 className="text-xl font-black text-slate-900 tracking-tight uppercase">帳號活動追蹤記錄</h2>
+                </div>
+                <div className="flex gap-2">
+                    <button onClick={handleExportLogs} className="p-2 text-slate-400 hover:text-slate-900 transition-colors" title="Export CSV/JSON"><Download size={18} /></button>
+                </div>
+             </div>
+
+             <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 mb-8">
+                <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
+                    <span className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Total Sessions</span>
+                    <span className="text-2xl font-black text-slate-900">{logsCount.toLocaleString()}</span>
+                </div>
+                <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
+                    <span className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Active Sessions</span>
+                    <div className="flex items-center gap-2">
+                        <div className={`w-2.5 h-2.5 rounded-full ${activeSessions > 0 ? 'bg-emerald-500 animate-pulse' : 'bg-slate-300'}`} />
+                        <span className="text-2xl font-black text-slate-900">{activeSessions}</span>
+                    </div>
+                </div>
+                <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
+                    <span className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Last Log Record</span>
+                    <span className="text-sm font-bold text-slate-700 block truncate">{lastLog ? `${lastLog.username} (${new Date(lastLog.loginTime).toLocaleDateString()})` : 'N/A'}</span>
+                </div>
+             </div>
+
+             <button 
+                onClick={() => setIsLogBrowserOpen(true)}
+                className="w-full py-4 bg-indigo-50 hover:bg-indigo-100 border-2 border-dashed border-indigo-200 rounded-2xl flex items-center justify-center gap-3 transition-all text-indigo-600 font-black uppercase tracking-widest group/btn"
+             >
+                <Database size={20} className="group-hover/btn:scale-110 transition-transform" />
+                <span>點入瀏覽完整日誌歷史</span>
+                <ChevronRight size={18} />
+             </button>
+          </section>
+
+          <section className="bg-white rounded-2xl border border-slate-200 p-8 shadow-sm">
+            <h2 className="text-xl font-bold text-slate-900 mb-2">產品系列配置</h2>
+            <div className="flex gap-3 mb-6">
+              <input type="text" value={newSeriesName} onChange={(e) => setNewSeriesName(e.target.value)} placeholder="輸入系列名稱..." className="flex-1 px-4 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-intenza-500/20 bg-slate-50 text-slate-900" onKeyPress={(e) => e.key === 'Enter' && handleAddSeries()}/>
+              <button onClick={handleAddSeries} disabled={isSubmitting} className="bg-slate-900 text-white px-4 py-2 rounded-lg hover:bg-slate-800 transition-colors flex items-center gap-2 disabled:bg-slate-400">{isSubmitting ? <Loader2 className="animate-spin" size={18} /> : <Plus size={18} />} 新增</button>
+            </div>
+            <div className="space-y-3">
+              {seriesList.map((series, index) => (
+                <div key={index} className="flex items-center justify-between p-3 rounded-lg border bg-slate-50 border-slate-100"><span className="font-medium text-slate-700">{t(series)}</span><div className="flex items-center gap-1"><button onClick={() => { if(window.confirm('確定刪除系列？')) { const nl = [...seriesList]; nl.splice(index,1); onUpdateSeriesList(nl); } }} className="text-slate-400 hover:text-red-600 p-2"><X size={18} /></button></div></div>
+              ))}
+            </div>
+          </section>
+
+          <section className="bg-white rounded-2xl border border-red-100 p-8 shadow-sm">
+             <div className="flex items-center gap-2 mb-4 text-red-600"><AlertTriangle size={20} /><h2 className="text-xl font-bold">危險區域 (Danger Zone)</h2></div>
+             <div className="p-4 bg-red-50 rounded-xl border border-red-100 mb-6"><p className="text-sm text-red-800 font-medium">數據維護操作：此區塊功能將永久刪除或更改核心數據，請謹謹執行。</p></div>
+             <div className="flex flex-col md:flex-row items-center justify-between gap-4 p-4 rounded-xl border border-slate-100 hover:bg-slate-50 transition-colors"><div className="flex-1"><h3 className="font-bold text-slate-900">重置產品儀表板數據</h3><p className="text-xs text-slate-500 mt-1">清空所有導入的出貨記錄 (Shipment Data)。</p></div><button onClick={handleResetShipments} className="flex items-center gap-2 px-6 py-2.5 bg-white border border-red-200 text-red-600 rounded-xl text-sm font-bold hover:bg-red-600 hover:text-white transition-all shadow-sm"><Trash2 size={16} /> 清空出貨數據</button></div>
+          </section>
         </div>
 
         <div className="space-y-8">
            <section className="bg-white rounded-2xl border border-slate-200 p-8 shadow-sm">
               <div className="flex items-center gap-2 mb-6"><Cloud className="text-intenza-600" size={20} /><h2 className="text-xl font-bold text-slate-900">雲端同步狀態</h2></div>
-              <button onClick={onSyncCloud} disabled={syncStatus === 'saving'} className={`w-full py-3 rounded-xl font-bold transition-all flex items-center justify-center gap-2 shadow-lg ${syncStatus === 'saving' ? 'bg-slate-100 text-slate-400' : 'bg-intenza-600 text-white hover:bg-intenza-700 shadow-intenza-600/20'}`}>
-                {syncStatus === 'saving' ? <Loader2 size={18} className="animate-spin" /> : <Cloud size={18} />} {syncStatus === 'saving' ? '正在同步...' : '立即同步'}
-              </button>
-           </section>
-           <section className="bg-white rounded-2xl border border-slate-200 p-8 shadow-sm">
-              <div className="flex items-center gap-2 mb-6"><History className="text-slate-900" size={20} /><h2 className="text-xl font-bold text-slate-900">活動日誌</h2></div>
-              <div className="space-y-4">
-                 <div className="flex justify-between items-center text-sm"><span className="text-slate-500">當前活躍會話</span><span className="font-black text-emerald-500">{activeSessions}</span></div>
-                 <button onClick={() => setIsLogBrowserOpen(true)} className="w-full py-2.5 bg-slate-50 text-slate-600 border border-slate-200 rounded-xl font-bold text-xs hover:bg-slate-100 transition-all flex items-center justify-center gap-2"><ClipboardList size={16} /> 檢視所有日誌</button>
+              <div className="space-y-3">
+                  <button onClick={onSyncCloud} disabled={syncStatus === 'saving'} className={`w-full py-3 rounded-xl font-bold transition-all flex items-center justify-center gap-2 shadow-lg ${syncStatus === 'saving' ? 'bg-slate-100 text-slate-400' : 'bg-intenza-600 text-white hover:bg-intenza-700 shadow-intenza-600/20'}`}>{syncStatus === 'saving' ? <Loader2 size={18} className="animate-spin" /> : <Cloud size={18} />}{syncStatus === 'saving' ? '正在同步數據...' : '立即同步至 Postgres'}</button>
+                  <button onClick={async () => { try { const tf = new File(["test"], "test.txt"); await api.uploadImage(tf); showNotification('Vercel Blob 連線正常！', 'success'); } catch (e) { showNotification('Blob 連線失敗', 'error'); } }} className="w-full py-3 rounded-xl font-bold border border-slate-200 text-slate-700 hover:bg-slate-50 transition-all flex items-center justify-center gap-2"><Activity size={18} className="text-emerald-500" />測試 Blob 雲端連線</button>
               </div>
+           </section>
+
+           <section className="bg-white rounded-2xl border border-slate-200 p-8 shadow-sm">
+              <div className="flex items-center justify-between mb-2"><h2 className="text-xl font-bold text-slate-900">容量使用率</h2><span className="text-[10px] bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full font-bold">LIVE</span></div>
+              <p className="text-sm text-slate-500 mb-6">監控 Vercel 與 Postgres 資源配額。</p>
+              <div className="space-y-8">
+                <div className="space-y-2">
+                  <div className="flex justify-between items-center text-[11px] font-bold uppercase tracking-wider"><div className="flex items-center gap-2 text-slate-600"><Database size={14} className="text-indigo-500" />專案數據體積</div><span className={storageStats.sizePercent > 90 ? 'text-red-600' : 'text-slate-400'}>{storageStats.sizeInMB.toFixed(2)} MB / {storageStats.sizeLimitMB} MB</span></div>
+                  <div className="w-full bg-slate-100 h-2.5 rounded-full overflow-hidden"><div className={`h-full transition-all duration-1000 ${getProgressColor(storageStats.sizePercent)}`} style={{ width: `${storageStats.sizePercent}%` }}></div></div>
+                </div>
+                <div className="space-y-2">
+                  <div className="flex justify-between items-center text-[11px] font-bold uppercase tracking-wider"><div className="flex items-center gap-2 text-slate-600"><Layers size={14} className="text-emerald-500" />資料庫記錄行數</div><span className="text-slate-400">{storageStats.rowCount.toLocaleString()} / {storageStats.rowLimit.toLocaleString()}</span></div>
+                  <div className="w-full bg-slate-100 h-2.5 rounded-full overflow-hidden"><div className={`h-full transition-all duration-1000 ${getProgressColor(storageStats.rowPercent)}`} style={{ width: `${storageStats.rowPercent}%` }}></div></div>
+                </div>
+              </div>
+           </section>
+
+           <section className="bg-white rounded-2xl border border-slate-200 p-8 shadow-sm">
+             <h2 className="text-xl font-bold text-slate-900 mb-4">專案本地備份</h2>
+             <div className="grid grid-cols-1 gap-4">
+               <button onClick={handleDownloadProject} className="flex items-center justify-center gap-2 w-full py-2.5 bg-white border border-slate-300 rounded-lg text-slate-700 font-bold hover:bg-slate-50 transition-all"><Download size={18} /> 導出 JSON 備份</button>
+               <button onClick={() => fileInputRef.current?.click()} className="flex items-center justify-center gap-2 w-full py-2.5 bg-slate-900 text-white rounded-lg font-bold hover:bg-slate-800 transition-all"><Upload size={18} /> 載入 JSON 備份</button>
+               <input ref={fileInputRef} type="file" accept=".json" className="hidden" onChange={handleImportProject} />
+             </div>
            </section>
         </div>
       </div>
 
-      {isUserModalOpen && <UserAccountModal isOpen={isUserModalOpen} onClose={() => setIsUserModalOpen(false)} onSave={(data) => { if (editingUser) onUpdateUser({ ...editingUser, ...data } as any); else onAddUser(data as any); setIsUserModalOpen(false); }} user={editingUser} />}
-      
-      {/* 權限管理對話框 */}
-      {isPermissionModalOpen && editingUser && (
-        <PermissionEditorModal 
-          isOpen={isPermissionModalOpen} 
-          onClose={() => setIsPermissionModalOpen(false)} 
-          user={editingUser} 
-          products={currentAppState.products}
-          seriesList={currentAppState.seriesList}
-          onSave={(perms) => {
-            onUpdateUser({ ...editingUser, permissions: perms });
-            setIsPermissionModalOpen(false);
-            showNotification(`已更新 ${editingUser.username} 的權限配置`, 'success');
-          }}
+      {isUserModalOpen && (
+        <UserAccountModal 
+          isOpen={isUserModalOpen} onClose={() => setIsUserModalOpen(false)}
+          onSave={(data) => { if (editingUser) onUpdateUser({ ...editingUser, ...data } as any); else onAddUser(data as any); setIsUserModalOpen(false); }} user={editingUser}
         />
       )}
 
-      {isLogBrowserOpen && <AuditLogBrowserModal isOpen={isLogBrowserOpen} onClose={() => setIsLogBrowserOpen(false)} logs={currentAppState.auditLogs || []} onDeleteAll={() => { onDeleteAuditLogs(); setIsLogBrowserOpen(false); }} onExport={handleExportLogs} />}
-    </div>
-  );
-};
-
-// FIX: Implemented missing AuditLogBrowserModal component
-const AuditLogBrowserModal: React.FC<{
-  isOpen: boolean;
-  onClose: () => void;
-  logs: AuditLog[];
-  onDeleteAll: () => void;
-  onExport: () => void;
-}> = ({ isOpen, onClose, logs, onDeleteAll, onExport }) => {
-  if (!isOpen) return null;
-  return (
-    <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md animate-fade-in">
-      <div className="bg-white rounded-[2rem] shadow-2xl w-full max-w-4xl h-[80vh] overflow-hidden flex flex-col">
-        <header className="p-8 border-b border-slate-100 flex justify-between items-center">
-          <div>
-            <h2 className="text-2xl font-black text-slate-900 uppercase tracking-tight">登入日誌瀏覽</h2>
-            <p className="text-slate-400 text-xs font-bold uppercase mt-1">共 {logs.length} 筆記錄</p>
-          </div>
-          <div className="flex gap-2">
-            <button onClick={onExport} className="p-2 text-slate-600 hover:bg-slate-100 rounded-lg transition-colors" title="匯出 JSON"><Download size={20} /></button>
-            <button onClick={() => { if(window.confirm('確定清空所有記錄？')) onDeleteAll(); }} className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors" title="清空日誌"><Trash2 size={20} /></button>
-            <button onClick={onClose} className="p-2 hover:bg-slate-100 rounded-full transition-colors"><X size={24} /></button>
-          </div>
-        </header>
-        <main className="flex-1 overflow-y-auto p-8 custom-scrollbar">
-          <table className="w-full text-left">
-            <thead className="bg-slate-50 text-slate-500 text-[10px] font-bold uppercase tracking-wider sticky top-0">
-              <tr>
-                <th className="px-6 py-4">使用者</th>
-                <th className="px-6 py-4">登入時間</th>
-                <th className="px-6 py-4">登出時間</th>
-                <th className="px-6 py-4">停留 (分)</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {[...logs].reverse().map((log) => (
-                <tr key={log.id} className="hover:bg-slate-50 transition-colors">
-                  <td className="px-6 py-4 font-bold text-slate-700">{log.username}</td>
-                  <td className="px-6 py-4 text-xs">{log.loginTime}</td>
-                  <td className="px-6 py-4 text-xs">{log.logoutTime || <span className="text-emerald-500 font-bold">Active</span>}</td>
-                  <td className="px-6 py-4 text-xs font-mono">{log.durationMinutes || '-'}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </main>
-      </div>
-    </div>
-  );
-};
-
-const PermissionEditorModal: React.FC<{
-  isOpen: boolean;
-  onClose: () => void;
-  user: UserAccount;
-  products: AppState['products'];
-  seriesList: AppState['seriesList'];
-  onSave: (perms: UserPermissions) => void;
-}> = ({ isOpen, onClose, user, products, seriesList, onSave }) => {
-  const { t } = useContext(LanguageContext);
-  const [perms, setPerms] = useState<UserPermissions>(user.permissions || {
-    canSyncShipments: false,
-    seriesAccess: {},
-    skuAccess: {}
-  });
-
-  const [activeTab, setActiveTab] = useState<'SHIPMENT' | 'SERIES' | 'SKU'>('SHIPMENT');
-
-  const toggleShipment = () => setPerms({ ...perms, canSyncShipments: !perms.canSyncShipments });
-
-  const toggleSeries = (series: string, field: keyof ModulePermissions) => {
-    const current = perms.seriesAccess[series] || { canEdit: false, canSync: false };
-    setPerms({
-      ...perms,
-      seriesAccess: {
-        ...perms.seriesAccess,
-        [series]: { ...current, [field]: !current[field] }
-      }
-    });
-  };
-
-  const toggleSku = (sku: string, module: 'design' | 'ergo' | 'durability', field: keyof ModulePermissions) => {
-    const currentSku = perms.skuAccess[sku] || {
-      design: { canEdit: false, canSync: false },
-      ergo: { canEdit: false, canSync: false },
-      durability: { canEdit: false, canSync: false }
-    };
-    setPerms({
-      ...perms,
-      skuAccess: {
-        ...perms.skuAccess,
-        [sku]: {
-          ...currentSku,
-          [module]: { ...currentSku[module], [field]: !currentSku[module][field] }
-        }
-      }
-    });
-  };
-
-  return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md animate-fade-in">
-      <div className="bg-white rounded-[2rem] shadow-2xl w-full max-w-4xl h-[80vh] overflow-hidden flex flex-col">
-        <header className="p-8 border-b border-slate-100 flex justify-between items-center bg-white sticky top-0 z-10">
-          <div>
-            <h2 className="text-2xl font-black text-slate-900 uppercase tracking-tight">權限劃分管理</h2>
-            <p className="text-slate-400 text-xs font-bold uppercase mt-1">使用者: {user.username}</p>
-          </div>
-          <button onClick={onClose} className="p-2 hover:bg-slate-100 rounded-full transition-colors"><X size={24} /></button>
-        </header>
-
-        <div className="flex-1 flex overflow-hidden">
-          {/* 左側導航 */}
-          <aside className="w-56 bg-slate-50 border-r border-slate-100 p-4 space-y-2">
-            {[
-              { id: 'SHIPMENT', label: '出貨資料管理', icon: <FileUp size={16}/> },
-              { id: 'SERIES', label: '產品系列權限', icon: <Layers size={16}/> },
-              { id: 'SKU', label: '單一 SKU 權限', icon: <Database size={16}/> }
-            ].map(tab => (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id as any)}
-                className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-xs font-bold transition-all ${activeTab === tab.id ? 'bg-slate-900 text-white shadow-lg' : 'text-slate-500 hover:bg-white'}`}
-              >
-                {tab.icon} {tab.label}
-              </button>
-            ))}
-          </aside>
-
-          {/* 右側內容區 */}
-          <main className="flex-1 overflow-y-auto p-8 custom-scrollbar">
-            {activeTab === 'SHIPMENT' && (
-              <div className="space-y-6 animate-fade-in">
-                <h3 className="text-sm font-black uppercase tracking-widest text-slate-400 mb-4">出貨資料上傳同步權限</h3>
-                <div onClick={toggleShipment} className={`flex items-center justify-between p-6 rounded-3xl border-2 cursor-pointer transition-all ${perms.canSyncShipments ? 'bg-emerald-50 border-emerald-500 shadow-lg shadow-emerald-500/10' : 'bg-white border-slate-100 hover:border-slate-200'}`}>
-                  <div className="flex items-center gap-4">
-                    <div className={`p-3 rounded-2xl ${perms.canSyncShipments ? 'bg-emerald-500 text-white' : 'bg-slate-100 text-slate-400'}`}><FileUp size={24}/></div>
-                    <div><div className="text-lg font-black text-slate-900">同步上傳功能</div><div className="text-xs text-slate-500">允許此使用者導入 Excel 並同步出貨資料至雲端資料庫。</div></div>
-                  </div>
-                  {perms.canSyncShipments ? <Unlock className="text-emerald-500" /> : <Lock className="text-slate-300" />}
-                </div>
-              </div>
-            )}
-
-            {activeTab === 'SERIES' && (
-              <div className="space-y-4 animate-fade-in">
-                <h3 className="text-sm font-black uppercase tracking-widest text-slate-400 mb-6">按產品系列切換權限</h3>
-                <div className="grid grid-cols-1 gap-3">
-                  {seriesList.map(s => {
-                    const name = t(s);
-                    const access = perms.seriesAccess[name] || { canEdit: false, canSync: false };
-                    return (
-                      <div key={name} className="flex items-center justify-between p-5 bg-white border-2 border-slate-50 rounded-2xl hover:border-slate-200 transition-all">
-                        <span className="font-bold text-slate-700">{name}</span>
-                        <div className="flex gap-2">
-                          <button onClick={() => toggleSeries(name, 'canEdit')} className={`px-4 py-1.5 rounded-lg text-[10px] font-black uppercase transition-all ${access.canEdit ? 'bg-slate-900 text-white shadow-md' : 'bg-slate-100 text-slate-400'}`}>編輯</button>
-                          <button onClick={() => toggleSeries(name, 'canSync')} className={`px-4 py-1.5 rounded-lg text-[10px] font-black uppercase transition-all ${access.canSync ? 'bg-indigo-600 text-white shadow-md' : 'bg-slate-100 text-slate-400'}`}>同步</button>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-
-            {activeTab === 'SKU' && (
-              <div className="space-y-8 animate-fade-in">
-                <h3 className="text-sm font-black uppercase tracking-widest text-slate-400">單一 SKU 三大功能模組權限</h3>
-                <div className="space-y-6">
-                  {products.map(p => {
-                    const sku = p.sku;
-                    const access = perms.skuAccess[sku] || {
-                      design: { canEdit: false, canSync: false },
-                      ergo: { canEdit: false, canSync: false },
-                      durability: { canEdit: false, canSync: false }
-                    };
-                    return (
-                      <div key={sku} className="bg-slate-50 rounded-3xl p-6 border border-slate-100">
-                        <div className="flex items-center gap-3 mb-6 border-b border-slate-200 pb-4">
-                          <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center text-slate-900 font-mono text-xs font-black shadow-sm">{sku}</div>
-                          <div><div className="text-sm font-black text-slate-900">{t(p.modelName)}</div><div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{t(p.series)}</div></div>
-                        </div>
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                          {[
-                            { id: 'design', label: 'Design & Eco', color: 'text-rose-600', icon: <GitCommit size={12}/> },
-                            { id: 'ergo', label: 'Ergonomics', color: 'text-indigo-600', icon: <UserCheck size={12}/> },
-                            { id: 'durability', label: 'Durability', color: 'text-emerald-600', icon: <Activity size={12}/> }
-                          ].map(mod => (
-                            <div key={mod.id} className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm">
-                              <div className={`text-[10px] font-black uppercase tracking-widest mb-3 flex items-center gap-2 ${mod.color}`}>{mod.icon} {mod.label}</div>
-                              <div className="flex gap-2">
-                                <button onClick={() => toggleSku(sku, mod.id as any, 'canEdit')} className={`flex-1 py-1.5 rounded-lg text-[9px] font-black uppercase transition-all ${access[mod.id as keyof typeof access].canEdit ? 'bg-slate-900 text-white' : 'bg-slate-50 text-slate-300'}`}>編輯</button>
-                                <button onClick={() => toggleSku(sku, mod.id as any, 'canSync')} className={`flex-1 py-1.5 rounded-lg text-[9px] font-black uppercase transition-all ${access[mod.id as keyof typeof access].canSync ? 'bg-indigo-600 text-white' : 'bg-slate-50 text-slate-300'}`}>同步</button>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-          </main>
-        </div>
-
-        <footer className="p-8 border-t border-slate-100 bg-white sticky bottom-0 flex gap-4">
-          <button onClick={onClose} className="flex-1 py-4 text-slate-400 font-black uppercase tracking-widest hover:bg-slate-50 rounded-2xl transition-all">取消</button>
-          <button onClick={() => onSave(perms)} className="flex-1 py-4 bg-slate-900 text-white font-black uppercase tracking-widest rounded-2xl hover:bg-slate-800 transition-all shadow-2xl shadow-slate-900/30">儲存權限配置</button>
-        </footer>
-      </div>
+      {isLogBrowserOpen && (
+          <AuditLogBrowserModal 
+            isOpen={isLogBrowserOpen}
+            onClose={() => setIsLogBrowserOpen(false)}
+            logs={currentAppState.auditLogs || []}
+            onDeleteAll={() => { if(window.confirm('確定要清空所有追蹤日誌嗎？此動作無法復原。')) { onDeleteAuditLogs(); setIsLogBrowserOpen(false); } }}
+            onExport={handleExportLogs}
+          />
+      )}
     </div>
   );
 };
@@ -525,6 +492,173 @@ const UserAccountModal: React.FC<{
       </div>
     </div>
   );
+};
+
+/**
+ * REFACTORED BROWSER MODAL FOR AUDIT LOGS
+ * Provides a dedicated interface for browsing, filtering, and managing session logs.
+ */
+const AuditLogBrowserModal: React.FC<{
+    isOpen: boolean;
+    onClose: () => void;
+    logs: AuditLog[];
+    onDeleteAll: () => void;
+    onExport: () => void;
+}> = ({ isOpen, onClose, logs, onDeleteAll, onExport }) => {
+    const [searchTerm, setSearchTerm] = useState('');
+    const [filterStatus, setFilterStatus] = useState<'ALL' | 'ACTIVE' | 'COMPLETED'>('ALL');
+
+    const filteredLogs = useMemo(() => {
+        return [...logs]
+            .reverse()
+            .filter(log => {
+                const matchesSearch = log.username.toLowerCase().includes(searchTerm.toLowerCase());
+                const matchesFilter = 
+                    filterStatus === 'ALL' || 
+                    (filterStatus === 'ACTIVE' && !log.logoutTime) || 
+                    (filterStatus === 'COMPLETED' && log.logoutTime);
+                return matchesSearch && matchesFilter;
+            });
+    }, [logs, searchTerm, filterStatus]);
+
+    // Fix: Calculate activeSessions within the modal scope to resolve 'Cannot find name' error
+    const activeSessions = useMemo(() => logs.filter(l => !l.logoutTime).length, [logs]);
+
+    if (!isOpen) return null;
+
+    return (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-0 md:p-8 bg-slate-900/60 backdrop-blur-md animate-fade-in">
+            <div className="bg-white md:rounded-[2.5rem] shadow-2xl w-full h-full max-w-6xl overflow-hidden flex flex-col animate-slide-up">
+                {/* Header */}
+                <header className="p-8 border-b border-slate-100 flex flex-col md:flex-row md:items-center justify-between gap-6 bg-white sticky top-0 z-10">
+                    <div>
+                        <div className="flex items-center gap-3 mb-1">
+                            <div className="p-2 bg-indigo-600 text-white rounded-xl shadow-lg shadow-indigo-600/20"><History size={24} /></div>
+                            <h2 className="text-3xl font-black text-slate-900 tracking-tight uppercase">完整帳號日誌歷史</h2>
+                        </div>
+                        <p className="text-slate-400 font-bold text-xs uppercase tracking-[0.2em]">{logs.length} Total Sessions Recorded</p>
+                    </div>
+                    
+                    <div className="flex items-center gap-4">
+                        <div className="flex gap-2">
+                            <button onClick={onExport} className="p-3 bg-slate-50 hover:bg-slate-100 text-slate-600 rounded-2xl transition-all border border-slate-100" title="Export Logs"><Download size={20}/></button>
+                            <button onClick={onDeleteAll} className="p-3 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded-2xl transition-all border border-rose-100" title="Purge History"><Trash2 size={20}/></button>
+                        </div>
+                        <div className="h-10 w-px bg-slate-100 hidden md:block mx-2" />
+                        <button onClick={onClose} className="p-3 bg-slate-900 text-white rounded-2xl hover:bg-slate-800 transition-all shadow-xl shadow-slate-900/20"><X size={24} strokeWidth={3} /></button>
+                    </div>
+                </header>
+
+                {/* Filter Bar */}
+                <div className="px-8 py-6 bg-slate-50/50 border-b border-slate-100 flex flex-col md:flex-row items-center gap-6">
+                    <div className="relative flex-1 w-full">
+                        <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
+                        <input 
+                            type="text" 
+                            placeholder="搜尋帳號名稱..." 
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                            className="w-full pl-12 pr-4 py-3 bg-white border-2 border-slate-100 rounded-2xl text-sm font-bold focus:border-indigo-500 outline-none transition-all shadow-sm"
+                        />
+                    </div>
+                    <div className="flex bg-white p-1.5 rounded-2xl shadow-sm border border-slate-100 shrink-0">
+                        {['ALL', 'ACTIVE', 'COMPLETED'].map((status) => (
+                            <button 
+                                key={status}
+                                onClick={() => setFilterStatus(status as any)}
+                                className={`px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${
+                                    filterStatus === status 
+                                    ? 'bg-indigo-600 text-white shadow-lg' 
+                                    : 'text-slate-400 hover:text-slate-600'
+                                }`}
+                            >
+                                {status}
+                            </button>
+                        ))}
+                    </div>
+                </div>
+
+                {/* Main Content Area */}
+                <div className="flex-1 overflow-hidden relative flex flex-col">
+                    <div className="flex-1 overflow-y-auto custom-scrollbar p-8">
+                        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                            {filteredLogs.length > 0 ? filteredLogs.map((log) => (
+                                <div key={log.id} className="bg-white rounded-3xl border-2 border-slate-50 p-6 hover:border-indigo-100 hover:shadow-xl hover:shadow-indigo-500/5 transition-all group relative overflow-hidden">
+                                    {/* Status Indicator */}
+                                    <div className={`absolute top-0 right-0 w-16 h-1 bg-gradient-to-l ${!log.logoutTime ? 'from-emerald-500 to-emerald-300' : 'from-slate-200 to-slate-100'}`} />
+                                    
+                                    <div className="flex justify-between items-start mb-6">
+                                        <div className="flex items-center gap-4">
+                                            <div className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-colors shadow-sm ${!log.logoutTime ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-100 text-slate-400'}`}>
+                                                <UserRound size={24} />
+                                            </div>
+                                            <div>
+                                                <h3 className="font-black text-slate-900 uppercase tracking-tight text-lg">{log.username}</h3>
+                                                <div className="flex items-center gap-1.5 mt-0.5">
+                                                    {!log.logoutTime ? (
+                                                        <span className="flex items-center gap-1 text-[10px] font-black text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-md uppercase">
+                                                            <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                                                            Currently Active
+                                                        </span>
+                                                    ) : (
+                                                        <span className="text-[10px] font-black text-slate-400 bg-slate-50 px-2 py-0.5 rounded-md uppercase">Session Ended</span>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div className="space-y-4">
+                                        <div className="grid grid-cols-2 gap-4 border-t border-slate-50 pt-4">
+                                            <div>
+                                                <span className="block text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">Login Time</span>
+                                                <span className="text-[11px] font-bold text-slate-700 leading-tight">{log.loginTime}</span>
+                                            </div>
+                                            <div>
+                                                <span className="block text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">Logout Time</span>
+                                                <span className="text-[11px] font-bold text-slate-700 leading-tight">{log.logoutTime || '-'}</span>
+                                            </div>
+                                        </div>
+
+                                        <div className="bg-slate-50 rounded-2xl p-4 flex items-center justify-between border border-slate-100 shadow-inner">
+                                            <div className="flex items-center gap-2">
+                                                <Clock size={16} className="text-indigo-400" />
+                                                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Session Duration</span>
+                                            </div>
+                                            <span className="text-sm font-black text-indigo-600 font-mono">
+                                                {log.durationMinutes ? `${log.durationMinutes}m` : (log.logoutTime ? '< 1m' : 'Live')}
+                                            </span>
+                                        </div>
+                                    </div>
+                                    
+                                    <div className="mt-6 pt-4 border-t border-slate-50 opacity-0 group-hover:opacity-100 transition-opacity flex justify-end">
+                                        <div className="text-[8px] font-black text-slate-300 uppercase tracking-tighter">Session ID: {log.id}</div>
+                                    </div>
+                                </div>
+                            )) : (
+                                <div className="col-span-full flex flex-col items-center justify-center py-32 text-slate-300 space-y-4">
+                                    <div className="p-8 bg-slate-50 rounded-full"><Database size={64} className="opacity-20" /></div>
+                                    <p className="font-black text-lg uppercase tracking-widest">找不到符合條件的日誌</p>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+
+                {/* Footer Footer Info */}
+                <footer className="p-6 bg-slate-900 text-white flex flex-col sm:flex-row items-center justify-between gap-4">
+                    <div className="flex items-center gap-4">
+                        <div className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Analytics Insights</div>
+                        <div className="flex gap-4">
+                             <div className="flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]" /><span className="text-xs font-bold">{activeSessions} Active</span></div>
+                             <div className="flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-indigo-500" /><span className="text-xs font-bold">{logs.length} Total Logs</span></div>
+                        </div>
+                    </div>
+                    <div className="text-[10px] font-bold text-slate-500 uppercase italic">Records are synchronized with cloud workspace automatically.</div>
+                </footer>
+            </div>
+        </div>
+    );
 };
 
 export default Settings;
