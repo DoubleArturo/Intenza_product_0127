@@ -14,16 +14,19 @@ import GeminiInsight from '../components/GeminiInsight';
 import { LanguageContext } from '../App';
 import { api } from '../services/api';
 
+// Helper to determine if a URL is a video
 const isVideo = (url: string) => {
     if (!url) return false;
     return url.startsWith('data:video') || url.match(/\.(mp4|webm|ogg)$/i);
 };
 
+// Helper to format version string consistently with Analytics
 const formatVersion = (v: string) => {
     const clean = (v || '1.0').toUpperCase().replace('V', '');
     return `V${clean}`;
 };
 
+// Define the interface for ProductDetail props
 interface ProductDetailProps {
   products: ProductModel[];
   shipments: ShipmentData[];
@@ -34,19 +37,17 @@ interface ProductDetailProps {
   onUpdateProduct: (p: ProductModel) => Promise<void>;
   showAiInsights: boolean;
   evaluationModalYOffset?: number;
-  tabMap: Record<string, 'DESIGN' | 'ERGO' | 'LIFE'>;
-  onTabChange: (id: string, tab: 'DESIGN' | 'ERGO' | 'LIFE') => void;
 }
 
-const ProductDetail: React.FC<ProductDetailProps> = ({ products, shipments = [], testers = [], testerGroups = [], userRole, currentUser, onUpdateProduct, showAiInsights, evaluationModalYOffset = 100, tabMap, onTabChange }) => {
+// Main Product Detail Page Component
+const ProductDetail: React.FC<ProductDetailProps> = ({ products, shipments = [], testers = [], testerGroups = [], userRole, currentUser, onUpdateProduct, showAiInsights, evaluationModalYOffset = 100 }) => {
   const { id } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
   const { t, language } = useContext(LanguageContext);
 
   const product = products.find(p => p.id === id);
-  const activeTab = (id && tabMap[id]) || location.state?.activeTab || 'DESIGN';
-  const setActiveTab = (tab: 'DESIGN' | 'ERGO' | 'LIFE') => { if (id) onTabChange(id, tab); };
+  const [activeTab, setActiveTab] = useState<'DESIGN' | 'ERGO' | 'LIFE'>(location.state?.activeTab || 'DESIGN');
   
   const [isEcoModalOpen, setIsEcoModalOpen] = useState(false);
   const [editingEco, setEditingEco] = useState<DesignChange | null>(null);
@@ -55,27 +56,31 @@ const ProductDetail: React.FC<ProductDetailProps> = ({ products, shipments = [],
   const [editingTest, setEditingTest] = useState<TestResult | null>(null);
   
   const [isNoShipmentModalOpen, setIsNoShipmentModalOpen] = useState(false);
-  const [selectedVersionForModal] = useState('');
+  const [selectedVersionForModal, setSelectedVersionForModal] = useState('');
 
   const ergoSectionRef = useRef<HTMLDivElement>(null);
   const [highlightedFeedback, setHighlightedFeedback] = useState<{projectId?: string, taskId?: string, testerId?: string, feedbackId?: string} | null>(null);
   const [isFeedbackPanelOpen, setIsFeedbackPanelOpen] = useState(false);
 
-  const [lightboxState, setLightboxState] = useState<{isOpen: boolean, ecoId?: string, testId?: string, feedbackId?: string, testerId?: string, taskId?: string, projectId?: string, imgUrl?: string, imgIndex?: number, category?: string} | null>(null);
+  // Lightbox state
+  const [lightboxState, setLightboxState] = useState<{isOpen: boolean, ecoId?: string, testId?: string, feedbackId?: string, testerId?: string, taskId?: string, projectId?: string, imgUrl?: string, imgIndex?: number} | null>(null);
 
   const isViewer = userRole === 'viewer';
   const isAdmin = userRole === 'admin';
 
+  // Helper to check granular module permissions
   const checkPerm = (module: 'design' | 'ergo' | 'durability') => {
     if (isAdmin) return true;
     if (isViewer) return false;
     if (!product) return false;
     
     const perms = currentUser?.granularPermissions;
-    if (!perms) return userRole === 'admin' || userRole === 'user' || userRole === 'uploader';
+    if (!perms) return userRole === 'admin' || userRole === 'user' || userRole === 'uploader'; // Compatibility
     
+    // Check Series Permission First
     if (perms.allowedSeries.includes(t(product.series))) return true;
     
+    // Check SKU module specifically
     const skuPerm = perms.skuPermissions[product.sku];
     return skuPerm?.[module] || false;
   };
@@ -138,6 +143,7 @@ const ProductDetail: React.FC<ProductDetailProps> = ({ products, shipments = [],
 
   if (!product) return <div className="p-10 text-center text-slate-500">Product not found in registry.</div>;
 
+  // ECO Handlers
   const handleOpenEcoModal = (eco: DesignChange | null = null) => {
     if (isViewer || !checkPerm('design')) return;
     setEditingEco(eco);
@@ -254,6 +260,7 @@ const ProductDetail: React.FC<ProductDetailProps> = ({ products, shipments = [],
     }
   };
 
+  // Test Handlers
   const handleOpenTestModal = (test: TestResult | null = null) => {
     if (isViewer || !checkPerm('durability')) return;
     setEditingTest(test);
@@ -304,6 +311,7 @@ const ProductDetail: React.FC<ProductDetailProps> = ({ products, shipments = [],
     onUpdateProduct({ ...product, currentVersion: version });
   };
 
+  // Source navigation helper
   const navigateToSource = (source: any) => {
       setActiveTab('ERGO');
       if (source.feedbackId) {
@@ -323,10 +331,7 @@ const ProductDetail: React.FC<ProductDetailProps> = ({ products, shipments = [],
     <div className="min-h-screen bg-slate-50/50 w-full">
       <div className="bg-white border-b border-slate-200 sticky top-0 z-20 animate-fade-in">
         <div className="w-full px-8 py-6">
-          <button 
-            onClick={() => window.history.state && window.history.state.idx > 0 ? navigate(-1) : navigate('/')} 
-            className="flex items-center text-sm text-slate-500 hover:text-slate-800 mb-4 transition-colors"
-          >
+          <button onClick={() => navigate('/')} className="flex items-center text-sm text-slate-500 hover:text-slate-800 mb-4 transition-colors">
             <ArrowLeft size={16} className="mr-1" /> Back to Portfolio
           </button>
           <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
@@ -456,6 +461,7 @@ const ProductDetail: React.FC<ProductDetailProps> = ({ products, shipments = [],
       {isTestModalOpen && <TestModal isOpen={isTestModalOpen} onClose={handleCloseTestModal} onSave={handleSaveTest} test={editingTest} productVersions={productVersions}/>}
       {isNoShipmentModalOpen && <NoShipmentModal isOpen={isNoShipmentModalOpen} onClose={() => setIsNoShipmentModalOpen(false)} version={selectedVersionForModal} />}
       
+      {/* Lightbox Modal */}
       {lightboxState && lightboxState.isOpen && (
         <ImageLightbox 
             imgUrl={lightboxState.imgUrl!} 
@@ -482,6 +488,8 @@ const ProductDetail: React.FC<ProductDetailProps> = ({ products, shipments = [],
     </div>
   );
 };
+
+// --- Sub-components & Helper Logic ---
 
 const TabButton = ({ active, onClick, icon, label }: any) => (
   <button onClick={onClick} className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-all ${active ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-200/50'}`}>
@@ -562,7 +570,7 @@ const LifeSection = ({ product, userRole, canEdit, onAddTest, onEditTest, onDele
             </div>
             {test.attachmentUrls && test.attachmentUrls.length > 0 && (
                 <div className="flex gap-1 mb-2">
-                    {test.attachmentUrls.map((url: string, i: number) => (
+                    {test.attachmentUrls.map((url, i) => (
                         <div 
                           key={i} 
                           onClick={() => onOpenLightbox(test.id, url, i)}
@@ -593,7 +601,7 @@ const LifeSection = ({ product, userRole, canEdit, onAddTest, onEditTest, onDele
                 </div>
                 {test.attachmentUrls && test.attachmentUrls.length > 0 && (
                     <div className="mt-4 flex gap-2 overflow-x-auto pb-2 pointer-events-auto">
-                        {test.attachmentUrls.map((url: string, i: number) => (
+                        {test.attachmentUrls.map((url, i) => (
                             <div key={i} className="relative group/overlay-img flex-shrink-0" onClick={() => onOpenLightbox(test.id, url, i)}>
                                 <img src={url} className="h-16 w-16 rounded-lg object-cover border border-slate-200 shadow-sm cursor-pointer" />
                                 <div className="absolute inset-0 bg-black/20 opacity-0 group-hover/overlay-img:opacity-100 rounded-lg flex items-center justify-center transition-opacity">
@@ -620,7 +628,6 @@ const LifeSection = ({ product, userRole, canEdit, onAddTest, onEditTest, onDele
   );
 };
 
-// Fix: Complete truncated ProjectCard component
 const ProjectCard = ({ project, testers, product, onOpenAddTask, onEditTaskName, onDeleteTask, onOpenTaskResults, onDeleteProject, onEditProject, categoryTranslations, onStatusClick, onEditNgReason, highlightedFeedback, userRole, canEdit, onOpenLightbox }: any) => {
     const { t, language } = useContext(LanguageContext);
     const categories: ErgoProjectCategory[] = ['Resistance profile', 'Experience', 'Stroke', 'Other Suggestion'];
@@ -632,7 +639,7 @@ const ProjectCard = ({ project, testers, product, onOpenAddTask, onEditTaskName,
                     <h3 className="text-lg font-bold text-slate-900">{t(project.name)}</h3>
                     <div className="flex items-center gap-3 mt-1">
                         <span className="text-xs text-slate-400 flex items-center gap-1"><Calendar size={12}/> {project.date}</span>
-                        {project.version && <span className="text-xs font-bold text-intenza-600 bg-intenza-50 arrow-2 py-0.5 rounded border border-intenza-100 ml-2">{project.version}</span>}
+                        {project.version && <span className="text-xs font-bold text-intenza-600 bg-intenza-50 px-2 py-0.5 rounded border border-intenza-100 ml-2">{project.version}</span>}
                         <span className="text-xs text-slate-400 flex items-center gap-1"><Users size={12}/> {project.testerIds.length} Testers</span>
                     </div>
                 </div>
@@ -662,448 +669,1222 @@ const ProjectCard = ({ project, testers, product, onOpenAddTask, onEditTaskName,
                                               <button onClick={() => onEditTaskName(project.id, cat, task.id, t(task.name))} className="opacity-0 group-hover/task:opacity-100 p-1 text-slate-400 hover:text-slate-600"><Pencil size={12}/></button>
                                             )}
                                         </div>
-                                        <div className="flex items-center gap-2">
-                                            {!isViewer && (
-                                              <>
-                                                <button onClick={() => onOpenTaskResults(cat, task.id)} className="text-xs font-bold text-indigo-600 bg-indigo-50 px-3 py-1 rounded-lg border border-indigo-100 hover:bg-indigo-100 transition-colors">Edit Results</button>
-                                                <button onClick={() => { if(window.confirm('Delete this task?')) onDeleteTask(project.id, cat, task.id); }} className="p-1 text-slate-400 hover:text-red-500"><Trash2 size={14}/></button>
-                                              </>
-                                            )}
-                                        </div>
+                                        {!isViewer && (
+                                          <div className="flex items-center gap-2">
+                                              <button onClick={() => onOpenTaskResults(cat, task.id)} className="text-[10px] font-bold bg-white border border-slate-200 text-slate-600 px-3 py-1 rounded-lg hover:border-slate-400 transition-all">Set Pass/NG</button>
+                                              <button onClick={() => { if(window.confirm('Delete task?')) onDeleteTask(project.id, cat, task.id); }} className="opacity-0 group-hover/task:opacity-100 p-1 text-slate-400 hover:text-red-500"><Trash2 size={12}/></button>
+                                          </div>
+                                        )}
                                     </div>
-                                    <div className="flex flex-wrap gap-2">
-                                        {task.passTesterIds.map((tid: string) => {
-                                            const tester = testers.find((t: any) => t.id === tid);
-                                            return tester ? (
-                                                <div key={tid} className="flex items-center gap-1.5 bg-emerald-50 border border-emerald-100 px-2 py-1 rounded-lg shadow-sm">
-                                                    <img src={tester.imageUrl} className="w-4 h-4 rounded-full object-cover" />
-                                                    <span className="text-[10px] font-bold text-emerald-700">{tester.name}</span>
-                                                    <Check size={10} className="text-emerald-500" />
-                                                </div>
-                                            ) : null;
-                                        })}
-                                        {task.ngReasons.map((ng: NgReason) => {
-                                            const tester = testers.find((t: any) => t.id === ng.testerId);
-                                            const isHighlighted = highlightedFeedback?.projectId === project.id && highlightedFeedback?.taskId === task.id && highlightedFeedback?.testerId === ng.testerId;
-                                            return tester ? (
-                                                <div 
-                                                  key={ng.testerId} 
-                                                  data-feedback-id={`${project.id}-${task.id}-${ng.testerId}`}
-                                                  className={`flex flex-col gap-1 p-2 rounded-xl border-2 transition-all cursor-pointer ${isHighlighted ? 'bg-amber-100 border-amber-500 shadow-lg scale-105' : 'bg-rose-50 border-rose-100 hover:bg-white hover:border-rose-200'}`}
-                                                  onClick={() => onEditNgReason(project.id, cat, task.id, ng)}
-                                                >
-                                                    <div className="flex items-center gap-1.5">
-                                                        <img src={tester.imageUrl} className="w-4 h-4 rounded-full object-cover" />
-                                                        <span className="text-[10px] font-black text-rose-700">{tester.name}</span>
-                                                        <AlertTriangle size={10} className="text-rose-500" />
+                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                                        {project.testerIds.map((tid: string) => {
+                                            const tester = testers.find((ts: any) => ts.id === tid);
+                                            const isPass = task.passTesterIds.includes(tid);
+                                            const ngReason = task.ngReasons.find((r: any) => r.testerId === tid);
+                                            const isHighlighted = highlightedFeedback?.projectId === project.id && highlightedFeedback?.taskId === task.id && highlightedFeedback?.testerId === tid;
+                                            const linkedEco = product.designHistory.find((eco: DesignChange) => eco.id === ngReason?.linkedEcoId);
+                                            
+                                            // Determine styles based on decision status
+                                            const status = ngReason?.decisionStatus || NgDecisionStatus.PENDING;
+                                            let statusStyle = ngDecisionStyles[status];
+                                            if (linkedEco) {
+                                                statusStyle = 'bg-amber-50 text-amber-700 border-amber-300 shadow-sm font-black';
+                                            }
+
+                                            return (
+                                                <div key={tid} data-feedback-id={`${project.id}-${task.id}-${tid}`} className={`p-3 rounded-xl border transition-all ${isPass ? 'bg-white border-slate-100 opacity-60' : isHighlighted ? 'bg-intenza-50 border-intenza-400 shadow-md ring-2 ring-intenza-500/10' : 'bg-white border-slate-200 shadow-sm'}`}>
+                                                    <div className="flex items-center gap-3 mb-2">
+                                                        <div className="w-8 h-8 rounded-full overflow-hidden bg-slate-200"><img src={tester?.imageUrl} className="w-full h-full object-cover" /></div>
+                                                        <div className="flex-1 min-w-0">
+                                                            <div className="text-[10px] font-bold text-slate-900 truncate">{tester?.name}</div>
+                                                            <div className={`text-[8px] font-black uppercase ${isPass ? 'text-emerald-500' : 'text-rose-500'}`}>{isPass ? 'Pass' : 'NG'}</div>
+                                                        </div>
                                                     </div>
-                                                    <div className="text-[9px] text-rose-600 font-bold line-clamp-1 max-w-[120px]">{t(ng.reason)}</div>
-                                                    {ng.decisionStatus && (
-                                                      <div className={`mt-1 text-[8px] font-black px-1.5 py-0.5 rounded-md self-start border ${ngDecisionStyles[ng.decisionStatus]}`}>
-                                                          {ngDecisionTranslations[ng.decisionStatus]}
-                                                      </div>
+                                                    {!isPass && (
+                                                        <div className="space-y-2">
+                                                            <p className="text-[10px] text-slate-600 line-clamp-2 min-h-[1.5rem] italic">"{ngReason?.reason ? t(ngReason.reason) : 'No description'}"</p>
+                                                            {ngReason?.attachmentUrls && ngReason.attachmentUrls.length > 0 && (
+                                                                <div className="flex flex-wrap gap-1 mt-1">
+                                                                    {ngReason.attachmentUrls.map((url: string, i: number) => (
+                                                                        <div key={i} onClick={() => onOpenLightbox('ng', tid, url, i, { projectId: project.id, category: cat, taskId: task.id })} className="w-6 h-6 rounded border border-slate-200 overflow-hidden cursor-pointer hover:opacity-80">
+                                                                            <img src={url} className="w-full h-full object-cover" />
+                                                                        </div>
+                                                                    ))}
+                                                                </div>
+                                                            )}
+                                                            <div className="flex items-center justify-between pt-2 border-t border-slate-50">
+                                                                {!isViewer && (
+                                                                  <button onClick={() => onEditNgReason(cat, task.id, tid)} className="text-[9px] font-bold text-intenza-600 hover:underline">Edit Reason</button>
+                                                                )}
+                                                                <button 
+                                                                    onClick={() => !isViewer && onStatusClick(project.id, cat, task.id, tid, status, ngReason?.linkedEcoId)} 
+                                                                    disabled={isViewer} 
+                                                                    className={`px-2 py-1 rounded text-[8px] font-black uppercase border transition-all ${statusStyle} ${isViewer ? 'cursor-default' : 'hover:scale-105 active:scale-95'}`}
+                                                                >
+                                                                    {linkedEco ? linkedEco.ecoNumber : ngDecisionTranslations[status]}
+                                                                </button>
+                                                            </div>
+                                                        </div>
                                                     )}
                                                 </div>
-                                            ) : null;
+                                            );
                                         })}
                                     </div>
                                 </div>
                             ))}
-                            {(!project.tasks[cat] || project.tasks[cat].length === 0) && (
-                                <p className="text-[11px] text-slate-400 italic">No tasks added to this category.</p>
-                            )}
                         </div>
                     </div>
                 ))}
-            </div>
-            <div className="px-6 py-4 bg-slate-50 border-t border-slate-100 flex items-center justify-between">
-                <div className="flex items-center gap-4">
-                   <div className="flex items-center gap-1.5">
-                       <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Decision</span>
-                       <button 
-                         onClick={() => !isViewer && onStatusClick()}
-                         className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border transition-all ${
-                            project.overallStatus === ProjectOverallStatus.PASS ? 'bg-emerald-500 text-white border-emerald-400 shadow-emerald-500/20 shadow-lg' :
-                            project.overallStatus === ProjectOverallStatus.NG ? 'bg-rose-500 text-white border-rose-400 shadow-rose-500/20 shadow-lg' :
-                            'bg-white text-slate-400 border-slate-200'
-                         }`}
-                       >
-                           {project.overallStatus}
-                       </button>
-                   </div>
-                </div>
-                <div className="flex -space-x-2 overflow-hidden">
-                    {project.testerIds.slice(0, 5).map((tid: string) => {
-                        const tester = testers.find((t: any) => t.id === tid);
-                        return tester ? <img key={tid} src={tester.imageUrl} className="inline-block h-6 w-6 rounded-full ring-2 ring-white object-cover" /> : null;
-                    })}
-                    {project.testerIds.length > 5 && <div className="flex items-center justify-center h-6 w-6 rounded-full bg-slate-200 ring-2 ring-white text-[8px] font-bold text-slate-500">+{project.testerIds.length - 5}</div>}
-                </div>
             </div>
         </div>
     );
 };
 
-// Fix: Add missing DesignSection component and resolve name errors
-const DesignSection = ({ product, shipments, userRole, canEdit, onAddEco, onEditEco, onDeleteEco, onDeleteVersion, onSetCurrentVersion, onNavigateToSource, onOpenLightbox, onNoShipment }: any) => {
-  /* Fix: Destructure language from context and initialize navigate */
+const CustomerFeedbackCard = ({ feedback, onStatusClick, onEdit, onDelete, product, isHighlighted, userRole, canEdit, onOpenLightbox }: any) => {
+    const { t } = useContext(LanguageContext);
+    const linkedEco = product.designHistory.find((eco: DesignChange) => eco.id === feedback.linkedEcoId);
+    const isViewer = userRole === 'viewer' || !canEdit;
+    
+    // Status Logic
+    const status = feedback.status || 'PENDING';
+    const isLinked = !!linkedEco;
+
+    let statusStyle = 'bg-slate-100 text-slate-500 border-slate-200';
+    if (isLinked) {
+        statusStyle = 'bg-amber-50 text-amber-700 border-amber-300 font-black';
+    } else if (status === 'DISCUSSION') {
+        statusStyle = 'bg-purple-50 text-purple-600 border-purple-200 font-bold';
+    } else if (status === 'IGNORED') {
+        statusStyle = 'bg-zinc-100 text-zinc-400 border-zinc-200';
+    }
+
+    return (
+        <div data-customer-feedback-id={feedback.id} className={`rounded-xl border p-4 shadow-sm group transition-all ${isHighlighted ? 'bg-intenza-50 border-intenza-400 shadow-md ring-2 ring-intenza-500/10 scale-[1.02]' : 'bg-white border-slate-200 hover:border-slate-300'}`}>
+            <div className="flex justify-between items-start mb-2">
+                <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">{feedback.date}</span>
+                {!isViewer && (
+                  <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <button onClick={onEdit} className="p-1 text-slate-400 hover:text-slate-600"><Pencil size={12}/></button>
+                      <button onClick={onDelete} className="p-1 text-slate-400 hover:text-red-500"><Trash2 size={12}/></button>
+                  </div>
+                )}
+            </div>
+            <p className="text-sm text-slate-800 font-medium leading-relaxed mb-4">{t(feedback.content)}</p>
+            {feedback.attachmentUrls && feedback.attachmentUrls.length > 0 && (
+                <div className="flex flex-wrap gap-2 mb-4">
+                    {feedback.attachmentUrls.map((url: string, i: number) => (
+                        <div key={i} onClick={() => onOpenLightbox('feedback', feedback.id, url, i)} className="w-10 h-10 rounded border border-slate-200 overflow-hidden cursor-pointer hover:opacity-80">
+                            <img src={url} className="w-full h-full object-cover" />
+                        </div>
+                    ))}
+                </div>
+            )}
+            <div className="flex items-center justify-between border-t border-slate-50 pt-3">
+                <div className="flex items-center gap-1 text-[10px] text-slate-400 font-bold uppercase">
+                    <User size={10}/> {feedback.source}
+                </div>
+                <button 
+                    onClick={() => !isViewer && onStatusClick()} 
+                    disabled={isViewer} 
+                    className={`px-2 py-1 rounded text-[8px] font-black uppercase border transition-all ${statusStyle} ${isViewer ? 'cursor-default' : 'hover:scale-105 active:scale-95'}`}
+                >
+                    {isLinked ? linkedEco.ecoNumber : status}
+                </button>
+            </div>
+        </div>
+    );
+};
+
+const DesignSection = ({ product, shipments, userRole, canEdit, onAddEco, onEditEco, onDeleteEco, onDeleteVersion, onSetCurrentVersion, onNoShipment, onNavigateToSource, onOpenLightbox }: any) => {
   const { t, language } = useContext(LanguageContext);
   const navigate = useNavigate();
-  const versions = useMemo(() => {
-    const vSet = new Set([product.currentVersion, ...product.designHistory.map(h => h.version)]);
-    return Array.from(vSet).sort().reverse();
-  }, [product]);
+  const isViewer = userRole === 'viewer' || !canEdit;
+  const versions = useMemo(() => Array.from(new Set([product.currentVersion, ...product.designHistory.map((h: DesignChange) => h.version)])).sort().reverse(), [product]);
+  const [selectedVersion, setSelectedVersion] = useState<string>(versions[0] || product.currentVersion);
+  
+  useEffect(() => {
+    if (versions.length > 0 && !versions.includes(selectedVersion)) setSelectedVersion(versions[0]);
+  }, [versions, selectedVersion]);
+
+  const activeChanges = useMemo(() => product.designHistory.filter((h: DesignChange) => h.version === selectedVersion), [product.designHistory, selectedVersion]);
 
   return (
-    <div className="animate-fade-in space-y-8">
-      <div className="flex items-center justify-between mb-4">
-          <h2 className="text-xl font-bold text-slate-900">Design History & Engineering Changes</h2>
-          {canEdit && (
-            <button onClick={onAddEco} className="flex items-center gap-2 text-sm bg-slate-900 text-white px-4 py-2 rounded-lg font-medium hover:bg-slate-800 transition-colors">
-              <Plus size={16} /> New ECO
-            </button>
-          )}
+    <div className="animate-fade-in">
+      <div className="flex items-center justify-between mb-6">
+        <h2 className="text-xl font-bold text-slate-900">Design Version History</h2>
+        {!isViewer && (
+          <button onClick={onAddEco} className="flex items-center gap-2 text-sm bg-slate-900 text-white px-4 py-2 rounded-lg font-medium hover:bg-slate-800 transition-colors"><Plus size={16} /> Add ECO</button>
+        )}
       </div>
+      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden min-h-[400px]">
+        <div className="flex items-center gap-8 px-6 border-b border-slate-100 overflow-x-auto bg-slate-50/50">
+          {versions.map((v: string) => (
+            <button key={v} onClick={() => setSelectedVersion(v)} className={`py-4 text-sm font-medium border-b-2 transition-all whitespace-nowrap px-2 ${selectedVersion === v ? 'border-intenza-600 text-intenza-600' : 'border-transparent text-slate-400 hover:text-slate-600 hover:border-slate-200'}`}>{v}</button>
+          ))}
+        </div>
+        <div className="p-8 bg-white">
+          <div className="flex items-center justify-between mb-8 border-b border-slate-50 pb-4">
+             <div className="flex flex-col gap-1">
+                <div className="flex items-center gap-3">
+                    <h3 className="text-2xl font-bold text-slate-800 flex items-center gap-3">
+                        {selectedVersion}
+                        <span className={`text-xs font-normal text-white px-2 py-1 rounded-md uppercase tracking-wider ${selectedVersion === product.currentVersion ? 'bg-slate-900' : 'bg-slate-400'}`}>
+                        {selectedVersion === product.currentVersion ? 'Current Production' : 'Archived Version'}
+                        </span>
+                    </h3>
+                    <button onClick={() => {
+                        const hasShip = shipments.some((s: ShipmentData) => s.sku === product.sku && formatVersion(s.version) === formatVersion(selectedVersion));
+                        if (!hasShip) { onNoShipment(selectedVersion); return; }
+                        navigate('/analytics', { state: { autoDrill: { sku: product.sku, version: selectedVersion } } });
+                    }} className="p-1.5 bg-slate-100 text-slate-500 hover:text-intenza-600 hover:bg-intenza-50 rounded-lg transition-all shadow-sm border border-slate-200" title={t({ en: 'View market distribution', zh: '檢視出貨分佈' })}><Users size={18} /></button>
+                </div>
+                {selectedVersion !== product.currentVersion && !isViewer && (
+                   <button onClick={() => onSetCurrentVersion(selectedVersion)} className="text-[11px] font-bold text-emerald-600 hover:text-emerald-700 flex items-center gap-1 w-fit mt-1"><Star size={12} fill="currentColor" /> {t({ en: 'Set as Current Production Version', zh: '設為目前的正式量產版本' })}</button>
+                )}
+             </div>
+             {!isViewer && (
+               <button onClick={() => onDeleteVersion(selectedVersion)} className="flex items-center gap-1 text-xs font-bold text-slate-400 hover:text-red-500 transition-colors px-3 py-1.5 rounded-lg hover:bg-red-50"><Trash2 size={14} /> 刪除此版本</button>
+             )}
+          </div>
+          <div className="space-y-8">
+               {activeChanges.map((change: any) => {
+                  const linkedSources = change.sourceFeedbacks || [];
+                  const ergoCount = linkedSources.filter((s: any) => s.projectId).length;
+                  const feedbackCount = linkedSources.filter((s: any) => s.feedbackId).length;
 
-      <div className="space-y-12">
-          {versions.map(v => {
-            const versionEcos = product.designHistory.filter(e => e.version === v);
-            const isLatest = v === product.currentVersion;
-            const hasShipment = shipments.some(s => s.sku === product.sku && formatVersion(s.version) === formatVersion(v));
-
-            return (
-              <div key={v} className="relative pl-8 border-l-2 border-slate-200 last:border-l-0">
-                  <div className={`absolute top-0 left-[-11px] w-5 h-5 rounded-full border-4 ${isLatest ? 'bg-intenza-600 border-intenza-100 shadow-lg shadow-intenza-600/30' : 'bg-slate-300 border-white shadow-sm'}`} />
-                  <div className="flex items-center gap-4 mb-6">
-                      <h3 className="text-2xl font-black text-slate-900 tracking-tight uppercase">Version {v}</h3>
-                      {isLatest && <span className="bg-emerald-500 text-white text-[10px] font-black px-2 py-0.5 rounded-md shadow-sm uppercase">Live</span>}
-                      {canEdit && (
-                        <div className="flex gap-1 ml-auto">
-                            {!isLatest && <button onClick={() => onSetCurrentVersion(v)} className="text-[10px] font-bold text-emerald-600 hover:bg-emerald-50 px-2 py-1 rounded transition-colors uppercase">Set as Current</button>}
-                            <button onClick={() => onDeleteVersion(v)} className="text-[10px] font-bold text-rose-500 hover:bg-rose-50 px-2 py-1 rounded transition-colors uppercase">Delete Version</button>
+                  return (
+                    <div key={change.id} className="group relative rounded-2xl transition-all hover:bg-slate-50/80 -m-4 p-4 border border-transparent hover:border-slate-100">
+                        <div className="flex flex-col md:flex-row gap-8">
+                            <div className="md:w-48 flex-shrink-0">
+                                <span className="font-mono text-sm font-black text-intenza-600 bg-intenza-50 px-2 py-1 rounded border border-intenza-100 shadow-sm">{change.ecoNumber || change.ecrNumber || 'N/A'}</span>
+                                <div className={`mt-3 px-2 py-1 rounded-md text-[10px] font-black uppercase tracking-widest w-fit border shadow-sm ${ecoStatusStyles[change.status as EcoStatus]}`}>
+                                    {ecoStatusTranslations[change.status as EcoStatus]}
+                                </div>
+                                <div className="flex flex-col gap-2 text-slate-400 text-[10px] font-bold uppercase tracking-widest mt-4">
+                                    <div className="flex items-center gap-2"><Calendar size={12} className="text-slate-300" />Issue: {change.date}</div>
+                                    {change.updatedAt && (
+                                        <div className="flex items-center gap-2 text-intenza-500 bg-intenza-50/50 px-1.5 py-0.5 rounded w-fit"><RefreshCw size={10} />Updated: {change.updatedAt}</div>
+                                    )}
+                                </div>
+                                
+                                {(ergoCount > 0 || feedbackCount > 0) && (
+                                    <div className="mt-6 pt-4 border-t border-slate-100 space-y-2">
+                                        <div className="text-[9px] font-black text-slate-300 uppercase tracking-widest">關聯來源 (點擊跳轉)</div>
+                                        {linkedSources.map((s: any, idx: number) => (
+                                            <button 
+                                                key={idx} 
+                                                onClick={() => onNavigateToSource(s)}
+                                                className={`flex items-center gap-1.5 text-[10px] font-bold p-1 rounded hover:bg-white hover:shadow-sm transition-all w-full text-left ${s.projectId ? 'text-indigo-600' : 'text-emerald-600'}`}
+                                            >
+                                                {s.projectId ? <UserCheck size={10}/> : <MessageSquare size={10}/>}
+                                                <span className="truncate">{s.projectId ? '人因評估項' : '客戶回饋'}</span>
+                                                <ChevronRight size={10} className="ml-auto opacity-40" />
+                                            </button>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                            <div className="flex-1">
+                                <h4 className="text-xl font-bold text-slate-900 mb-4 leading-snug">{t(change.description)}</h4>
+                                {change.imageUrls && change.imageUrls.length > 0 && (
+                                    <div className="mb-4 flex flex-wrap gap-3">
+                                        {change.imageUrls.map((url: string, imgIndex: number) => (
+                                            <div key={imgIndex} className="relative group/img overflow-hidden rounded-xl border border-slate-200 shadow-sm bg-slate-50">
+                                                {isVideo(url) ? (
+                                                    <video src={url} className="h-40 w-auto" />
+                                                ) : (
+                                                    <img src={url} className="h-40 w-auto object-cover" />
+                                                )}
+                                                <div 
+                                                    onClick={() => onOpenLightbox(change.id, url, imgIndex)}
+                                                    className="absolute inset-0 bg-slate-900/40 opacity-0 group-hover/img:opacity-100 transition-opacity flex items-center justify-center cursor-pointer backdrop-blur-[2px]"
+                                                >
+                                                    <Maximize2 size={24} className="text-white drop-shadow-md" />
+                                                </div>
+                                                {change.imageCaptions?.[imgIndex] && (
+                                                    <div className="absolute bottom-0 inset-x-0 p-2 bg-black/60 backdrop-blur-md text-white text-[10px] font-bold truncate">
+                                                        {change.imageCaptions[imgIndex]}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
                         </div>
-                      )}
-                  </div>
-                  
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    {versionEcos.map(eco => (
-                      <div key={eco.id} className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition-shadow relative group">
-                        <div className="flex justify-between items-start mb-4">
-                          <span className={`px-2 py-0.5 rounded text-[10px] font-black uppercase border ${ecoStatusStyles[eco.status]}`}>
-                            {language === 'zh' ? ecoStatusTranslations[eco.status] : eco.status}
-                          </span>
-                          <span className="text-xs font-mono font-bold text-slate-400">{eco.ecoNumber}</span>
-                        </div>
-                        <h4 className="font-bold text-slate-800 mb-2 leading-tight">{t(eco.description)}</h4>
-                        <div className="flex items-center gap-2 text-xs text-slate-400 mb-4">
-                            <Calendar size={12}/> {eco.date}
-                        </div>
-                        {eco.imageUrls && eco.imageUrls.length > 0 && (
-                          <div className="flex gap-2 mb-4 overflow-x-auto pb-2">
-                            {eco.imageUrls.map((url, i) => (
-                              <div key={i} onClick={() => onOpenLightbox(eco.id, url, i)} className="w-12 h-12 rounded-lg border border-slate-100 overflow-hidden cursor-pointer hover:scale-105 transition-transform">
-                                <img src={url} className="w-full h-full object-cover" />
-                              </div>
-                            ))}
-                          </div>
+                        {!isViewer && (
+                            <div className="absolute top-4 right-4 flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                <button onClick={() => onEditEco(change)} className="p-2.5 bg-white shadow-lg rounded-xl text-slate-400 hover:text-slate-900 border border-slate-100 transition-all hover:scale-110"><Pencil size={16} /></button>
+                                <button onClick={() => onDeleteEco(change.id)} className="p-2.5 bg-white shadow-lg rounded-xl text-rose-400 hover:text-rose-600 border border-slate-100 transition-all hover:scale-110"><Trash2 size={16} /></button>
+                            </div>
                         )}
-                        {eco.sourceFeedbacks && eco.sourceFeedbacks.length > 0 && (
-                          <div className="pt-4 border-t border-slate-50 flex gap-2">
-                             {eco.sourceFeedbacks.map((source, idx) => (
-                               <button 
-                                 key={idx} 
-                                 onClick={() => onNavigateToSource(source)} 
-                                 className="flex items-center gap-1.5 px-2 py-1 bg-indigo-50 text-indigo-600 rounded-md text-[10px] font-bold border border-indigo-100 hover:bg-indigo-100 transition-colors"
-                               >
-                                 <LinkIcon size={10} /> {source.projectId ? 'Ergo Source' : 'Feedback Source'}
-                               </button>
-                             ))}
-                          </div>
-                        )}
-                        {canEdit && (
-                          <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                            <button onClick={() => onEditEco(eco)} className="p-1.5 bg-white border border-slate-100 rounded-md text-slate-500 hover:text-slate-900 shadow-sm"><Pencil size={12}/></button>
-                            <button onClick={() => onDeleteEco(eco.id)} className="p-1.5 bg-white border border-slate-100 rounded-md text-red-500 hover:text-red-700 shadow-sm"><Trash2 size={12}/></button>
-                          </div>
-                        )}
-                      </div>
-                    ))}
-                    {versionEcos.length === 0 && <p className="text-sm text-slate-400 italic">No engineering changes recorded for this version.</p>}
-                  </div>
-
-                  <div className="mt-6 flex gap-4">
-                      {hasShipment ? (
-                        <button 
-                          /* Fix: navigate is now defined via useNavigate() in DesignSection scope */
-                          onClick={() => navigate('/analytics', { state: { autoDrill: { sku: product.sku, version: v } } })}
-                          className="flex items-center gap-2 px-4 py-2 bg-slate-900 text-white rounded-xl text-xs font-black uppercase tracking-widest hover:bg-slate-800 transition-all shadow-lg shadow-slate-900/10"
-                        >
-                            <Ship size={14}/> Track Global Shipments
-                        </button>
-                      ) : (
-                        <button 
-                          onClick={() => onNoShipment(v)}
-                          className="flex items-center gap-2 px-4 py-2 bg-slate-100 text-slate-400 rounded-xl text-xs font-black uppercase tracking-widest border border-slate-200"
-                        >
-                            <Info size={14}/> No Registered Shipments
-                        </button>
-                      )}
-                  </div>
-              </div>
-            );
-          })}
+                    </div>
+                  );
+               })}
+          </div>
+        </div>
       </div>
     </div>
   );
 };
 
-// Fix: Add missing ErgoSection component
-const ErgoSection = ({ product, testers, testerGroups, onUpdateProduct, highlightedFeedback, isFeedbackPanelOpen, setIsFeedbackPanelOpen, userRole, canEdit, evaluationModalYOffset, onOpenLightbox }: any) => {
-    const { t, language } = useContext(LanguageContext);
-    const [isProjectModalOpen, setIsProjectModalOpen] = useState(false);
-    const [editingProject, setEditingProject] = useState<ErgoProject | null>(null);
-    const isViewer = userRole === 'viewer' || !canEdit;
-
-    const categoryTranslations: Record<ErgoProjectCategory, string> = {
-        'Resistance profile': '阻力曲線',
-        'Experience': '使用者體驗',
-        'Stroke': '運動軌跡',
-        'Other Suggestion': '其他建議'
-    };
+const ImageLightbox = ({ imgUrl, onClose, caption, onSaveCaption, isViewer }: any) => {
+    const [localCaption, setLocalCaption] = useState(caption);
+    const [isEditing, setIsEditing] = useState(false);
 
     return (
-        <div className="animate-fade-in space-y-6">
-            <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-4">
-                    <h2 className="text-xl font-bold text-slate-900">Ergonomics & Human Factors Verification</h2>
-                    <button onClick={() => setIsFeedbackPanelOpen(true)} className="flex items-center gap-2 px-4 py-1.5 bg-indigo-50 text-indigo-600 rounded-full text-xs font-bold border border-indigo-100 hover:bg-indigo-100 transition-all relative">
-                        <MessageSquare size={14} /> Customer Feedback Panel
-                        {(product.customerFeedback || []).length > 0 && (
-                            <span className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-rose-500 text-white rounded-full flex items-center justify-center text-[10px] font-black border-2 border-white">{product.customerFeedback.length}</span>
-                        )}
-                    </button>
-                </div>
-                {!isViewer && (
-                    <button onClick={() => { setEditingProject(null); setIsProjectModalOpen(true); }} className="flex items-center gap-2 text-sm bg-slate-900 text-white px-4 py-2 rounded-lg font-medium hover:bg-slate-800 transition-colors">
-                        <Plus size={16} /> New Verification Project
-                    </button>
-                )}
-            </div>
-
-            <div className="space-y-6">
-                {product.ergoProjects.map((project: ErgoProject) => (
-                    <ProjectCard 
-                        key={project.id} 
-                        project={project} 
-                        testers={testers} 
-                        product={product} 
-                        userRole={userRole}
-                        canEdit={canEdit}
-                        categoryTranslations={categoryTranslations}
-                        onDeleteProject={() => onUpdateProduct({ ...product, ergoProjects: product.ergoProjects.filter(p => p.id !== project.id) })}
-                        onOpenLightbox={onOpenLightbox}
-                    />
-                ))}
-                {product.ergoProjects.length === 0 && (
-                    <div className="py-20 text-center text-slate-400 bg-white rounded-2xl border-2 border-dashed border-slate-200">
-                        <Users2 size={48} className="mx-auto mb-4 opacity-10" />
-                        <p className="font-medium uppercase tracking-widest text-xs">No ergonomic verification projects yet.</p>
-                    </div>
-                )}
-            </div>
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-8 bg-slate-950/95 backdrop-blur-xl animate-fade-in">
+            <button onClick={onClose} className="absolute top-8 right-8 p-3 bg-white/10 hover:bg-white/20 text-white rounded-full transition-colors z-20"><X size={32}/></button>
             
-            {isFeedbackPanelOpen && (
-              <FeedbackPanel 
-                isOpen={isFeedbackPanelOpen} 
-                onClose={() => setIsFeedbackPanelOpen(false)} 
-                product={product} 
-                onUpdateProduct={onUpdateProduct} 
-                highlightedFeedbackId={highlightedFeedback?.feedbackId}
-                canEdit={canEdit}
-                onOpenLightbox={(id: string, url: string, idx: number) => onOpenLightbox('feedback', id, url, idx)}
-              />
-            )}
-        </div>
-    );
-};
+            <div className="w-full h-full flex flex-col items-center justify-center gap-8">
+                <div className="flex-1 w-full flex items-center justify-center overflow-hidden">
+                    {isVideo(imgUrl) ? (
+                        <video src={imgUrl} controls className="max-w-full max-h-full rounded-2xl shadow-2xl" />
+                    ) : (
+                        <img src={imgUrl} className="max-w-full max-h-full object-contain rounded-2xl shadow-2xl" />
+                    )}
+                </div>
 
-// Fix: Add placeholder for components used in ErgoSection
-const FeedbackPanel = ({ isOpen, onClose, product, onUpdateProduct, highlightedFeedbackId, canEdit, onOpenLightbox }: any) => {
-    const { t } = useContext(LanguageContext);
-    return (
-        <div className="fixed inset-0 z-50 flex justify-end animate-fade-in">
-            <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" onClick={onClose} />
-            <div className="w-full max-w-xl bg-white h-full relative z-10 shadow-2xl flex flex-col animate-slide-left">
-                <header className="p-8 border-b border-slate-100 flex justify-between items-center">
-                    <h2 className="text-2xl font-black text-slate-900 uppercase tracking-tight">Customer Feedbacks</h2>
-                    <button onClick={onClose} className="p-2 hover:bg-slate-100 rounded-full"><X size={24} /></button>
-                </header>
-                <div className="flex-1 overflow-y-auto p-8 space-y-6 custom-scrollbar">
-                    {product.customerFeedback.map((fb: ErgoFeedback) => (
-                        <div key={fb.id} data-customer-feedback-id={fb.id} className={`p-6 rounded-2xl border-2 transition-all ${highlightedFeedbackId === fb.id ? 'bg-amber-50 border-amber-500 shadow-xl' : 'bg-slate-50 border-slate-100'}`}>
-                            <div className="flex justify-between items-start mb-4">
-                                <span className="text-[10px] font-black uppercase bg-slate-900 text-white px-2 py-1 rounded tracking-widest">{fb.category}</span>
-                                <span className="text-[10px] font-bold text-slate-400">{fb.date}</span>
-                            </div>
-                            <p className="text-slate-700 font-medium leading-relaxed mb-4">{t(fb.content)}</p>
-                            <div className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">— {fb.source}</div>
+                <div className="w-full max-w-2xl bg-white/10 backdrop-blur-md border border-white/20 p-6 rounded-[2rem] shadow-2xl animate-slide-up">
+                    <div className="flex items-center justify-between mb-4">
+                        <div className="flex items-center gap-2 text-white/50">
+                            <FileText size={18} />
+                            <span className="text-xs font-black uppercase tracking-widest">Image Description</span>
                         </div>
-                    ))}
-                    {product.customerFeedback.length === 0 && <p className="text-center text-slate-400 italic">No feedbacks recorded.</p>}
+                        {!isViewer && (
+                            <button 
+                                onClick={() => {
+                                    if (isEditing) onSaveCaption(localCaption);
+                                    setIsEditing(!isEditing);
+                                }}
+                                className="px-4 py-1.5 bg-white text-slate-900 rounded-xl text-xs font-black uppercase tracking-tight hover:bg-intenza-100 transition-all flex items-center gap-2"
+                            >
+                                {isEditing ? <><Save size={14}/> Save Annotation</> : <><Pencil size={14}/> Edit Description</>}
+                            </button>
+                        )}
+                    </div>
+
+                    {isEditing ? (
+                        <textarea 
+                            autoFocus
+                            value={localCaption} 
+                            onChange={e => setLocalCaption(e.target.value)}
+                            className="w-full bg-white/5 border border-white/10 rounded-2xl p-4 text-white text-sm outline-none focus:ring-2 focus:ring-white/20 transition-all resize-none font-medium"
+                            rows={3}
+                            placeholder="Add explanation for this design detail..."
+                        />
+                    ) : (
+                        <p className={`text-lg font-medium leading-relaxed ${localCaption ? 'text-white' : 'text-white/30 italic'}`}>
+                            {localCaption || 'No description provided for this visual evidence.'}
+                        </p>
+                    )}
                 </div>
             </div>
         </div>
     );
 };
 
-// Fix: Add missing Modal components
-const EcoModal = ({ isOpen, onClose, onSave, eco, productVersions, product }: any) => {
-    const { t } = useContext(LanguageContext);
-    const [formData, setFormData] = useState({
-        ecoNumber: eco?.ecoNumber || '',
-        date: eco?.date || new Date().toISOString().split('T')[0],
-        version: eco?.version || product.currentVersion,
-        description: eco?.description?.en || '',
-        status: eco?.status || EcoStatus.EVALUATING,
-        imageUrls: eco?.imageUrls || [],
-        imageCaptions: eco?.imageCaptions || []
+const ErgoSection = ({ product, testers, testerGroups, onUpdateProduct, highlightedFeedback, isFeedbackPanelOpen, setIsFeedbackPanelOpen, userRole, canEdit, evaluationModalYOffset, onOpenLightbox }: any) => {
+  const { t, language } = useContext(LanguageContext);
+  const isViewer = userRole === 'viewer' || !canEdit;
+  const [isStartEvaluationModalOpen, setStartEvaluationModalOpen] = useState(false);
+  const [editingProject, setEditingProject] = useState<ErgoProject | null>(null);
+  const [addTaskModalState, setAddTaskModalState] = useState<any>({ isOpen: false, context: null });
+  const [editTaskModalState, setEditTaskModalState] = useState<any>({ isOpen: false, context: null });
+  const [taskResultModalState, setTaskResultModalState] = useState<any>({ isOpen: false, context: null });
+  const [feedbackModalState, setFeedbackModalState] = useState<any>({ isOpen: false, feedback: null });
+  const [ngReasonModalState, setNgReasonModalState] = useState<any>({ isOpen: false, context: null });
+  const [statusModalState, setStatusModalState] = useState<any>({ isOpen: false, context: null });
+  const [feedbackStatusModal, setFeedbackStatusModal] = useState<any>({ isOpen: false, feedback: null });
+  
+  const activeEcosList = product.designHistory.filter((e: DesignChange) => e.status !== EcoStatus.IN_PRODUCTION && e.status !== EcoStatus.DESIGN_COMPLETE);
+  const productVersions = useMemo(() => Array.from(new Set([product.currentVersion, ...product.designHistory.map((h: DesignChange) => h.version)])).sort().reverse(), [product]);
+
+  const performBidirectionalUpdate = (
+    newStatus: NgDecisionStatus | string, 
+    linkedEcoId?: string, 
+    context?: any, 
+    feedbackId?: string
+  ) => {
+    const updatedHistory = product.designHistory.map((eco: DesignChange) => {
+        let sources = [...(eco.sourceFeedbacks || [])];
+        if (feedbackId) {
+            sources = sources.filter(s => s.feedbackId !== feedbackId);
+        } else if (context) {
+            sources = sources.filter(s => 
+                !(s.projectId === context.projectId && 
+                  s.taskId === context.taskId && 
+                  s.testerId === context.testerId)
+            );
+        }
+        
+        if (linkedEcoId && eco.id === linkedEcoId) {
+            if (feedbackId) {
+                sources.push({ category: feedbackStatusModal.feedback.category, feedbackId });
+            } else if (context) {
+                sources.push({ ...context });
+            }
+        }
+        return { ...eco, sourceFeedbacks: sources };
     });
 
-    const handleSubmit = (e: React.FormEvent) => {
-        e.preventDefault();
-        onSave({ ...formData, description: { en: formData.description, zh: formData.description } });
-    };
+    let updatedProjects = product.ergoProjects;
+    let updatedFeedbacks = product.customerFeedback;
 
-    return (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md">
-            <div className="bg-white rounded-3xl shadow-2xl w-full max-w-lg animate-slide-up">
-                <div className="p-6 border-b border-slate-100 flex justify-between items-center">
-                    <h2 className="text-xl font-bold">{eco ? 'Edit ECO' : 'New Engineering Change'}</h2>
-                    <button onClick={onClose} className="p-2 hover:bg-slate-100 rounded-full"><X size={20} /></button>
-                </div>
-                <form onSubmit={handleSubmit} className="p-8 space-y-6">
-                    <div className="grid grid-cols-2 gap-4">
-                        <div>
-                            <label className="block text-[10px] font-black uppercase text-slate-400 mb-2">ECO / ECR Number</label>
-                            <input required type="text" value={formData.ecoNumber} onChange={e => setFormData({...formData, ecoNumber: e.target.value})} className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:border-slate-900 outline-none font-bold" />
-                        </div>
-                        <div>
-                            <label className="block text-[10px] font-black uppercase text-slate-400 mb-2">Target Version</label>
-                            <input required type="text" value={formData.version} onChange={e => setFormData({...formData, version: e.target.value})} className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:border-slate-900 outline-none font-bold" />
-                        </div>
-                    </div>
-                    <div>
-                        <label className="block text-[10px] font-black uppercase text-slate-400 mb-2">Change Description</label>
-                        <textarea required value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})} className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:border-slate-900 outline-none min-h-[100px]" />
-                    </div>
-                    <div className="flex gap-4">
-                        <button type="button" onClick={onClose} className="flex-1 py-3 text-slate-500 font-bold hover:bg-slate-50 rounded-xl">Cancel</button>
-                        <button type="submit" className="flex-1 py-3 bg-slate-900 text-white font-bold rounded-xl hover:bg-slate-800 shadow-xl shadow-slate-900/20">Save Record</button>
-                    </div>
-                </form>
-            </div>
+    if (feedbackId) {
+        updatedFeedbacks = product.customerFeedback.map((f: ErgoFeedback) => 
+            f.id === feedbackId ? { ...f, status: newStatus as any, linkedEcoId } : f
+        );
+    } else if (context) {
+        updatedProjects = product.ergoProjects.map((p: ErgoProject) => 
+            p.id === context.projectId ? {
+                ...p,
+                tasks: {
+                    ...p.tasks,
+                    [context.category]: p.tasks[context.category].map((t: EvaluationTask) => {
+                        if (t.id !== context.taskId) return t;
+                        const exists = t.ngReasons.some(r => r.testerId === context.testerId);
+                        const newNgReasons = exists 
+                            ? t.ngReasons.map((ng: NgReason) => 
+                                ng.testerId === context.testerId ? { ...ng, decisionStatus: newStatus as NgDecisionStatus, linkedEcoId } : ng
+                              )
+                            : [...t.ngReasons, { 
+                                testerId: context.testerId, 
+                                reason: { en: '', zh: '' }, 
+                                decisionStatus: newStatus as NgDecisionStatus, 
+                                linkedEcoId 
+                              }];
+                              
+                        return { ...t, ngReasons: newNgReasons };
+                    })
+                }
+            } : p
+        );
+    }
+
+    onUpdateProduct({
+        ...product,
+        designHistory: updatedHistory,
+        ergoProjects: updatedProjects,
+        customerFeedback: updatedFeedbacks
+    });
+  };
+
+  return (
+    <div className="relative animate-fade-in">
+      <div className={`transition-all duration-500 ease-in-out ${isFeedbackPanelOpen ? 'pr-[40%]' : 'pr-14'}`}>
+        <div className="flex justify-end mb-6">
+             {!isViewer && (
+               <button onClick={() => { setEditingProject(null); setStartEvaluationModalOpen(true); }} className="flex items-center gap-2 text-sm bg-slate-900 text-white px-6 py-4 rounded-lg font-medium hover:bg-slate-800 transition-colors shadow-sm"><Plus size={16} /> Start Evaluation</button>
+             )}
         </div>
-    );
+        <div className="space-y-6">
+          {product.ergoProjects.map((project: ErgoProject) => (
+             <ProjectCard key={project.id} project={project} testers={testers} product={product} userRole={userRole} canEdit={canEdit} onOpenAddTask={(pid: string, cat: ErgoProjectCategory) => setAddTaskModalState({ isOpen: true, context: { projectId: pid, category: cat } })} onEditTaskName={(pid: string, cat: ErgoProjectCategory, tid: string, name: string) => setEditTaskModalState({ isOpen: true, context: { projectId: pid, category: cat, taskId: tid, currentName: name } })} onDeleteTask={(pid: string, cat: ErgoProjectCategory, tid: string) => onUpdateProduct({...product, ergoProjects: product.ergoProjects.map((p: any) => p.id === pid ? {...p, tasks: {...p.tasks, [cat]: p.tasks[cat].filter((t: any) => t.id !== tid)}} : p)})} onOpenTaskResults={(cat: ErgoProjectCategory, taskId: string) => setTaskResultModalState({ isOpen: true, context: { projectId: project.id, category: cat, taskId } })} onDeleteProject={() => onUpdateProduct({...product, ergoProjects: product.ergoProjects.filter((p: any) => p.id !== project.id)})} onEditProject={() => { setEditingProject(project); setStartEvaluationModalOpen(true); }} categoryTranslations={{'Resistance profile': 'Resistance profile', 'Experience': 'Experience', 'Stroke': 'Stroke', 'Other Suggestion': 'Other Suggestion'}} onStatusClick={(pid: string, cat: ErgoProjectCategory, tid: string, testerId: string, cur: NgDecisionStatus, eco: string) => setStatusModalState({ isOpen: true, context: { projectId: pid, category: cat, taskId: tid, testerId, currentStatus: cur, linkedEcoId: eco } })} onEditNgReason={(cat: ErgoProjectCategory, taskId: string, testerId: string) => setNgReasonModalState({ isOpen: true, context: { projectId: project.id, category: cat, taskId, testerId } })} highlightedFeedback={highlightedFeedback} onOpenLightbox={onOpenLightbox} />
+          ))}
+        </div>
+      </div>
+
+      <div className={`absolute top-0 right-0 h-full transition-all duration-500 ease-in-out ${isFeedbackPanelOpen ? 'w-[38%]' : 'w-12'}`}>
+        <div className="bg-white rounded-2xl border border-slate-200 h-full shadow-2xl flex flex-col overflow-hidden relative">
+          <button 
+            onClick={() => setIsFeedbackPanelOpen(!isFeedbackPanelOpen)} 
+            className="absolute top-1/2 -left-6 -translate-y-1/2 bg-white p-2 rounded-l-lg border-l border-t border-b border-slate-200 hover:bg-slate-50 shadow-md z-20"
+          >
+            {isFeedbackPanelOpen ? <ChevronsRight size={20} className="text-slate-400" /> : <ChevronsLeft size={20} className="text-slate-400" />}
+          </button>
+
+          {!isFeedbackPanelOpen ? (
+            <div 
+              onClick={() => setIsFeedbackPanelOpen(true)}
+              className="flex-1 flex flex-col items-center py-8 cursor-pointer hover:bg-slate-50 transition-all group"
+            >
+              <MessageSquare size={20} className="text-slate-400 group-hover:text-intenza-600 mb-6 transition-colors" />
+              <div className="flex-1 flex items-center justify-center">
+                <span className="text-[10px] font-black text-slate-300 group-hover:text-slate-500 uppercase tracking-[0.3em] rotate-90 whitespace-nowrap transition-colors">
+                  Customer Feedback
+                </span>
+              </div>
+              {product.customerFeedback.length > 0 && (
+                <div className="mt-8 bg-intenza-600 text-white text-[9px] font-black px-2 py-1 rounded-full shadow-lg shadow-intenza-600/20">
+                  {product.customerFeedback.length}
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="flex-1 flex flex-col bg-slate-50 animate-fade-in">
+                <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-white sticky top-0 z-10 shadow-sm">
+                  <h3 className="font-bold text-slate-900 flex items-center gap-2">
+                    <MessageSquare size={18} className="text-intenza-500"/>
+                    Customer Feedback
+                  </h3>
+                  {!isViewer && (
+                    <button 
+                      onClick={() => setFeedbackModalState({ isOpen: true, feedback: null })} 
+                      className="text-xs font-black bg-intenza-600 text-white px-3 py-1.5 rounded-xl hover:bg-intenza-700 flex items-center gap-1 shadow-lg shadow-intenza-600/20 transition-all active:scale-95"
+                    >
+                      <Plus size={14}/> Add
+                    </button>
+                  )}
+                </div>
+                
+                <div className="p-6 overflow-y-auto flex-1 space-y-6 custom-scrollbar">
+                    {product.customerFeedback.length > 0 ? (
+                        product.customerFeedback.map((fb: ErgoFeedback) => (
+                            <CustomerFeedbackCard 
+                                key={fb.id} 
+                                feedback={fb} 
+                                product={product} 
+                                userRole={userRole} 
+                                canEdit={canEdit}
+                                isHighlighted={highlightedFeedback?.feedbackId === fb.id} 
+                                onStatusClick={() => setFeedbackStatusModal({ isOpen: true, feedback: fb })} 
+                                onEdit={() => setFeedbackModalState({ isOpen: true, feedback: fb })} 
+                                onDelete={() => onUpdateProduct({...product, customerFeedback: product.customerFeedback.filter((f: any) => f.id !== fb.id)})} 
+                                onOpenLightbox={onOpenLightbox}
+                            />
+                        ))
+                    ) : (
+                        <div 
+                          onClick={() => !isViewer && setFeedbackModalState({ isOpen: true, feedback: null })}
+                          className={`h-full flex flex-col items-center justify-center text-center px-4 py-12 transition-all rounded-3xl border-2 border-dashed border-transparent ${!isViewer ? 'cursor-pointer hover:bg-white hover:border-slate-200 group/empty' : ''}`}
+                        >
+                            <div className="w-20 h-20 bg-white rounded-3xl border border-slate-100 flex items-center justify-center text-slate-200 mb-6 shadow-sm group-hover/empty:scale-110 transition-transform">
+                                <MessageSquare size={40} />
+                            </div>
+                            <h4 className="text-slate-900 font-bold text-lg mb-2">No Feedback Yet</h4>
+                            <p className="text-slate-400 text-xs mb-8 leading-relaxed max-w-[200px]">
+                              Collect field complaints or market observations here to link them to design changes.
+                            </p>
+                            {!isViewer && (
+                                <div className="px-6 py-3 bg-slate-900 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-xl shadow-slate-900/20 group-hover/empty:bg-intenza-600 transition-all flex items-center gap-2">
+                                    <Plus size={18} strokeWidth={3} />
+                                    Add Your First Entry
+                                </div>
+                            )}
+                        </div>
+                    )}
+                </div>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {isStartEvaluationModalOpen && <StartEvaluationModal yOffset={evaluationModalYOffset} onClose={() => setStartEvaluationModalOpen(false)} onStartProject={(name: any, ids: any, version?: string) => { if(editingProject) { onUpdateProduct({...product, ergoProjects: product.ergoProjects.map((p: any) => p.id === editingProject.id ? {...p, name, testerIds: ids, version} : p)}); } else { onUpdateProduct({...product, ergoProjects: [...product.ergoProjects, {id: `proj-${Date.now()}`, name, date: new Date().toISOString().split('T')[0], version, testerIds: ids, overallStatus: 'PENDING', tasks: {'Resistance profile':[], 'Experience':[], 'Stroke':[], 'Other Suggestion':[]}, uniqueNgReasons: {}}]}); } setStartEvaluationModalOpen(false); }} allTesters={testers} testerGroups={testerGroups} project={editingProject} />}
+      {addTaskModalState.isOpen && <AddTaskModal onClose={() => setAddTaskModalState({isOpen:false})} onSave={(name: any) => { const {projectId, category} = addTaskModalState.context; onUpdateProduct({...product, ergoProjects: product.ergoProjects.map((p: any) => p.id === projectId ? {...p, tasks: {...p.tasks, [category]: [...p.tasks[category], {id: `t-${Date.now()}`, name: {en: name, zh: name}, passTesterIds: [], ngReasons: []}]}} : p)}); setAddTaskModalState({isOpen:false}); }} />}
+      {taskResultModalState.isOpen && <SetTaskResultsModal onClose={() => setTaskResultModalState({isOpen:false})} onSave={(ids: any) => { const {projectId, category, taskId} = taskResultModalState.context; onUpdateProduct({...product, ergoProjects: product.ergoProjects.map((p: any) => p.id === projectId ? {...p, tasks: {...p.tasks, [category]: p.tasks[category].map((t: any) => t.id === taskId ? {...t, passTesterIds: ids, ngReasons: p.testerIds.filter((tid: any) => !ids.includes(tid)).map((tid: any) => t.ngReasons.find((r: any) => r.testerId === tid) || {testerId: tid, reason: {en: '', zh: ''}, decisionStatus: 'PENDING'})} : t)}} : p)}); setTaskResultModalState({isOpen:false}); }} context={taskResultModalState.context} project={product.ergoProjects.find((p: any) => p.id === taskResultModalState.context.projectId)} testers={testers} />}
+      {ngReasonModalState.isOpen && <SetPassNgModal onClose={() => setNgReasonModalState({isOpen:false})} onSet={(reason: any, isNew: any, atts: any, captions: any) => { const {projectId, category, taskId, testerId} = ngReasonModalState.context; onUpdateProduct({...product, ergoProjects: product.ergoProjects.map((p: any) => p.id === projectId ? {...p, tasks: {...p.tasks, [category]: p.tasks[category].map((t: any) => t.id === taskId ? {...t, ngReasons: t.ngReasons.map((ng: any) => ng.testerId === testerId ? {...ng, reason, attachmentUrls: atts, attachmentCaptions: captions} : ng)} : t)}} : p)}); setNgReasonModalState({isOpen:false}); }} existingReason={product.ergoProjects.find((p: any) => p.id === ngReasonModalState.context.projectId)?.tasks[ngReasonModalState.context.category].find((t: any) => t.id === ngReasonModalState.context.taskId)?.ngReasons.find((ng: any) => ng.testerId === ngReasonModalState.context.testerId)} />}
+      
+      {statusModalState.isOpen && (
+          <StatusDecisionModal 
+              onClose={() => setStatusModalState({isOpen:false})} 
+              context={statusModalState.context} 
+              onSetStatus={(s: any) => {
+                  performBidirectionalUpdate(s, undefined, statusModalState.context);
+                  setStatusModalState({isOpen:false});
+              }} 
+              onLinkEco={(ecoId: any) => {
+                  const isUnlink = statusModalState.context.linkedEcoId === ecoId;
+                  performBidirectionalUpdate(
+                      isUnlink ? 'PENDING' : 'NEEDS_IMPROVEMENT', 
+                      isUnlink ? undefined : ecoId, 
+                      statusModalState.context
+                  );
+                  setStatusModalState({isOpen:false});
+              }} 
+              onCreateEco={(version: string) => {
+                  const {projectId, category, taskId, testerId} = statusModalState.context;
+                  const ng = product.ergoProjects.find((p: any) => p.id === projectId).tasks[category].find((t: any) => t.id === taskId).ngReasons.find((r: any) => r.testerId === testerId);
+                  const newEcoId = `eco-${Date.now()}`;
+                  const now = new Date();
+                  const timestamp = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+                  
+                  const newEco: any = { 
+                      id: newEcoId, 
+                      ecoNumber: `EVAL-${Date.now().toString().slice(-4)}`, 
+                      date: new Date().toISOString().split('T')[0], 
+                      version, 
+                      description: {en: `[Ergo Improvement] ${t(ng.reason)}`, zh: `[人因改進] ${t(ng.reason)}`}, 
+                      affectedBatches: [], 
+                      affectedCustomers: [], 
+                      status: EcoStatus.EVALUATING, 
+                      imageUrls: ng.attachmentUrls || [], 
+                      imageCaptions: ng.attachmentCaptions || [],
+                      sourceFeedbacks: [{projectId, category, taskId, testerId}],
+                      updatedAt: timestamp 
+                  };
+                  onUpdateProduct({
+                      ...product,
+                      designHistory: [...product.designHistory, newEco],
+                      ergoProjects: product.ergoProjects.map((p: any) => p.id === projectId ? {
+                          ...p,
+                          tasks: {
+                              ...p.tasks,
+                              [category]: p.tasks[category].map((t: any) => t.id === taskId ? {
+                                  ...t,
+                                  ngReasons: t.ngReasons.map((r: any) => r.testerId === testerId ? { ...r, linkedEcoId: newEcoId, decisionStatus: 'NEEDS_IMPROVEMENT'} : r)
+                              } : t)
+                          }
+                      } : p)
+                  });
+                  setStatusModalState({isOpen:false});
+              }} 
+              activeEcos={activeEcosList} 
+              versions={productVersions} 
+              currentProductVersion={product.currentVersion} 
+          />
+      )}
+
+      {feedbackModalState.isOpen && <FeedbackModal onClose={() => setFeedbackModalState({isOpen:false})} onSave={(data: any) => { if(feedbackModalState.feedback) { onUpdateProduct({...product, customerFeedback: product.customerFeedback.map((f: any) => f.id === feedbackModalState.feedback.id ? {...f, ...data} : f)}); } else { onUpdateProduct({...product, customerFeedback: [...product.customerFeedback, {id: `fb-${Date.now()}`, ...data, type: 'COMPLAINT', status: 'PENDING'}]}); } setFeedbackModalState({isOpen:false}); }} feedback={feedbackModalState.feedback} product={product} />}
+      
+      {feedbackStatusModal.isOpen && (
+          <FeedbackStatusDecisionModal 
+            onClose={() => setFeedbackStatusModal({isOpen:false})} 
+            feedback={feedbackStatusModal.feedback} 
+            onUpdateStatus={(fid: any, s: any) => {
+                performBidirectionalUpdate(s, undefined, undefined, fid);
+                setFeedbackStatusModal({isOpen:false});
+            }} 
+            onLinkEco={(ecoId: any) => {
+                const fid = feedbackStatusModal.feedback.id;
+                const isUnlink = feedbackStatusModal.feedback.linkedEcoId === ecoId;
+                performBidirectionalUpdate(
+                    isUnlink ? 'PENDING' : 'DISCUSSION', 
+                    isUnlink ? undefined : ecoId, 
+                    undefined, 
+                    fid
+                );
+                setFeedbackStatusModal({isOpen:false});
+            }} 
+            onCreateEco={(version: string) => {
+                const f = feedbackStatusModal.feedback;
+                const newEcoId = `eco-${Date.now()}`;
+                const now = new Date();
+                const timestamp = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+                
+                const newEco: any = { 
+                    id: newEcoId, 
+                    ecoNumber: `CUST-${Date.now().toString().slice(-4)}`, 
+                    date: new Date().toISOString().split('T')[0], 
+                    version, 
+                    description: {en: `[Customer Feedback Address] ${t(f.content)}`, zh: `[客訴回饋處理] ${t(f.content)}`}, 
+                    affectedBatches: [], 
+                    affectedCustomers: [], 
+                    status: EcoStatus.EVALUATING, 
+                    imageUrls: f.attachmentUrls || [], 
+                    imageCaptions: f.attachmentCaptions || [],
+                    sourceFeedbacks: [{category: f.category, feedbackId: f.id}],
+                    updatedAt: timestamp 
+                };
+                onUpdateProduct({
+                    ...product,
+                    designHistory: [...product.designHistory, newEco],
+                    customerFeedback: product.customerFeedback.map((item: any) => item.id === f.id ? { ...item, linkedEcoId: newEcoId, status: 'DISCUSSION'} : item)
+                });
+                setFeedbackStatusModal({isOpen:false});
+            }} 
+            activeEcos={activeEcosList} 
+            versions={productVersions} 
+            currentProductVersion={product.currentVersion} 
+          />
+      )}
+    </div>
+  );
+};
+
+// --- Sub-components for Modals ---
+
+const EcoModal = ({ isOpen, onClose, onSave, eco, productVersions }: any) => {
+  const [formData, setFormData] = useState({
+    ecoNumber: '',
+    date: new Date().toISOString().split('T')[0],
+    version: productVersions[0] || 'v1.0',
+    description: { en: '', zh: '' },
+    status: EcoStatus.EVALUATING,
+    imageUrls: [] as string[]
+  });
+  const [isUploading, setIsUploading] = useState(false);
+
+  useEffect(() => {
+    if (eco) {
+      setFormData({
+        ecoNumber: eco.ecoNumber || '',
+        date: eco.date || new Date().toISOString().split('T')[0],
+        version: eco.version || 'v1.0',
+        description: eco.description || { en: '', zh: '' },
+        status: eco.status || EcoStatus.EVALUATING,
+        imageUrls: eco.imageUrls || []
+      });
+    }
+  }, [eco]);
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    onSave(formData);
+  };
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files) return;
+    setIsUploading(true);
+    try {
+      const urls = await Promise.all(Array.from(files).map(file => api.uploadImage(file as File)));
+      setFormData({ ...formData, imageUrls: [...formData.imageUrls, ...urls] });
+    } catch (err) {
+      alert('Upload failed');
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md animate-fade-in">
+      <div className="bg-white rounded-[2.5rem] shadow-2xl w-full max-w-2xl animate-slide-up overflow-hidden border border-white/20">
+        <div className="flex justify-between items-center p-8 border-b border-slate-100">
+          <h2 className="text-2xl font-black text-slate-900">{eco ? 'Edit ECO' : 'Add New ECO'}</h2>
+          <button onClick={onClose} className="p-2 rounded-full hover:bg-slate-100 text-slate-500"><X size={24} /></button>
+        </div>
+        <form onSubmit={handleSubmit} className="p-8 space-y-6 max-h-[70vh] overflow-y-auto custom-scrollbar">
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">ECO Number</label>
+              <input type="text" required value={formData.ecoNumber} onChange={e => setFormData({...formData, ecoNumber: e.target.value})} className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl outline-none font-bold" />
+            </div>
+            <div>
+              <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Version</label>
+              <input type="text" required value={formData.version} onChange={e => setFormData({...formData, version: e.target.value})} className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl outline-none font-bold" placeholder="e.g. v1.1" />
+            </div>
+          </div>
+          <div>
+            <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Status</label>
+            <select value={formData.status} onChange={e => setFormData({...formData, status: e.target.value as EcoStatus})} className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl outline-none font-bold">
+              {Object.values(EcoStatus).map(s => <option key={s} value={s}>{s}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Description (EN)</label>
+            <textarea required value={formData.description.en} onChange={e => setFormData({...formData, description: {en: e.target.value, zh: e.target.value}})} className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl outline-none font-medium resize-none" rows={3} />
+          </div>
+          <div>
+            <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Evidence</label>
+            <div className="flex flex-wrap gap-2">
+              {formData.imageUrls.map((url, i) => (
+                <img key={i} src={url} className="w-20 h-20 rounded-lg object-cover border border-slate-200" />
+              ))}
+              <label className="w-20 h-20 rounded-lg border-2 border-dashed border-slate-200 flex items-center justify-center cursor-pointer hover:bg-slate-50">
+                {isUploading ? <Loader2 size={20} className="animate-spin text-slate-400" /> : <Plus size={20} className="text-slate-400" />}
+                <input type="file" multiple className="hidden" onChange={handleFileUpload} />
+              </label>
+            </div>
+          </div>
+          <div className="flex gap-4 pt-6">
+            <button type="button" onClick={onClose} className="flex-1 py-4 text-slate-400 font-bold hover:bg-slate-50 rounded-2xl transition-all">Cancel</button>
+            <button type="submit" className="flex-1 py-4 bg-slate-900 text-white font-bold rounded-2xl hover:bg-slate-800 transition-all">Save ECO</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
 };
 
 const TestModal = ({ isOpen, onClose, onSave, test, productVersions }: any) => {
-    const { t } = useContext(LanguageContext);
-    const [formData, setFormData] = useState({
-        testName: test?.testName?.en || '',
-        category: test?.category || 'Mechanical',
-        status: test?.status || TestStatus.PENDING,
-        score: test?.score || 0,
-        details: test?.details?.en || '',
-        version: test?.version || ''
-    });
+  const [formData, setFormData] = useState({
+    category: 'Mechanical',
+    testName: { en: '', zh: '' },
+    version: productVersions[0] || 'v1.0',
+    score: 0,
+    status: TestStatus.PENDING,
+    details: { en: '', zh: '' },
+    attachmentUrls: [] as string[],
+    attachmentCaptions: [] as string[]
+  });
+  const [isUploading, setIsUploading] = useState(false);
+  const [testType, setTestType] = useState('Durable Test');
 
-    const handleSubmit = (e: React.FormEvent) => {
-        e.preventDefault();
-        onSave({ ...formData, testName: { en: formData.testName, zh: formData.testName }, details: { en: formData.details, zh: formData.details } });
+  useEffect(() => {
+    if (test) {
+      const predefined = ['Durable Test', 'Salt Spray Test', 'Packaging Test'];
+      const currentNameEn = test.testName?.en || '';
+      const isCustom = currentNameEn && !predefined.includes(currentNameEn);
+      
+      setFormData({
+        category: test.category || 'Mechanical',
+        testName: test.testName || { en: '', zh: '' },
+        version: test.version || 'v1.0',
+        score: test.score || 0,
+        status: test.status || TestStatus.PENDING,
+        details: test.details || { en: '', zh: '' },
+        attachmentUrls: test.attachmentUrls || [],
+        attachmentCaptions: test.attachmentCaptions || []
+      });
+      setTestType(isCustom ? 'CUSTOM' : (currentNameEn || 'Durable Test'));
+    }
+  }, [test]);
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    onSave(formData);
+  };
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files) return;
+    setIsUploading(true);
+    try {
+      const urls = await Promise.all(Array.from(files).map(file => api.uploadImage(file as File)));
+      setFormData({ 
+        ...formData, 
+        attachmentUrls: [...formData.attachmentUrls, ...urls],
+        attachmentCaptions: [...formData.attachmentCaptions, ...urls.map(() => '')]
+      });
+    } catch (err) {
+      alert('Upload failed');
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  const handleCaptionChange = (idx: number, val: string) => {
+    const newCaptions = [...formData.attachmentCaptions];
+    newCaptions[idx] = val;
+    setFormData({ ...formData, attachmentCaptions: newCaptions });
+  };
+
+  const handleTestTypeChange = (type: string) => {
+      setTestType(type);
+      if (type !== 'CUSTOM') {
+          const mapping: Record<string, LocalizedString> = {
+              'Durable Test': { en: 'Durable Test', zh: '耐久測試' },
+              'Salt Spray Test': { en: 'Salt Spray Test', zh: '鹽霧測試' },
+              'Packaging Test': { en: 'Packaging Test', zh: '包裝測試' }
+          };
+          setFormData({ ...formData, testName: mapping[type] });
+      } else {
+          setFormData({ ...formData, testName: { en: '', zh: '' } });
+      }
+  };
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md animate-fade-in">
+      <div className="bg-white rounded-[2.5rem] shadow-2xl w-full max-w-2xl animate-slide-up overflow-hidden border border-white/20">
+        <div className="flex justify-between items-center p-8 border-b border-slate-100">
+          <h2 className="text-2xl font-black text-slate-900">{test ? 'Edit Test' : 'New Durability Test'}</h2>
+          <button onClick={onClose} className="p-2 rounded-full hover:bg-slate-100 text-slate-500"><X size={24} /></button>
+        </div>
+        <form onSubmit={handleSubmit} className="p-8 space-y-6 max-h-[70vh] overflow-y-auto custom-scrollbar">
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Category</label>
+              <select 
+                  required 
+                  value={formData.category} 
+                  onChange={e => setFormData({...formData, category: e.target.value})} 
+                  className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl outline-none font-bold"
+              >
+                  <option value="Mechanical">Mechanical (機構測試)</option>
+                  <option value="Electronic">Electronic (電子測試)</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Score (%)</label>
+              <input type="number" min="0" max="100" required value={formData.score} onChange={e => setFormData({...formData, score: Number(e.target.value)})} className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl outline-none font-bold" />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Test Name</label>
+              <select 
+                  required 
+                  value={testType} 
+                  onChange={e => handleTestTypeChange(e.target.value)}
+                  className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl outline-none font-bold mb-2"
+              >
+                  <option value="Durable Test">耐久測試 (Durable Test)</option>
+                  <option value="Salt Spray Test">鹽霧測試 (Salt Spray Test)</option>
+                  <option value="Packaging Test">包裝測試 (Packaging Test)</option>
+                  <option value="CUSTOM">自訂測試 (Custom Test)</option>
+              </select>
+              {testType === 'CUSTOM' && (
+                  <input 
+                      type="text" 
+                      required 
+                      value={formData.testName.en} 
+                      placeholder="手寫自訂名稱 / Custom Name"
+                      onChange={e => setFormData({...formData, testName: {en: e.target.value, zh: e.target.value}})} 
+                      className="w-full px-4 py-2 bg-white border border-slate-200 rounded-xl outline-none font-bold animate-fade-in" 
+                  />
+              )}
+            </div>
+            <div>
+              <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Test Version</label>
+              <input type="text" required value={formData.version} onChange={e => setFormData({...formData, version: e.target.value})} className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl outline-none font-bold" placeholder="e.g. v2.4" />
+            </div>
+          </div>
+          <div>
+            <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Details</label>
+            <textarea value={formData.details.en} onChange={e => setFormData({...formData, details: {en: e.target.value, zh: e.target.value}})} className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl outline-none font-medium resize-none" rows={3} />
+          </div>
+          <div>
+            <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Evidence & Captions</label>
+            <div className="space-y-4">
+              <div className="flex flex-wrap gap-2">
+                {formData.attachmentUrls.map((url, i) => (
+                  <div key={i} className="space-y-1">
+                    <img src={url} className="w-20 h-20 rounded-lg object-cover border border-slate-200" />
+                    <input type="text" value={formData.attachmentCaptions[i]} onChange={e => handleCaptionChange(i, e.target.value)} placeholder="Caption..." className="w-20 text-[8px] px-1 py-0.5 border border-slate-200 rounded" />
+                  </div>
+                ))}
+                <label className="w-20 h-20 rounded-lg border-2 border-dashed border-slate-200 flex items-center justify-center cursor-pointer hover:bg-slate-50">
+                  {isUploading ? <Loader2 size={20} className="animate-spin text-slate-400" /> : <Plus size={20} className="text-slate-400" />}
+                  <input type="file" multiple className="hidden" onChange={handleFileUpload} />
+                </label>
+              </div>
+            </div>
+          </div>
+          <div className="flex gap-4 pt-6">
+            <button type="button" onClick={onClose} className="flex-1 py-4 text-slate-400 font-bold hover:bg-slate-50 rounded-2xl transition-all">Cancel</button>
+            <button type="submit" className="flex-1 py-4 bg-slate-900 text-white font-bold rounded-2xl hover:bg-slate-800 transition-all">Save Test</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+};
+
+const NoShipmentModal = ({ isOpen, onClose, version }: any) => {
+  if (!isOpen) return null;
+  return (
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md animate-fade-in">
+      <div className="bg-white rounded-3xl shadow-2xl p-8 max-w-sm text-center animate-slide-up">
+        <div className="w-16 h-16 bg-amber-50 rounded-full flex items-center justify-center text-amber-500 mx-auto mb-4">
+          <AlertTriangle size={32} />
+        </div>
+        <h3 className="text-xl font-bold text-slate-900 mb-2">No Shipment Records</h3>
+        <p className="text-slate-500 text-sm mb-6">版本 {version} 尚未有全球出貨記錄。</p>
+        <button onClick={onClose} className="w-full py-3 bg-slate-900 text-white font-bold rounded-xl hover:bg-slate-800 transition-all">Understood</button>
+      </div>
+    </div>
+  );
+};
+
+const StartEvaluationModal = ({ yOffset, onClose, onStartProject, allTesters, testerGroups, project }: any) => {
+  const [name, setName] = useState(project ? project.name.en : '');
+  const [version, setVersion] = useState(project?.version || '');
+  const [selectedTesterIds, setSelectedTesterIds] = useState<string[]>(project ? project.testerIds : []);
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    onStartProject({ en: name, zh: name }, selectedTesterIds, version);
+  };
+
+  const handleGroupSelect = (ids: string[]) => {
+      setSelectedTesterIds(prev => Array.from(new Set([...prev, ...ids])));
+  };
+
+  return (
+    <div className="fixed inset-0 z-[100] flex items-start justify-center p-4 bg-slate-900/60 backdrop-blur-md animate-fade-in overflow-y-auto">
+      <div className="bg-white rounded-[2.5rem] shadow-2xl w-full max-w-3xl animate-slide-up overflow-hidden mt-10" style={{ transform: `translateY(${yOffset}px)` }}>
+        <div className="p-8 border-b border-slate-100 flex justify-between items-center">
+          <h2 className="text-2xl font-black text-slate-900">{project ? 'Edit Evaluation' : 'New Evaluation Project'}</h2>
+          <button onClick={onClose} className="p-2 rounded-full hover:bg-slate-100"><X size={24} /></button>
+        </div>
+        <form onSubmit={handleSubmit} className="p-8 space-y-6">
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Project Title</label>
+              <input required type="text" value={name} onChange={e => setName(e.target.value)} className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none font-bold" />
+            </div>
+            <div>
+              <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Evaluation Version</label>
+              <input type="text" value={version} onChange={e => setVersion(e.target.value)} className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none font-bold" placeholder="e.g. v1.0 Pilot" />
+            </div>
+          </div>
+          
+          <div>
+            <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-4">Quick Group Add</label>
+            <div className="flex flex-wrap gap-2 mb-6">
+                {testerGroups?.map(group => (
+                    <button 
+                        key={group.id} 
+                        type="button" 
+                        onClick={() => handleGroupSelect(group.testerIds)}
+                        className="px-4 py-2 bg-indigo-50 border border-indigo-200 text-indigo-700 rounded-xl text-xs font-bold hover:bg-indigo-100 transition-all flex items-center gap-2"
+                    >
+                        <Users2 size={14}/> {group.name.en}
+                    </button>
+                ))}
+                {(!testerGroups || testerGroups.length === 0) && <span className="text-xs text-slate-300 italic">No tester groups defined.</span>}
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-4">Select Testers ({selectedTesterIds.length})</label>
+            <div className="grid grid-cols-4 sm:grid-cols-6 gap-3 max-h-[300px] overflow-y-auto p-2 border border-slate-100 rounded-2xl">
+              {allTesters.map((tester: Tester) => (
+                <div 
+                  key={tester.id} 
+                  onClick={() => selectedTesterIds.includes(tester.id) ? setSelectedTesterIds(selectedTesterIds.filter(id => id !== tester.id)) : setSelectedTesterIds([...selectedTesterIds, tester.id])}
+                  className={`relative aspect-square rounded-xl overflow-hidden cursor-pointer border-2 transition-all ${selectedTesterIds.includes(tester.id) ? 'border-intenza-600 scale-105' : 'border-transparent opacity-60'}`}
+                >
+                  <img src={tester.imageUrl} className="w-full h-full object-cover" />
+                  {selectedTesterIds.includes(tester.id) && <div className="absolute top-1 right-1 bg-intenza-600 text-white rounded-full p-0.5"><Check size={12} /></div>}
+                </div>
+              ))}
+            </div>
+          </div>
+          <div className="flex gap-4">
+            <button type="button" onClick={onClose} className="flex-1 py-4 text-slate-400 font-bold hover:bg-slate-50 rounded-2xl">Cancel</button>
+            <button type="submit" className="flex-1 py-4 bg-slate-900 text-white font-bold rounded-2xl">Confirm</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+};
+
+const AddTaskModal = ({ onClose, onSave }: any) => {
+  const [name, setName] = useState('');
+  return (
+    <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md animate-fade-in">
+      <div className="bg-white rounded-3xl shadow-2xl p-8 w-full max-w-md animate-slide-up">
+        <h3 className="text-xl font-bold text-slate-900 mb-6">Add New Task</h3>
+        <input required type="text" value={name} onChange={e => setName(e.target.value)} className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl mb-6 outline-none font-bold" />
+        <div className="flex gap-3">
+          <button onClick={onClose} className="flex-1 py-3 text-slate-400 font-bold hover:bg-slate-50 rounded-xl">Cancel</button>
+          <button onClick={() => onSave(name)} className="flex-1 py-3 bg-slate-900 text-white font-bold rounded-xl">Add Task</button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const SetTaskResultsModal = ({ onClose, onSave, context, project, testers }: any) => {
+  const task = project.tasks[context.category].find((t: any) => t.id === context.taskId);
+  const [passTesterIds, setPassTesterIds] = useState<string[]>(task.passTesterIds);
+  return (
+    <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md animate-fade-in">
+      <div className="bg-white rounded-[2.5rem] shadow-2xl w-full max-w-xl animate-slide-up overflow-hidden">
+        <div className="p-8 border-b border-slate-100 bg-slate-50/50 flex justify-between items-center">
+            <h3 className="text-xl font-bold text-slate-900">Set Pass/NG Results</h3>
+        </div>
+        <div className="p-8 space-y-6">
+            <div className="grid grid-cols-2 gap-3">
+                {project.testerIds.map((tid: string) => {
+                    const tester = testers.find((ts: any) => ts.id === tid);
+                    const isSelected = passTesterIds.includes(tid);
+                    return (
+                        <div key={tid} onClick={() => isSelected ? setPassTesterIds(passTesterIds.filter(id => id !== tid)) : setPassTesterIds([...passTesterIds, tid])} className={`flex items-center gap-3 p-3 rounded-xl border-2 transition-all cursor-pointer ${isSelected ? 'bg-emerald-50 border-emerald-500 shadow-sm' : 'bg-white border-slate-100 hover:border-slate-200'}`}>
+                            <div className="w-10 h-10 rounded-full overflow-hidden bg-slate-200"><img src={tester?.imageUrl} className="w-full h-full object-cover" /></div>
+                            <div className="flex-1 min-w-0"><div className="text-xs font-bold text-slate-900 truncate">{tester?.name}</div><div className={`text-[10px] font-black uppercase ${isSelected ? 'text-emerald-600' : 'text-slate-400'}`}>{isSelected ? 'PASS' : 'NG'}</div></div>
+                            {isSelected && <Check size={18} className="text-emerald-500" strokeWidth={3} />}
+                        </div>
+                    );
+                })}
+            </div>
+            <div className="flex gap-4">
+              <button onClick={onClose} className="flex-1 py-4 text-slate-400 font-bold hover:bg-slate-50 rounded-2xl">Cancel</button>
+              <button onClick={() => onSave(passTesterIds)} className="flex-1 py-4 bg-slate-900 text-white font-bold rounded-2xl">Update Results</button>
+            </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const SetPassNgModal = ({ onClose, onSet, existingReason }: any) => {
+    const [reason, setReason] = useState(existingReason?.reason?.en || '');
+    const [imageUrls, setImageUrls] = useState<string[]>(existingReason?.attachmentUrls || []);
+    const [imageCaptions, setImageCaptions] = useState<string[]>(existingReason?.attachmentCaptions || []);
+    const [isUploading, setIsUploading] = useState(false);
+
+    const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const files = e.target.files;
+        if (!files) return;
+        setIsUploading(true);
+        try {
+            const urls = await Promise.all(Array.from(files).map(file => api.uploadImage(file as File)));
+            setImageUrls(prev => [...prev, ...urls]);
+            setImageCaptions(prev => [...prev, ...urls.map(() => '')]);
+        } catch (err) {
+            alert('Upload failed');
+        } finally {
+            setIsUploading(false);
+        }
+    };
+
+    const handleCaptionChange = (idx: number, val: string) => {
+        const next = [...imageCaptions];
+        next[idx] = val;
+        setImageCaptions(next);
     };
 
     return (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md">
-            <div className="bg-white rounded-3xl shadow-2xl w-full max-w-lg animate-slide-up">
-                <div className="p-6 border-b border-slate-100 flex justify-between items-center">
-                    <h2 className="text-xl font-bold">{test ? 'Edit Test' : 'New Durability Test'}</h2>
-                    <button onClick={onClose} className="p-2 hover:bg-slate-100 rounded-full"><X size={20} /></button>
+        <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md animate-fade-in">
+            <div className="bg-white rounded-[2.5rem] shadow-2xl w-full max-w-lg animate-slide-up overflow-hidden">
+                <div className="p-8 border-b border-slate-100 flex justify-between items-center">
+                    <h3 className="text-xl font-bold text-slate-900 uppercase tracking-tight">Set NG Feedback</h3>
+                    <button onClick={onClose} className="text-slate-400 hover:text-slate-600"><X size={24}/></button>
                 </div>
-                <form onSubmit={handleSubmit} className="p-8 space-y-6">
+                <div className="p-8 space-y-6 max-h-[70vh] overflow-y-auto custom-scrollbar">
                     <div>
-                        <label className="block text-[10px] font-black uppercase text-slate-400 mb-2">Test Name</label>
-                        <input required type="text" value={formData.testName} onChange={e => setFormData({...formData, testName: e.target.value})} className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl outline-none font-bold" />
+                        <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-3">Reason / Suggestion</label>
+                        <textarea required value={reason} onChange={e => setReason(e.target.value)} className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none font-bold min-h-[120px]" placeholder="Detailed description..."/>
                     </div>
-                    <div className="grid grid-cols-2 gap-4">
-                        <div>
-                            <label className="block text-[10px] font-black uppercase text-slate-400 mb-2">Status</label>
-                            <select value={formData.status} onChange={e => setFormData({...formData, status: e.target.value as any})} className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl">
-                                {Object.values(TestStatus).map(s => <option key={s} value={s}>{s}</option>)}
-                            </select>
-                        </div>
-                        <div>
-                            <label className="block text-[10px] font-black uppercase text-slate-400 mb-2">Score / Progress (%)</label>
-                            <input type="number" min="0" max="100" value={formData.score} onChange={e => setFormData({...formData, score: Number(e.target.value)})} className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl" />
+                    <div>
+                        <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-3">Evidence Photos & Captions</label>
+                        <div className="flex flex-wrap gap-2 mb-2">
+                            {imageUrls.map((url, i) => (
+                                <div key={i} className="space-y-1">
+                                    <img src={url} className="w-20 h-20 rounded-lg object-cover border border-slate-200" />
+                                    <input type="text" value={imageCaptions[i]} onChange={e => handleCaptionChange(i, e.target.value)} placeholder="Caption..." className="w-20 text-[8px] px-1 py-0.5 border border-slate-200 rounded" />
+                                </div>
+                            ))}
+                            <label className="w-20 h-20 rounded-lg border-2 border-dashed border-slate-200 flex items-center justify-center cursor-pointer hover:bg-slate-50">
+                                {isUploading ? <Loader2 size={20} className="animate-spin text-slate-400" /> : <Plus size={20} className="text-slate-400" />}
+                                <input type="file" multiple className="hidden" onChange={handleFileUpload} />
+                            </label>
                         </div>
                     </div>
                     <div className="flex gap-4">
-                        <button type="button" onClick={onClose} className="flex-1 py-3 text-slate-500 font-bold hover:bg-slate-50 rounded-xl">Cancel</button>
-                        <button type="submit" className="flex-1 py-3 bg-slate-900 text-white font-bold rounded-xl">Save Test</button>
+                        <button onClick={onClose} className="flex-1 py-4 text-slate-400 font-bold hover:bg-slate-50 rounded-2xl">Cancel</button>
+                        <button onClick={() => onSet({en: reason, zh: reason}, false, imageUrls, imageCaptions)} className="flex-1 py-4 bg-slate-900 text-white font-bold rounded-2xl hover:bg-slate-800 transition-all">Update Feedback</button>
                     </div>
-                </form>
+                </div>
             </div>
         </div>
     );
 };
 
-const NoShipmentModal = ({ isOpen, onClose, version }: any) => (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md">
-        <div className="bg-white rounded-3xl p-8 shadow-2xl w-full max-w-sm text-center animate-slide-up">
-            <div className="w-16 h-16 bg-slate-100 text-slate-400 rounded-full flex items-center justify-center mx-auto mb-6"><Info size={32} /></div>
-            <h3 className="text-xl font-bold mb-2">No Shipment Data</h3>
-            <p className="text-slate-500 text-sm mb-8 leading-relaxed">Version {version} has not been associated with any global shipments in the registry yet.</p>
-            <button onClick={onClose} className="w-full py-3 bg-slate-900 text-white font-bold rounded-xl hover:bg-slate-800 transition-all shadow-lg">Acknowledged</button>
+const StatusDecisionModal = ({ onClose, context, onSetStatus, onLinkEco, onCreateEco, activeEcos, versions }: any) => {
+    const [showEcoSelector, setShowEcoSelector] = useState(false);
+    return (
+        <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md animate-fade-in">
+            <div className="bg-white rounded-[2.5rem] shadow-2xl w-full max-w-md animate-slide-up overflow-hidden">
+                <div className="p-8 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+                    <h3 className="font-bold text-slate-900">Decision Status</h3>
+                    <button onClick={onClose} className="text-slate-400 hover:text-slate-600"><X size={20}/></button>
+                </div>
+                <div className="p-8 space-y-3">
+                    {(['PENDING', 'DISCUSSION', 'IGNORED', 'IDEA'] as NgDecisionStatus[]).map(s => (
+                        <button key={s} onClick={() => onSetStatus(s)} className={`w-full text-left px-5 py-4 rounded-2xl border-2 transition-all font-bold ${context.currentStatus === s ? 'bg-slate-900 text-white border-slate-900' : 'bg-white border-slate-100 hover:border-slate-300'}`}>{ngDecisionTranslations[s]}</button>
+                    ))}
+                    <button onClick={() => setShowEcoSelector(!showEcoSelector)} className={`w-full text-left px-5 py-4 rounded-2xl border-2 transition-all font-bold ${context.linkedEcoId ? 'bg-amber-100 border-amber-500 text-amber-700' : 'bg-white border-slate-100 hover:border-slate-300'}`}>
+                        {context.linkedEcoId ? `Linked to ECO` : 'Link to Existing ECO'}
+                    </button>
+                    {showEcoSelector && (
+                        <div className="mt-2 space-y-1 max-h-40 overflow-y-auto p-2 bg-slate-50 rounded-xl">
+                            {activeEcos.map((eco: any) => (
+                                <button key={eco.id} onClick={() => onLinkEco(eco.id)} className="w-full text-left px-3 py-2 rounded-lg text-xs font-bold bg-white border border-slate-100 hover:border-slate-900">{eco.ecoNumber} ({eco.version})</button>
+                            ))}
+                        </div>
+                    )}
+                    <button onClick={() => onCreateEco(versions[0])} className="w-full text-left px-5 py-4 rounded-2xl border-2 border-slate-900 bg-slate-900 text-white font-bold flex items-center gap-2 mt-2"><Plus size={18} /><span>Create New Rectification ECO</span></button>
+                </div>
+            </div>
         </div>
-    </div>
-);
+    );
+};
 
-const ImageLightbox = ({ imgUrl, onClose, caption, onSaveCaption, isViewer }: any) => {
-    const [isEditing, setIsEditing] = useState(false);
-    const [tempCaption, setTempCaption] = useState(caption || '');
-    const isVid = isVideo(imgUrl);
+const FeedbackModal = ({ onClose, onSave, feedback }: any) => {
+    const [content, setContent] = useState(feedback ? feedback.content.en : '');
+    const [source, setSource] = useState(feedback ? feedback.source : '');
+    const [category, setCategory] = useState<ErgoProjectCategory>(feedback ? feedback.category : 'Experience');
+    const [imageUrls, setImageUrls] = useState<string[]>(feedback?.attachmentUrls || []);
+    const [imageCaptions, setImageCaptions] = useState<string[]>(feedback?.attachmentCaptions || []);
+    const [isUploading, setIsUploading] = useState(false);
+
+    const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const files = e.target.files;
+        if (!files) return;
+        setIsUploading(true);
+        try {
+            const urls = await Promise.all(Array.from(files).map(file => api.uploadImage(file as File)));
+            setImageUrls(prev => [...prev, ...urls]);
+            setImageCaptions(prev => [...prev, ...urls.map(() => '')]);
+        } catch (err) {
+            alert('Upload failed');
+        } finally {
+            setIsUploading(false);
+        }
+    };
+
+    const handleCaptionChange = (idx: number, val: string) => {
+        const next = [...imageCaptions];
+        next[idx] = val;
+        setImageCaptions(next);
+    };
 
     return (
-        <div className="fixed inset-0 z-[200] bg-slate-950/95 backdrop-blur-md flex flex-col p-4 md:p-12 animate-fade-in">
-            <button onClick={onClose} className="absolute top-8 right-8 text-white/40 hover:text-white transition-colors z-30"><X size={32} /></button>
-            <div className="flex-1 flex items-center justify-center overflow-hidden">
-                {isVid ? (
-                    <video src={imgUrl} controls autoPlay className="max-w-full max-h-full rounded-2xl shadow-2xl" />
-                ) : (
-                    <img src={imgUrl} className="max-w-full max-h-full object-contain rounded-2xl shadow-2xl" />
-                )}
-            </div>
-            <div className="w-full max-w-2xl mx-auto mt-8 bg-white/10 p-6 rounded-2xl border border-white/10 backdrop-blur-xl">
-                <div className="flex items-center justify-between mb-4">
-                    <span className="text-[10px] font-black text-white/40 uppercase tracking-[0.3em]">Documentation Asset</span>
-                    {!isViewer && (
-                        <button 
-                            onClick={() => isEditing ? (onSaveCaption(tempCaption), setIsEditing(false)) : setIsEditing(true)}
-                            className="text-xs font-bold text-white hover:text-emerald-400 transition-colors flex items-center gap-2"
-                        >
-                            {isEditing ? <><Save size={14}/> Save</> : <><Pencil size={14}/> Edit Caption</>}
-                        </button>
-                    )}
+        <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md animate-fade-in">
+            <div className="bg-white rounded-[2.5rem] shadow-2xl w-full max-w-lg animate-slide-up overflow-hidden">
+                <div className="p-8 border-b border-slate-100 flex justify-between items-center">
+                    <h3 className="text-xl font-bold text-slate-900 uppercase tracking-tight">Feedback Entry</h3>
+                    <button onClick={onClose} className="text-slate-400 hover:text-slate-600"><X size={24}/></button>
                 </div>
-                {isEditing ? (
-                    <textarea 
-                        value={tempCaption} 
-                        onChange={e => setTempCaption(e.target.value)}
-                        className="w-full bg-black/20 border border-white/10 rounded-xl p-4 text-white text-sm focus:outline-none focus:border-white/30 resize-none h-24"
-                    />
-                ) : (
-                    <p className="text-white text-sm font-medium leading-relaxed italic">{caption || 'No description recorded for this asset.'}</p>
-                )}
+                <div className="p-8 space-y-6 max-h-[80vh] overflow-y-auto custom-scrollbar">
+                    <div>
+                        <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-3">Content</label>
+                        <textarea required value={content} onChange={e => setContent(e.target.value)} className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none font-medium min-h-[140px] resize-none" placeholder="Description of market observation..."/>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                        <div><label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-3">Source</label><input type="text" value={source} onChange={e => setSource(e.target.value)} className="w-full px-5 py-3 bg-slate-50 border border-slate-200 rounded-2xl outline-none font-bold" /></div>
+                        <div><label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-3">Category</label><select value={category} onChange={e => setCategory(e.target.value as any)} className="w-full px-5 py-3 bg-slate-50 border border-slate-200 rounded-2xl outline-none font-bold">{['Resistance profile', 'Experience', 'Stroke', 'Other Suggestion'].map(c => <option key={c} value={c}>{c}</option>)}</select></div>
+                    </div>
+                    <div>
+                        <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-3">Visual Evidence & Captions</label>
+                        <div className="flex flex-wrap gap-2">
+                            {imageUrls.map((url, i) => (
+                                <div key={i} className="space-y-1">
+                                    <img src={url} className="w-20 h-20 rounded-lg object-cover border border-slate-200" />
+                                    <input type="text" value={imageCaptions[i]} onChange={e => handleCaptionChange(i, e.target.value)} placeholder="Caption..." className="w-20 text-[8px] px-1 py-0.5 border border-slate-200 rounded" />
+                                </div>
+                            ))}
+                            <label className="w-20 h-20 rounded-lg border-2 border-dashed border-slate-200 flex items-center justify-center cursor-pointer hover:bg-slate-50">
+                                {isUploading ? <Loader2 size={20} className="animate-spin text-slate-400" /> : <Plus size={20} className="text-slate-400" />}
+                                <input type="file" multiple className="hidden" onChange={handleFileUpload} />
+                            </label>
+                        </div>
+                    </div>
+                    <div className="flex gap-4 pt-4">
+                        <button onClick={onClose} className="flex-1 py-4 text-slate-400 font-bold hover:bg-slate-50 rounded-2xl">Cancel</button>
+                        <button onClick={() => onSave({ content: {en: content, zh: content}, source, category, date: new Date().toISOString().split('T')[0], attachmentUrls: imageUrls, attachmentCaptions: imageCaptions })} className="flex-1 py-4 bg-slate-900 text-white font-bold rounded-2xl">Save Entry</button>
+                    </div>
+                </div>
             </div>
         </div>
     );
 };
+
+const FeedbackStatusDecisionModal = ({ onClose, feedback, onUpdateStatus, onLinkEco, onCreateEco, activeEcos, versions }: any) => {
+    const [showEcoSelector, setShowEcoSelector] = useState(false);
+    return (
+        <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md animate-fade-in">
+            <div className="bg-white rounded-[2.5rem] shadow-2xl w-full max-w-md animate-slide-up overflow-hidden">
+                <div className="p-8 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+                    <h3 className="font-bold text-slate-900">Feedback Decision</h3>
+                    <button onClick={onClose} className="text-slate-400 hover:text-slate-600"><X size={20}/></button>
+                </div>
+                <div className="p-8 space-y-3">
+                    {(['PENDING', 'DISCUSSION', 'IGNORED'] as any[]).map(s => (
+                        <button key={s} onClick={() => onUpdateStatus(feedback.id, s)} className={`w-full text-left px-5 py-4 rounded-2xl border-2 transition-all font-bold ${feedback.status === s ? 'bg-slate-900 text-white border-slate-900' : 'bg-white border-slate-100 hover:border-slate-300'}`}>{s}</button>
+                    ))}
+                    <button onClick={() => setShowEcoSelector(!showEcoSelector)} className={`w-full text-left px-5 py-4 rounded-2xl border-2 transition-all font-bold ${feedback.linkedEcoId ? 'bg-amber-100 border-amber-500 text-amber-700' : 'bg-white border-slate-100 hover:border-slate-300'}`}>{feedback.linkedEcoId ? `Linked to ECO` : 'Link to Existing ECO'}</button>
+                    {showEcoSelector && (
+                        <div className="mt-2 space-y-1 max-h-40 overflow-y-auto p-2 bg-slate-50 rounded-xl">
+                            {activeEcos.map((eco: any) => (
+                                <button key={eco.id} onClick={() => onLinkEco(eco.id)} className="w-full text-left px-3 py-2 rounded-lg text-xs font-bold bg-white border border-slate-100 hover:border-slate-900">{eco.ecoNumber} ({eco.version})</button>
+                            ))}
+                        </div>
+                    )}
+                    <button onClick={() => onCreateEco(versions[0])} className="w-full text-left px-5 py-4 rounded-2xl border-2 border-slate-900 bg-slate-900 text-white font-bold flex items-center gap-2 mt-2"><Plus size={18} /><span>Create Rectification ECO</span></button>
+                </div>
+            </div>
+        </div>
+    );
+};
+
+export default ProductDetail;

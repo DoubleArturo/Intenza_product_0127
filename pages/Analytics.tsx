@@ -42,8 +42,6 @@ interface AnalyticsProps {
   chartColorStyle?: 'COLORFUL' | 'MONOCHROME' | 'SLATE';
   tooltipScale?: number;
   tooltipPosition?: 'TOP_LEFT' | 'TOP_RIGHT' | 'BOTTOM_LEFT' | 'BOTTOM_RIGHT' | 'FOLLOW';
-  lastImportDate?: string;
-  onUpdateImportDate?: (date: string) => void;
 }
 
 type DimensionFilter = 'DATA_DRILL' | 'BUYER' | 'COLOR';
@@ -51,7 +49,7 @@ type ViewMode = 'SHIPMENTS' | 'ERGONOMICS' | 'DURABILITY';
 
 const Analytics: React.FC<AnalyticsProps> = ({ 
   products, shipments, onImportData, onBatchAddProducts, showAiInsights, userRole, chartColorStyle = 'COLORFUL',
-  tooltipScale = 2, tooltipPosition = 'TOP_LEFT', lastImportDate, onUpdateImportDate
+  tooltipScale = 2, tooltipPosition = 'TOP_LEFT'
 }) => {
   const { language, t } = useContext(LanguageContext);
   const navigate = useNavigate();
@@ -253,8 +251,6 @@ const Analytics: React.FC<AnalyticsProps> = ({
           country: row['Country'] || row['Region'] || 'Global'
         }));
         onImportData(newShipments);
-        const now = new Date().toLocaleString();
-        onUpdateImportDate?.(now);
         alert(`Successfully imported ${newShipments.length} records.`);
       } catch (err) {
         alert('File parsing error.');
@@ -350,15 +346,7 @@ const Analytics: React.FC<AnalyticsProps> = ({
       <header className="mb-10 flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-200 pb-8">
         <div>
           <h1 className="text-4xl font-black text-slate-900 tracking-tight">Product Info. Dashboard</h1>
-          <div className="flex items-center gap-4 mt-2">
-            <p className="text-slate-500 font-medium">Quality metrics and shipment analytics at a glance.</p>
-            {lastImportDate && (
-              <div className="flex items-center gap-1.5 px-3 py-1 bg-amber-50 border border-amber-100 rounded-full animate-fade-in shadow-sm">
-                <Clock size={12} className="text-amber-600" />
-                <span className="text-[10px] font-black text-amber-700 uppercase tracking-widest">Data Cut-off: {lastImportDate}</span>
-              </div>
-            )}
-          </div>
+          <p className="text-slate-500 mt-2 font-medium">Quality metrics and shipment analytics at a glance.</p>
         </div>
         {canImport && (
           <div className="flex gap-3">
@@ -394,6 +382,7 @@ const Analytics: React.FC<AnalyticsProps> = ({
               </div>
             </div>
 
+            {/* HEADER BUTTONS SWAPPED AS REQUESTED */}
             <div className="flex items-center gap-6">
               {viewMode === 'SHIPMENTS' && (
                 <div className="flex items-center gap-4">

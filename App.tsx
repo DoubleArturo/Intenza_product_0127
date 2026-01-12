@@ -2,7 +2,7 @@
 import React, { useState, createContext, useCallback, useEffect, lazy, Suspense, useRef } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { MOCK_PRODUCTS, MOCK_SHIPMENTS, MOCK_TESTERS } from './services/mockData';
-import { ProductModel, Language, LocalizedString, Tester, ShipmentData, DEFAULT_SERIES, UserAccount, AppState, TesterGroup, AuditLog, ChartViewType } from './types';
+import { ProductModel, Language, LocalizedString, Tester, ShipmentData, DEFAULT_SERIES, UserAccount, AppState, TesterGroup, AuditLog } from './types';
 import { api } from './services/api';
 import { Cloud, CloudCheck, CloudOff, Loader2, CheckCircle, AlertCircle } from 'lucide-react';
 
@@ -56,19 +56,6 @@ const App = () => {
   const [analyticsTooltipScale, setAnalyticsTooltipScale] = useState<number>(2);
   const [analyticsTooltipPosition, setAnalyticsTooltipPosition] = useState<'TOP_LEFT' | 'TOP_RIGHT' | 'BOTTOM_LEFT' | 'BOTTOM_RIGHT' | 'FOLLOW'>('TOP_LEFT');
   const [evaluationModalYOffset, setEvaluationModalYOffset] = useState<number>(100);
-  const [lastImportDate, setLastImportDate] = useState<string | undefined>(undefined);
-
-  // Navigation Persistence States
-  const [dashboardSearch, setDashboardSearch] = useState('');
-  const [dashboardSeries, setDashboardSeries] = useState('ALL');
-  const [dashboardSort, setDashboardSort] = useState<'NAME_ASC' | 'SKU_ASC' | 'SKU_DESC'>('SKU_ASC');
-  
-  const [analyticsViewMode, setAnalyticsViewMode] = useState<'SHIPMENTS' | 'ERGONOMICS' | 'DURABILITY'>('SHIPMENTS');
-  const [analyticsDrillPath, setAnalyticsDrillPath] = useState<{ level: string, label: string, filterVal: string }[]>([]);
-  const [analyticsDimension, setAnalyticsDimension] = useState<'DATA_DRILL' | 'BUYER' | 'COLOR'>('DATA_DRILL');
-  const [analyticsChartType, setAnalyticsChartType] = useState<ChartViewType>('PIE');
-
-  const [productTabMap, setProductTabMap] = useState<Record<string, 'DESIGN' | 'ERGO' | 'LIFE'>>({});
 
   const [syncStatus, setSyncStatus] = useState<'idle' | 'saving' | 'success' | 'error'>('idle');
   const [errorDetail, setErrorDetail] = useState<string>('');
@@ -79,9 +66,9 @@ const App = () => {
   const latestStateRef = useRef<AppState | null>(null);
   useEffect(() => {
     latestStateRef.current = {
-      products, seriesList, shipments, testers, testerGroups, users, auditLogs, language, showAiInsights, maxHistorySteps, customLogoUrl, globalStatusLightSize, dashboardColumns, cardAspectRatio, chartColorStyle, analyticsTooltipScale, analyticsTooltipPosition, evaluationModalYOffset, lastImportDate
+      products, seriesList, shipments, testers, testerGroups, users, auditLogs, language, showAiInsights, maxHistorySteps, customLogoUrl, globalStatusLightSize, dashboardColumns, cardAspectRatio, chartColorStyle, analyticsTooltipScale, analyticsTooltipPosition, evaluationModalYOffset
     };
-  }, [products, seriesList, shipments, testers, testerGroups, users, auditLogs, language, showAiInsights, maxHistorySteps, customLogoUrl, globalStatusLightSize, dashboardColumns, cardAspectRatio, chartColorStyle, analyticsTooltipScale, analyticsTooltipPosition, evaluationModalYOffset, lastImportDate]);
+  }, [products, seriesList, shipments, testers, testerGroups, users, auditLogs, language, showAiInsights, maxHistorySteps, customLogoUrl, globalStatusLightSize, dashboardColumns, cardAspectRatio, chartColorStyle, analyticsTooltipScale, analyticsTooltipPosition, evaluationModalYOffset]);
 
   const t = useCallback((str: any) => {
     if (!str) return '';
@@ -89,14 +76,18 @@ const App = () => {
     return str[language] || str.en || str.zh || '';
   }, [language]);
 
+  /**
+   * handleSyncToCloud 支援「部分更新」
+   */
   const handleSyncToCloud = useCallback(async (isAutoSync = false, partialData?: Partial<AppState>) => {
     if (isSyncingRef.current || !isLoggedIn || currentUser?.role === 'viewer') return;
     
     isSyncingRef.current = true;
     setSyncStatus('saving');
     
+    // 如果傳入 partialData，則僅發送該部分；否則發送當前全域狀態
     const payload = partialData || {
-      products, seriesList, shipments, testers, testerGroups, users, auditLogs, language, showAiInsights, maxHistorySteps, customLogoUrl, globalStatusLightSize, dashboardColumns, cardAspectRatio, chartColorStyle, analyticsTooltipScale, analyticsTooltipPosition, evaluationModalYOffset, lastImportDate
+      products, seriesList, shipments, testers, testerGroups, users, auditLogs, language, showAiInsights, maxHistorySteps, customLogoUrl, globalStatusLightSize, dashboardColumns, cardAspectRatio, chartColorStyle, analyticsTooltipScale, analyticsTooltipPosition, evaluationModalYOffset
     };
 
     try {
@@ -113,7 +104,7 @@ const App = () => {
       isSyncingRef.current = false;
       setTimeout(() => setSyncStatus('idle'), 3000);
     }
-  }, [products, seriesList, shipments, testers, testerGroups, users, auditLogs, language, showAiInsights, maxHistorySteps, customLogoUrl, globalStatusLightSize, dashboardColumns, cardAspectRatio, chartColorStyle, analyticsTooltipScale, analyticsTooltipPosition, evaluationModalYOffset, lastImportDate, isLoggedIn, currentUser]);
+  }, [products, seriesList, shipments, testers, testerGroups, users, auditLogs, language, showAiInsights, maxHistorySteps, customLogoUrl, globalStatusLightSize, dashboardColumns, cardAspectRatio, chartColorStyle, analyticsTooltipScale, analyticsTooltipPosition, evaluationModalYOffset, isLoggedIn, currentUser]);
 
   const handleLogout = useCallback(async () => {
     if (currentUser) {
@@ -138,6 +129,7 @@ const App = () => {
         return logs;
       });
       
+      // 登出時執行部分更新，確保 Log 被儲存
       handleSyncToCloud(true, { auditLogs: updatedLogs });
 
       setTimeout(() => {
@@ -229,7 +221,6 @@ const App = () => {
         if (cloudData.analyticsTooltipScale !== undefined) setAnalyticsTooltipScale(cloudData.analyticsTooltipScale);
         if (cloudData.analyticsTooltipPosition) setAnalyticsTooltipPosition(cloudData.analyticsTooltipPosition);
         if (cloudData.evaluationModalYOffset !== undefined) setEvaluationModalYOffset(cloudData.evaluationModalYOffset);
-        if (cloudData.lastImportDate) setLastImportDate(cloudData.lastImportDate);
       }
       setSyncStatus('success');
       initialLoadDone.current = true;
@@ -245,8 +236,7 @@ const App = () => {
   const handleResetShipments = useCallback(() => {
     if (currentUser?.role === 'viewer') return;
     setShipments([]);
-    setLastImportDate(undefined);
-    setTimeout(() => handleSyncToCloud(true, { shipments: [], lastImportDate: undefined }), 100);
+    setTimeout(() => handleSyncToCloud(true, { shipments: [] }), 100);
   }, [handleSyncToCloud, currentUser]);
 
   useEffect(() => {
@@ -273,7 +263,7 @@ const App = () => {
       const timer = setTimeout(() => handleSyncToCloud(true), 2500);
       return () => clearTimeout(timer);
     }
-  }, [users, seriesList, products, testers, testerGroups, shipments, auditLogs, customLogoUrl, globalStatusLightSize, dashboardColumns, cardAspectRatio, chartColorStyle, analyticsTooltipScale, analyticsTooltipPosition, evaluationModalYOffset, lastImportDate, isLoggedIn, handleSyncToCloud, currentUser]);
+  }, [users, seriesList, products, testers, testerGroups, shipments, auditLogs, customLogoUrl, globalStatusLightSize, dashboardColumns, cardAspectRatio, chartColorStyle, analyticsTooltipScale, analyticsTooltipPosition, evaluationModalYOffset, isLoggedIn, handleSyncToCloud, currentUser]);
 
   return (
     <LanguageContext.Provider value={{ language, setLanguage, t }}>
@@ -303,12 +293,6 @@ const App = () => {
                     globalStatusLightSize={globalStatusLightSize}
                     dashboardColumns={dashboardColumns}
                     cardAspectRatio={cardAspectRatio}
-                    searchTerm={dashboardSearch}
-                    onSearchChange={setDashboardSearch}
-                    selectedSeries={dashboardSeries}
-                    onSeriesChange={setDashboardSeries}
-                    sortOrder={dashboardSort}
-                    onSortOrderChange={setDashboardSort}
                     onAddProduct={async (p) => setProducts([...products, { ...p, id: `p-${Date.now()}`, ergoProjects: [], customerFeedback: [], designHistory: [], ergoTests: [], durabilityTests: [], isWatched: false, customSortOrder: products.length, uniqueFeedbackTags: {} } as any])}
                     onUpdateProduct={async (p) => setProducts(products.map(old => old.id === p.id ? p : old))}
                     onToggleWatch={(id) => setProducts(products.map(p => p.id === id ? { ...p, isWatched: !p.isWatched } : p))}
@@ -332,23 +316,12 @@ const App = () => {
                     onUpdateProduct={async (p) => setProducts(products.map(old => old.id === p.id ? p : old))} 
                     showAiInsights={showAiInsights} 
                     evaluationModalYOffset={evaluationModalYOffset}
-                    tabMap={productTabMap}
-                    onTabChange={(pid, tab) => setProductTabMap(prev => ({ ...prev, [pid]: tab }))}
                   />
                 } />
                 <Route path="/analytics" element={
                   <Analytics 
-                    products={products} shipments={shipments} testers={testers} 
-                    onImportData={(data) => setShipments([...shipments, ...data])} 
-                    onBatchAddProducts={(newPs) => setProducts([...products, ...newPs])} 
-                    showAiInsights={showAiInsights} userRole={currentUser?.role} chartColorStyle={chartColorStyle} 
+                    products={products} shipments={shipments} testers={testers} onImportData={(data) => setShipments([...shipments, ...data])} onBatchAddProducts={(newPs) => setProducts([...products, ...newPs])} showAiInsights={showAiInsights} userRole={currentUser?.role} chartColorStyle={chartColorStyle} 
                     tooltipScale={analyticsTooltipScale} tooltipPosition={analyticsTooltipPosition}
-                    viewMode={analyticsViewMode} onViewModeChange={setAnalyticsViewMode}
-                    drillPath={analyticsDrillPath} onDrillPathChange={setAnalyticsDrillPath}
-                    dimension={analyticsDimension} onDimensionChange={setAnalyticsDimension}
-                    chartType={analyticsChartType} onChartTypeChange={setAnalyticsChartType}
-                    lastImportDate={lastImportDate}
-                    onUpdateImportDate={setLastImportDate}
                   />
                 } />
                 <Route path="/settings" element={
@@ -360,7 +333,7 @@ const App = () => {
                           newList[idx] = { ...newList[idx], [language]: name };
                           setSeriesList(newList);
                       }}
-                      currentAppState={{ products, seriesList, shipments, testers, testerGroups, users, auditLogs, language, showAiInsights, maxHistorySteps, customLogoUrl, globalStatusLightSize, dashboardColumns, cardAspectRatio, chartColorStyle, analyticsTooltipScale, analyticsTooltipPosition, evaluationModalYOffset, lastImportDate }}
+                      currentAppState={{ products, seriesList, shipments, testers, testerGroups, users, auditLogs, language, showAiInsights, maxHistorySteps, customLogoUrl, globalStatusLightSize, dashboardColumns, cardAspectRatio, chartColorStyle, analyticsTooltipScale, analyticsTooltipPosition, evaluationModalYOffset }}
                       onLoadProject={(state) => {
                           if (state.products) setProducts(state.products);
                           if (state.seriesList) setSeriesList(state.seriesList);
@@ -377,7 +350,6 @@ const App = () => {
                           if (state.analyticsTooltipScale !== undefined) setAnalyticsTooltipScale(state.analyticsTooltipScale);
                           if (state.analyticsTooltipPosition) setAnalyticsTooltipPosition(state.analyticsTooltipPosition);
                           if (state.evaluationModalYOffset !== undefined) setEvaluationModalYOffset(state.evaluationModalYOffset);
-                          if (state.lastImportDate) setLastImportDate(state.lastImportDate);
                       }}
                       onUpdateMaxHistory={setMaxHistorySteps} onToggleAiInsights={setShowAiInsights}
                       onUpdateLogo={setCustomLogoUrl}
