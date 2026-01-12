@@ -204,7 +204,6 @@ export interface AppState {
   products: ProductModel[];
   seriesList: LocalizedString[];
   shipments: ShipmentData[];
-  shipmentDataCutDate?: string;
   testers: Tester[]; 
   testerGroups?: TesterGroup[];
   users: UserAccount[];

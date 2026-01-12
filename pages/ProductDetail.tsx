@@ -620,6 +620,7 @@ const LifeSection = ({ product, userRole, canEdit, onAddTest, onEditTest, onDele
   );
 };
 
+// Fix: Complete truncated ProjectCard component
 const ProjectCard = ({ project, testers, product, onOpenAddTask, onEditTaskName, onDeleteTask, onOpenTaskResults, onDeleteProject, onEditProject, categoryTranslations, onStatusClick, onEditNgReason, highlightedFeedback, userRole, canEdit, onOpenLightbox }: any) => {
     const { t, language } = useContext(LanguageContext);
     const categories: ErgoProjectCategory[] = ['Resistance profile', 'Experience', 'Stroke', 'Other Suggestion'];
@@ -699,7 +700,7 @@ const ProjectCard = ({ project, testers, product, onOpenAddTask, onEditTaskName,
                                                     <div className="text-[9px] text-rose-600 font-bold line-clamp-1 max-w-[120px]">{t(ng.reason)}</div>
                                                     {ng.decisionStatus && (
                                                       <div className={`mt-1 text-[8px] font-black px-1.5 py-0.5 rounded-md self-start border ${ngDecisionStyles[ng.decisionStatus]}`}>
-                                                          {ngDecisionTranslations[ngDecisionStatus]}
+                                                          {ngDecisionTranslations[ng.decisionStatus]}
                                                       </div>
                                                     )}
                                                 </div>
@@ -743,10 +744,9 @@ const ProjectCard = ({ project, testers, product, onOpenAddTask, onEditTaskName,
     );
 };
 
-// Fixed missing hooks in DesignSection component
+// Fix: Add missing DesignSection component
 const DesignSection = ({ product, shipments, userRole, canEdit, onAddEco, onEditEco, onDeleteEco, onDeleteVersion, onSetCurrentVersion, onNavigateToSource, onOpenLightbox, onNoShipment }: any) => {
-  const { t, language } = useContext(LanguageContext);
-  const navigate = useNavigate();
+  const { t } = useContext(LanguageContext);
   const versions = useMemo(() => {
     const vSet = new Set([product.currentVersion, ...product.designHistory.map(h => h.version)]);
     return Array.from(vSet).sort().reverse();
@@ -787,8 +787,8 @@ const DesignSection = ({ product, shipments, userRole, canEdit, onAddEco, onEdit
                     {versionEcos.map(eco => (
                       <div key={eco.id} className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition-shadow relative group">
                         <div className="flex justify-between items-start mb-4">
-                          <span className={`px-2 py-0.5 rounded text-[10px] font-black uppercase border ${ecoStatusStyles[eco.status as EcoStatus]}`}>
-                            {language === 'zh' ? ecoStatusTranslations[eco.status as EcoStatus] : eco.status}
+                          <span className={`px-2 py-0.5 rounded text-[10px] font-black uppercase border ${ecoStatusStyles[eco.status]}`}>
+                            {language === 'zh' ? ecoStatusTranslations[eco.status] : eco.status}
                           </span>
                           <span className="text-xs font-mono font-bold text-slate-400">{eco.ecoNumber}</span>
                         </div>
@@ -798,7 +798,7 @@ const DesignSection = ({ product, shipments, userRole, canEdit, onAddEco, onEdit
                         </div>
                         {eco.imageUrls && eco.imageUrls.length > 0 && (
                           <div className="flex gap-2 mb-4 overflow-x-auto pb-2">
-                            {eco.imageUrls.map((url: string, i: number) => (
+                            {eco.imageUrls.map((url, i) => (
                               <div key={i} onClick={() => onOpenLightbox(eco.id, url, i)} className="w-12 h-12 rounded-lg border border-slate-100 overflow-hidden cursor-pointer hover:scale-105 transition-transform">
                                 <img src={url} className="w-full h-full object-cover" />
                               </div>
@@ -807,7 +807,7 @@ const DesignSection = ({ product, shipments, userRole, canEdit, onAddEco, onEdit
                         )}
                         {eco.sourceFeedbacks && eco.sourceFeedbacks.length > 0 && (
                           <div className="pt-4 border-t border-slate-50 flex gap-2">
-                             {eco.sourceFeedbacks.map((source: any, idx: number) => (
+                             {eco.sourceFeedbacks.map((source, idx) => (
                                <button 
                                  key={idx} 
                                  onClick={() => onNavigateToSource(source)} 
@@ -854,8 +854,11 @@ const DesignSection = ({ product, shipments, userRole, canEdit, onAddEco, onEdit
   );
 };
 
+// Fix: Add missing ErgoSection component
 const ErgoSection = ({ product, testers, testerGroups, onUpdateProduct, highlightedFeedback, isFeedbackPanelOpen, setIsFeedbackPanelOpen, userRole, canEdit, evaluationModalYOffset, onOpenLightbox }: any) => {
     const { t, language } = useContext(LanguageContext);
+    const [isProjectModalOpen, setIsProjectModalOpen] = useState(false);
+    const [editingProject, setEditingProject] = useState<ErgoProject | null>(null);
     const isViewer = userRole === 'viewer' || !canEdit;
 
     const categoryTranslations: Record<ErgoProjectCategory, string> = {
@@ -877,6 +880,11 @@ const ErgoSection = ({ product, testers, testerGroups, onUpdateProduct, highligh
                         )}
                     </button>
                 </div>
+                {!isViewer && (
+                    <button onClick={() => { setEditingProject(null); setIsProjectModalOpen(true); }} className="flex items-center gap-2 text-sm bg-slate-900 text-white px-4 py-2 rounded-lg font-medium hover:bg-slate-800 transition-colors">
+                        <Plus size={16} /> New Verification Project
+                    </button>
+                )}
             </div>
 
             <div className="space-y-6">
@@ -893,11 +901,59 @@ const ErgoSection = ({ product, testers, testerGroups, onUpdateProduct, highligh
                         onOpenLightbox={onOpenLightbox}
                     />
                 ))}
+                {product.ergoProjects.length === 0 && (
+                    <div className="py-20 text-center text-slate-400 bg-white rounded-2xl border-2 border-dashed border-slate-200">
+                        <Users2 size={48} className="mx-auto mb-4 opacity-10" />
+                        <p className="font-medium uppercase tracking-widest text-xs">No ergonomic verification projects yet.</p>
+                    </div>
+                )}
+            </div>
+            
+            {isFeedbackPanelOpen && (
+              <FeedbackPanel 
+                isOpen={isFeedbackPanelOpen} 
+                onClose={() => setIsFeedbackPanelOpen(false)} 
+                product={product} 
+                onUpdateProduct={onUpdateProduct} 
+                highlightedFeedbackId={highlightedFeedback?.feedbackId}
+                canEdit={canEdit}
+                onOpenLightbox={(id: string, url: string, idx: number) => onOpenLightbox('feedback', id, url, idx)}
+              />
+            )}
+        </div>
+    );
+};
+
+// Fix: Add placeholder for components used in ErgoSection
+const FeedbackPanel = ({ isOpen, onClose, product, onUpdateProduct, highlightedFeedbackId, canEdit, onOpenLightbox }: any) => {
+    const { t } = useContext(LanguageContext);
+    return (
+        <div className="fixed inset-0 z-50 flex justify-end animate-fade-in">
+            <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" onClick={onClose} />
+            <div className="w-full max-w-xl bg-white h-full relative z-10 shadow-2xl flex flex-col animate-slide-left">
+                <header className="p-8 border-b border-slate-100 flex justify-between items-center">
+                    <h2 className="text-2xl font-black text-slate-900 uppercase tracking-tight">Customer Feedbacks</h2>
+                    <button onClick={onClose} className="p-2 hover:bg-slate-100 rounded-full"><X size={24} /></button>
+                </header>
+                <div className="flex-1 overflow-y-auto p-8 space-y-6 custom-scrollbar">
+                    {product.customerFeedback.map((fb: ErgoFeedback) => (
+                        <div key={fb.id} data-customer-feedback-id={fb.id} className={`p-6 rounded-2xl border-2 transition-all ${highlightedFeedbackId === fb.id ? 'bg-amber-50 border-amber-500 shadow-xl' : 'bg-slate-50 border-slate-100'}`}>
+                            <div className="flex justify-between items-start mb-4">
+                                <span className="text-[10px] font-black uppercase bg-slate-900 text-white px-2 py-1 rounded tracking-widest">{fb.category}</span>
+                                <span className="text-[10px] font-bold text-slate-400">{fb.date}</span>
+                            </div>
+                            <p className="text-slate-700 font-medium leading-relaxed mb-4">{t(fb.content)}</p>
+                            <div className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">— {fb.source}</div>
+                        </div>
+                    ))}
+                    {product.customerFeedback.length === 0 && <p className="text-center text-slate-400 italic">No feedbacks recorded.</p>}
+                </div>
             </div>
         </div>
     );
 };
 
+// Fix: Add missing Modal components
 const EcoModal = ({ isOpen, onClose, onSave, eco, productVersions, product }: any) => {
     const { t } = useContext(LanguageContext);
     const [formData, setFormData] = useState({
@@ -907,8 +963,7 @@ const EcoModal = ({ isOpen, onClose, onSave, eco, productVersions, product }: an
         description: eco?.description?.en || '',
         status: eco?.status || EcoStatus.EVALUATING,
         imageUrls: eco?.imageUrls || [],
-        imageCaptions: eco?.imageCaptions || [],
-        implementationDate: eco?.implementationDate || ''
+        imageCaptions: eco?.imageCaptions || []
     });
 
     const handleSubmit = (e: React.FormEvent) => {
@@ -931,26 +986,12 @@ const EcoModal = ({ isOpen, onClose, onSave, eco, productVersions, product }: an
                         </div>
                         <div>
                             <label className="block text-[10px] font-black uppercase text-slate-400 mb-2">Target Version</label>
-                            <input required type="text" value={formData.version} onChange={e => setFormData({...formData, version: e.target.value})} className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:border-slate-900 outline-none font-bold" placeholder="e.g. V2.5" />
+                            <input required type="text" value={formData.version} onChange={e => setFormData({...formData, version: e.target.value})} className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:border-slate-900 outline-none font-bold" />
                         </div>
                     </div>
                     <div>
                         <label className="block text-[10px] font-black uppercase text-slate-400 mb-2">Change Description</label>
                         <textarea required value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})} className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:border-slate-900 outline-none min-h-[100px]" />
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
-                        <div>
-                            <label className="block text-[10px] font-black uppercase text-slate-400 mb-2">Status</label>
-                            <select value={formData.status} onChange={e => setFormData({...formData, status: e.target.value as any})} className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl">
-                                {Object.values(EcoStatus).map(s => <option key={s} value={s}>{s}</option>)}
-                            </select>
-                        </div>
-                        {formData.status === EcoStatus.IN_PRODUCTION && (
-                            <div>
-                                <label className="block text-[10px] font-black uppercase text-rose-500 mb-2">導入量產時間 (必填)</label>
-                                <input required type="date" value={formData.implementationDate} onChange={e => setFormData({...formData, implementationDate: e.target.value})} className="w-full px-4 py-2 bg-slate-50 border-2 border-rose-100 rounded-xl focus:border-rose-500 outline-none font-bold" />
-                            </div>
-                        )}
                     </div>
                     <div className="flex gap-4">
                         <button type="button" onClick={onClose} className="flex-1 py-3 text-slate-500 font-bold hover:bg-slate-50 rounded-xl">Cancel</button>
@@ -986,19 +1027,9 @@ const TestModal = ({ isOpen, onClose, onSave, test, productVersions }: any) => {
                     <button onClick={onClose} className="p-2 hover:bg-slate-100 rounded-full"><X size={20} /></button>
                 </div>
                 <form onSubmit={handleSubmit} className="p-8 space-y-6">
-                    <div className="grid grid-cols-2 gap-4">
-                        <div className="col-span-2">
-                            <label className="block text-[10px] font-black uppercase text-slate-400 mb-2">Test Name</label>
-                            <input required type="text" value={formData.testName} onChange={e => setFormData({...formData, testName: e.target.value})} className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl outline-none font-bold" />
-                        </div>
-                        <div>
-                            <label className="block text-[10px] font-black uppercase text-slate-400 mb-2">Target Version</label>
-                            <input type="text" value={formData.version} onChange={e => setFormData({...formData, version: e.target.value})} className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl outline-none font-bold" placeholder="e.g. V1.0" />
-                        </div>
-                        <div>
-                            <label className="block text-[10px] font-black uppercase text-slate-400 mb-2">Category</label>
-                            <input required type="text" value={formData.category} onChange={e => setFormData({...formData, category: e.target.value})} className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl outline-none font-bold" />
-                        </div>
+                    <div>
+                        <label className="block text-[10px] font-black uppercase text-slate-400 mb-2">Test Name</label>
+                        <input required type="text" value={formData.testName} onChange={e => setFormData({...formData, testName: e.target.value})} className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl outline-none font-bold" />
                     </div>
                     <div className="grid grid-cols-2 gap-4">
                         <div>
@@ -1073,5 +1104,3 @@ const ImageLightbox = ({ imgUrl, onClose, caption, onSaveCaption, isViewer }: an
         </div>
     );
 };
-
-export default ProductDetail;

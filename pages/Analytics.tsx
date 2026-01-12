@@ -34,56 +34,56 @@ const COLOR_MAP: Record<string, string> = {
 interface AnalyticsProps {
   products: ProductModel[];
   shipments: ShipmentData[];
-  shipmentDataCutDate?: string;
   testers?: Tester[];
   onImportData: (data: ShipmentData[]) => void;
   onBatchAddProducts: (products: any[]) => void;
   showAiInsights: boolean;
-  userRole?: 'admin' | 'user' | 'uploader' | 'viewer';
+  userRole?: 'admin' | 'user' | 'uploader';
   chartColorStyle?: 'COLORFUL' | 'MONOCHROME' | 'SLATE';
   tooltipScale?: number;
   tooltipPosition?: 'TOP_LEFT' | 'TOP_RIGHT' | 'BOTTOM_LEFT' | 'BOTTOM_RIGHT' | 'FOLLOW';
-  viewMode: 'SHIPMENTS' | 'ERGONOMICS' | 'DURABILITY';
-  onViewModeChange: (val: 'SHIPMENTS' | 'ERGONOMICS' | 'DURABILITY') => void;
-  drillPath: { level: string, label: string, filterVal: string }[];
-  onDrillPathChange: (val: { level: string, label: string, filterVal: string }[]) => void;
-  dimension: 'DATA_DRILL' | 'BUYER' | 'COLOR';
-  onDimensionChange: (val: 'DATA_DRILL' | 'BUYER' | 'COLOR') => void;
-  chartType: ChartViewType;
-  onChartTypeChange: (val: ChartViewType) => void;
 }
 
+type DimensionFilter = 'DATA_DRILL' | 'BUYER' | 'COLOR';
+type ViewMode = 'SHIPMENTS' | 'ERGONOMICS' | 'DURABILITY';
+
 const Analytics: React.FC<AnalyticsProps> = ({ 
-  products, shipments, shipmentDataCutDate, onImportData, onBatchAddProducts, showAiInsights, userRole, chartColorStyle = 'COLORFUL',
-  tooltipScale = 2, tooltipPosition = 'TOP_LEFT',
-  viewMode, onViewModeChange,
-  drillPath, onDrillPathChange,
-  dimension, onDimensionChange,
-  chartType, onChartTypeChange
+  products, shipments, onImportData, onBatchAddProducts, showAiInsights, userRole, chartColorStyle = 'COLORFUL',
+  tooltipScale = 2, tooltipPosition = 'TOP_LEFT'
 }) => {
   const { language, t } = useContext(LanguageContext);
   const navigate = useNavigate();
   const location = useLocation();
   
+  const [chartType, setChartType] = useState<ChartViewType>('PIE');
+  const [viewMode, setViewMode] = useState<ViewMode>('SHIPMENTS');
+  const [drillPath, setDrillPath] = useState<{ level: string, label: string, filterVal: string }[]>([]);
+  const [dimension, setDimension] = useState<DimensionFilter>('DATA_DRILL');
   const [traceSearchQuery, setTraceSearchQuery] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const activePalette = COLOR_PALETTES[chartColorStyle] || COLOR_PALETTES.COLORFUL;
   const canImport = userRole === 'admin' || userRole === 'uploader';
 
+  /**
+   * Helper to format version string
+   */
   const formatVersion = (v: string) => {
     const clean = (v || '1.0').toUpperCase().replace('V', '');
     return `V${clean}`;
   };
 
+  /**
+   * Handle incoming autoDrill state from Product Detail
+   */
   useEffect(() => {
     if (location.state?.autoDrill) {
       const { sku, version } = location.state.autoDrill;
       const shipment = shipments.find(s => s.sku === sku);
       if (shipment) {
-        onViewModeChange('SHIPMENTS');
-        onDimensionChange('DATA_DRILL');
-        onDrillPathChange([
+        setViewMode('SHIPMENTS');
+        setDimension('DATA_DRILL');
+        setDrillPath([
             { level: 'CATEGORY', label: shipment.category, filterVal: shipment.category },
             { level: 'SERIES', label: shipment.series, filterVal: shipment.series },
             { level: 'SKU', label: sku, filterVal: sku },
@@ -92,7 +92,7 @@ const Analytics: React.FC<AnalyticsProps> = ({
       }
       navigate(location.pathname, { replace: true, state: {} });
     }
-  }, [location.state, shipments, navigate, location.pathname, onDimensionChange, onDrillPathChange, onViewModeChange]);
+  }, [location.state, shipments, navigate, location.pathname]);
 
   const currentLevel = useMemo(() => {
     const depth = drillPath.length;
@@ -148,6 +148,7 @@ const Analytics: React.FC<AnalyticsProps> = ({
     return data;
   }, [shipments, drillPath]);
 
+  // FIX: derive filteredProducts from active SKUs in the current filteredShipments.
   const filteredProducts = useMemo(() => {
     const activeSkus = new Set(filteredShipments.map(s => s.sku));
     if (drillPath.length === 0) return products;
@@ -187,17 +188,17 @@ const Analytics: React.FC<AnalyticsProps> = ({
     if (currentLevel === 'BUYER' && dimension !== 'BUYER') return;
     if (dimension === 'BUYER' && drillPath.length >= 5) return;
     if (dimension === 'DATA_DRILL' && drillPath.length >= 4) return;
-    onDrillPathChange([...drillPath, { level: currentLevel, label: entry.name, filterVal: entry.name }]);
+    setDrillPath([...drillPath, { level: currentLevel, label: entry.name, filterVal: entry.name }]);
   };
 
   const handleBack = () => {
-    onDrillPathChange(drillPath.slice(0, -1));
+    setDrillPath(drillPath.slice(0, -1));
   };
 
-  const handleResetDrill = (dim: 'DATA_DRILL' | 'BUYER' | 'COLOR') => {
-    onDimensionChange(dim);
-    onDrillPathChange([]);
-    onViewModeChange('SHIPMENTS');
+  const handleResetDrill = (dim: DimensionFilter) => {
+    setDimension(dim);
+    setDrillPath([]);
+    setViewMode('SHIPMENTS');
   };
 
   const colorData = useMemo(() => {
@@ -345,14 +346,7 @@ const Analytics: React.FC<AnalyticsProps> = ({
       <header className="mb-10 flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-200 pb-8">
         <div>
           <h1 className="text-4xl font-black text-slate-900 tracking-tight">Product Info. Dashboard</h1>
-          <div className="flex items-center gap-3 mt-2">
-            <p className="text-slate-500 font-medium">Quality metrics and shipment analytics at a glance.</p>
-            {shipmentDataCutDate && (
-              <div className="flex items-center gap-1.5 px-3 py-1 bg-slate-900 text-white rounded-lg text-[10px] font-black uppercase tracking-widest shadow-sm">
-                <Clock size={12} /> Data Cut-off: {shipmentDataCutDate}
-              </div>
-            )}
-          </div>
+          <p className="text-slate-500 mt-2 font-medium">Quality metrics and shipment analytics at a glance.</p>
         </div>
         {canImport && (
           <div className="flex gap-3">
@@ -388,6 +382,7 @@ const Analytics: React.FC<AnalyticsProps> = ({
               </div>
             </div>
 
+            {/* HEADER BUTTONS SWAPPED AS REQUESTED */}
             <div className="flex items-center gap-6">
               {viewMode === 'SHIPMENTS' && (
                 <div className="flex items-center gap-4">
@@ -397,15 +392,15 @@ const Analytics: React.FC<AnalyticsProps> = ({
                     <button onClick={() => handleResetDrill('COLOR')} className={`px-4 py-2 rounded-lg text-xs font-black transition-all ${dimension === 'COLOR' ? 'bg-white shadow-md text-slate-900' : 'text-slate-400'}`}>BY COLOR</button>
                   </div>
                   <div className="flex bg-slate-100 p-1 rounded-xl shadow-inner">
-                    <button onClick={() => onChartTypeChange('PIE')} className={`p-2 rounded-lg transition-all ${chartType === 'PIE' ? 'bg-white shadow-md text-slate-900' : 'text-slate-400'}`}><PieIcon size={18}/></button>
-                    <button onClick={() => onChartTypeChange('BAR')} className={`p-2 rounded-lg transition-all ${chartType === 'BAR' ? 'bg-white shadow-md text-slate-900' : 'text-slate-400'}`}><BarIcon size={18}/></button>
+                    <button onClick={() => setChartType('PIE')} className={`p-2 rounded-lg transition-all ${chartType === 'PIE' ? 'bg-white shadow-md text-slate-900' : 'text-slate-400'}`}><PieIcon size={18}/></button>
+                    <button onClick={() => setChartType('BAR')} className={`p-2 rounded-lg transition-all ${chartType === 'BAR' ? 'bg-white shadow-md text-slate-900' : 'text-slate-400'}`}><BarIcon size={18}/></button>
                   </div>
                 </div>
               )}
               <div className="flex bg-slate-100 p-1 rounded-xl shadow-inner">
-                <button onClick={() => onViewModeChange('SHIPMENTS')} className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-black transition-all ${viewMode === 'SHIPMENTS' ? 'bg-white shadow-md text-intenza-600' : 'text-slate-400'}`}><BarIcon size={14}/> SHIPMENT</button>
-                <button onClick={() => onViewModeChange('ERGONOMICS')} className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-black transition-all ${viewMode === 'ERGONOMICS' ? 'bg-white shadow-md text-indigo-600' : 'text-slate-400'}`}><ShieldCheck size={14}/> ERGO</button>
-                <button onClick={() => onViewModeChange('DURABILITY')} className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-black transition-all ${viewMode === 'DURABILITY' ? 'bg-white shadow-md text-emerald-600' : 'text-slate-400'}`}><Zap size={14}/> DURABILITY</button>
+                <button onClick={() => setViewMode('SHIPMENTS')} className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-black transition-all ${viewMode === 'SHIPMENTS' ? 'bg-white shadow-md text-intenza-600' : 'text-slate-400'}`}><BarIcon size={14}/> SHIPMENT</button>
+                <button onClick={() => setViewMode('ERGONOMICS')} className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-black transition-all ${viewMode === 'ERGONOMICS' ? 'bg-white shadow-md text-indigo-600' : 'text-slate-400'}`}><ShieldCheck size={14}/> ERGO</button>
+                <button onClick={() => setViewMode('DURABILITY')} className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-black transition-all ${viewMode === 'DURABILITY' ? 'bg-white shadow-md text-emerald-600' : 'text-slate-400'}`}><Zap size={14}/> DURABILITY</button>
               </div>
             </div>
           </div>
