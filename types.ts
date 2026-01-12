@@ -62,6 +62,7 @@ export interface ErgoFeedback {
   source: string;
   status?: 'PENDING' | 'DISCUSSION' | 'IGNORED';
   attachmentUrls?: string[];
+  attachmentCaptions?: string[];
   linkedEcoId?: string; // Track linked design changes
 }
 
@@ -77,6 +78,7 @@ export interface NgReason {
   testerId: string;
   reason: LocalizedString;
   attachmentUrls?: string[];
+  attachmentCaptions?: string[];
   decisionStatus?: NgDecisionStatus;
   linkedEcoId?: string;
 }
@@ -98,6 +100,7 @@ export interface ErgoProject {
   id: string;
   name: LocalizedString;
   date: string;
+  version?: string;
   testerIds: string[];
   tasks: { [key in ErgoProjectCategory]: EvaluationTask[] };
   overallStatus: ProjectOverallStatus;
@@ -115,6 +118,7 @@ export interface DesignChange {
   affectedBatches: string[];
   affectedCustomers: string[];
   imageUrls?: string[];
+  imageCaptions?: string[];
   status: EcoStatus;
   implementationDate?: string;
   sourceFeedbacks?: {
@@ -139,6 +143,7 @@ export interface TestResult {
   unit?: string;
   updatedDate?: string;
   attachmentUrls?: string[];
+  attachmentCaptions?: string[];
   startDate?: string;
   estimatedCompletionDate?: string;
 }

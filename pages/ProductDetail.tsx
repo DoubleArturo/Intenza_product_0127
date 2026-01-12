@@ -63,7 +63,7 @@ const ProductDetail: React.FC<ProductDetailProps> = ({ products, shipments = [],
   const [isFeedbackPanelOpen, setIsFeedbackPanelOpen] = useState(false);
 
   // Lightbox state
-  const [lightboxState, setLightboxState] = useState<{isOpen: boolean, ecoId?: string, testId?: string, imgUrl?: string, imgIndex?: number} | null>(null);
+  const [lightboxState, setLightboxState] = useState<{isOpen: boolean, ecoId?: string, testId?: string, feedbackId?: string, testerId?: string, taskId?: string, projectId?: string, imgUrl?: string, imgIndex?: number} | null>(null);
 
   const isViewer = userRole === 'viewer';
   const isAdmin = userRole === 'admin';
@@ -179,8 +179,8 @@ const ProductDetail: React.FC<ProductDetailProps> = ({ products, shipments = [],
       handleCloseEcoModal();
   };
 
-  const handleUpdateImageCaption = async (id: string, imgIndex: number, caption: string, type: 'eco' | 'test') => {
-    const module = type === 'eco' ? 'design' : 'durability';
+  const handleUpdateImageCaption = async (id: string, imgIndex: number, caption: string, type: 'eco' | 'test' | 'ng' | 'feedback', extra?: any) => {
+    const module = (type === 'eco' ? 'design' : (type === 'test' ? 'durability' : 'ergo'));
     if (isViewer || !checkPerm(module)) return;
     const now = new Date();
     const timestamp = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
@@ -188,7 +188,7 @@ const ProductDetail: React.FC<ProductDetailProps> = ({ products, shipments = [],
     if (type === 'eco') {
         const updatedHistory = product.designHistory.map(eco => {
             if (eco.id === id) {
-                const captions = [...(eco as any).imageCaptions || []];
+                const captions = [...(eco.imageCaptions || [])];
                 while (captions.length <= imgIndex) captions.push('');
                 captions[imgIndex] = caption;
                 return { ...eco, imageCaptions: captions, updatedAt: timestamp };
@@ -196,10 +196,10 @@ const ProductDetail: React.FC<ProductDetailProps> = ({ products, shipments = [],
             return eco;
         });
         await onUpdateProduct({ ...product, designHistory: updatedHistory });
-    } else {
+    } else if (type === 'test') {
         const updatedTests = product.durabilityTests.map(test => {
             if (test.id === id) {
-                const captions = [...(test as any).attachmentCaptions || []];
+                const captions = [...(test.attachmentCaptions || [])];
                 while (captions.length <= imgIndex) captions.push('');
                 captions[imgIndex] = caption;
                 return { ...test, attachmentCaptions: captions, updatedDate: timestamp.split(' ')[0] };
@@ -207,6 +207,48 @@ const ProductDetail: React.FC<ProductDetailProps> = ({ products, shipments = [],
             return test;
         });
         await onUpdateProduct({ ...product, durabilityTests: updatedTests });
+    } else if (type === 'feedback') {
+        const updatedFeedbacks = product.customerFeedback.map(f => {
+            if (f.id === id) {
+                const captions = [...(f.attachmentCaptions || [])];
+                while (captions.length <= imgIndex) captions.push('');
+                captions[imgIndex] = caption;
+                return { ...f, attachmentCaptions: captions };
+            }
+            return f;
+        });
+        await onUpdateProduct({ ...product, customerFeedback: updatedFeedbacks });
+    } else if (type === 'ng') {
+        const { projectId, category, taskId, testerId } = extra;
+        const updatedProjects = product.ergoProjects.map(p => {
+            if (p.id === projectId) {
+                return {
+                    ...p,
+                    tasks: {
+                        ...p.tasks,
+                        [category]: p.tasks[category].map((t: any) => {
+                            if (t.id === taskId) {
+                                return {
+                                    ...t,
+                                    ngReasons: t.ngReasons.map((ng: any) => {
+                                        if (ng.testerId === testerId) {
+                                            const captions = [...(ng.attachmentCaptions || [])];
+                                            while (captions.length <= imgIndex) captions.push('');
+                                            captions[imgIndex] = caption;
+                                            return { ...ng, attachmentCaptions: captions };
+                                        }
+                                        return ng;
+                                    })
+                                };
+                            }
+                            return t;
+                        })
+                    }
+                };
+            }
+            return p;
+        });
+        await onUpdateProduct({ ...product, ergoProjects: updatedProjects });
     }
   };
 
@@ -354,6 +396,10 @@ const ProductDetail: React.FC<ProductDetailProps> = ({ products, shipments = [],
                         userRole={userRole}
                         canEdit={checkPerm('ergo')}
                         evaluationModalYOffset={evaluationModalYOffset}
+                        onOpenLightbox={(type: 'ng' | 'feedback', id: string, url: string, idx: number, extra?: any) => {
+                            if (type === 'feedback') setLightboxState({ isOpen: true, feedbackId: id, imgUrl: url, imgIndex: idx });
+                            else setLightboxState({ isOpen: true, projectId: extra.projectId, category: extra.category, taskId: extra.taskId, testerId: id, imgUrl: url, imgIndex: idx });
+                        }}
                     />
                 </div>
              )}
@@ -422,16 +468,21 @@ const ProductDetail: React.FC<ProductDetailProps> = ({ products, shipments = [],
             onClose={() => setLightboxState(null)} 
             caption={
               lightboxState.ecoId 
-                ? (product.designHistory.find(e => e.id === lightboxState.ecoId) as any)?.imageCaptions?.[lightboxState.imgIndex!] || ''
-                : (product.durabilityTests.find(t => t.id === lightboxState.testId) as any)?.attachmentCaptions?.[lightboxState.imgIndex!] || ''
+                ? (product.designHistory.find(e => e.id === lightboxState.ecoId))?.imageCaptions?.[lightboxState.imgIndex!] || ''
+                : lightboxState.testId
+                ? (product.durabilityTests.find(t => t.id === lightboxState.testId))?.attachmentCaptions?.[lightboxState.imgIndex!] || ''
+                : lightboxState.feedbackId
+                ? (product.customerFeedback.find(f => f.id === lightboxState.feedbackId))?.attachmentCaptions?.[lightboxState.imgIndex!] || ''
+                : (product.ergoProjects.find(p => p.id === lightboxState.projectId)?.tasks[lightboxState.category as any].find((t: any) => t.id === lightboxState.taskId)?.ngReasons.find((r: any) => r.testerId === lightboxState.testerId))?.attachmentCaptions?.[lightboxState.imgIndex!] || ''
             }
             onSaveCaption={(caption: string) => handleUpdateImageCaption(
-                lightboxState.ecoId || lightboxState.testId!, 
+                lightboxState.ecoId || lightboxState.testId || lightboxState.feedbackId || lightboxState.testerId!, 
                 lightboxState.imgIndex!, 
                 caption,
-                lightboxState.ecoId ? 'eco' : 'test'
+                lightboxState.ecoId ? 'eco' : (lightboxState.testId ? 'test' : (lightboxState.feedbackId ? 'feedback' : 'ng')),
+                lightboxState.testerId ? { projectId: lightboxState.projectId, category: lightboxState.category, taskId: lightboxState.taskId, testerId: lightboxState.testerId } : undefined
             )}
-            isViewer={isViewer || (lightboxState.ecoId ? !checkPerm('design') : !checkPerm('durability'))}
+            isViewer={isViewer || (lightboxState.ecoId ? !checkPerm('design') : (lightboxState.testId ? !checkPerm('durability') : !checkPerm('ergo')))}
         />
       )}
     </div>
@@ -577,7 +628,7 @@ const LifeSection = ({ product, userRole, canEdit, onAddTest, onEditTest, onDele
   );
 };
 
-const ProjectCard = ({ project, testers, product, onOpenAddTask, onEditTaskName, onDeleteTask, onOpenTaskResults, onDeleteProject, onEditProject, categoryTranslations, onStatusClick, onEditNgReason, highlightedFeedback, userRole, canEdit }: any) => {
+const ProjectCard = ({ project, testers, product, onOpenAddTask, onEditTaskName, onDeleteTask, onOpenTaskResults, onDeleteProject, onEditProject, categoryTranslations, onStatusClick, onEditNgReason, highlightedFeedback, userRole, canEdit, onOpenLightbox }: any) => {
     const { t, language } = useContext(LanguageContext);
     const categories: ErgoProjectCategory[] = ['Resistance profile', 'Experience', 'Stroke', 'Other Suggestion'];
     const isViewer = userRole === 'viewer' || !canEdit;
@@ -588,6 +639,7 @@ const ProjectCard = ({ project, testers, product, onOpenAddTask, onEditTaskName,
                     <h3 className="text-lg font-bold text-slate-900">{t(project.name)}</h3>
                     <div className="flex items-center gap-3 mt-1">
                         <span className="text-xs text-slate-400 flex items-center gap-1"><Calendar size={12}/> {project.date}</span>
+                        {project.version && <span className="text-xs font-bold text-intenza-600 bg-intenza-50 px-2 py-0.5 rounded border border-intenza-100 ml-2">{project.version}</span>}
                         <span className="text-xs text-slate-400 flex items-center gap-1"><Users size={12}/> {project.testerIds.length} Testers</span>
                     </div>
                 </div>
@@ -651,6 +703,15 @@ const ProjectCard = ({ project, testers, product, onOpenAddTask, onEditTaskName,
                                                     {!isPass && (
                                                         <div className="space-y-2">
                                                             <p className="text-[10px] text-slate-600 line-clamp-2 min-h-[1.5rem] italic">"{ngReason?.reason ? t(ngReason.reason) : 'No description'}"</p>
+                                                            {ngReason?.attachmentUrls && ngReason.attachmentUrls.length > 0 && (
+                                                                <div className="flex flex-wrap gap-1 mt-1">
+                                                                    {ngReason.attachmentUrls.map((url: string, i: number) => (
+                                                                        <div key={i} onClick={() => onOpenLightbox('ng', tid, url, i, { projectId: project.id, category: cat, taskId: task.id })} className="w-6 h-6 rounded border border-slate-200 overflow-hidden cursor-pointer hover:opacity-80">
+                                                                            <img src={url} className="w-full h-full object-cover" />
+                                                                        </div>
+                                                                    ))}
+                                                                </div>
+                                                            )}
                                                             <div className="flex items-center justify-between pt-2 border-t border-slate-50">
                                                                 {!isViewer && (
                                                                   <button onClick={() => onEditNgReason(cat, task.id, tid)} className="text-[9px] font-bold text-intenza-600 hover:underline">Edit Reason</button>
@@ -679,7 +740,7 @@ const ProjectCard = ({ project, testers, product, onOpenAddTask, onEditTaskName,
     );
 };
 
-const CustomerFeedbackCard = ({ feedback, onStatusClick, onEdit, onDelete, product, isHighlighted, userRole, canEdit }: any) => {
+const CustomerFeedbackCard = ({ feedback, onStatusClick, onEdit, onDelete, product, isHighlighted, userRole, canEdit, onOpenLightbox }: any) => {
     const { t } = useContext(LanguageContext);
     const linkedEco = product.designHistory.find((eco: DesignChange) => eco.id === feedback.linkedEcoId);
     const isViewer = userRole === 'viewer' || !canEdit;
@@ -709,6 +770,15 @@ const CustomerFeedbackCard = ({ feedback, onStatusClick, onEdit, onDelete, produ
                 )}
             </div>
             <p className="text-sm text-slate-800 font-medium leading-relaxed mb-4">{t(feedback.content)}</p>
+            {feedback.attachmentUrls && feedback.attachmentUrls.length > 0 && (
+                <div className="flex flex-wrap gap-2 mb-4">
+                    {feedback.attachmentUrls.map((url: string, i: number) => (
+                        <div key={i} onClick={() => onOpenLightbox('feedback', feedback.id, url, i)} className="w-10 h-10 rounded border border-slate-200 overflow-hidden cursor-pointer hover:opacity-80">
+                            <img src={url} className="w-full h-full object-cover" />
+                        </div>
+                    ))}
+                </div>
+            )}
             <div className="flex items-center justify-between border-t border-slate-50 pt-3">
                 <div className="flex items-center gap-1 text-[10px] text-slate-400 font-bold uppercase">
                     <User size={10}/> {feedback.source}
@@ -914,7 +984,7 @@ const ImageLightbox = ({ imgUrl, onClose, caption, onSaveCaption, isViewer }: an
     );
 };
 
-const ErgoSection = ({ product, testers, testerGroups, onUpdateProduct, highlightedFeedback, isFeedbackPanelOpen, setIsFeedbackPanelOpen, userRole, canEdit, evaluationModalYOffset }: any) => {
+const ErgoSection = ({ product, testers, testerGroups, onUpdateProduct, highlightedFeedback, isFeedbackPanelOpen, setIsFeedbackPanelOpen, userRole, canEdit, evaluationModalYOffset, onOpenLightbox }: any) => {
   const { t, language } = useContext(LanguageContext);
   const isViewer = userRole === 'viewer' || !canEdit;
   const [isStartEvaluationModalOpen, setStartEvaluationModalOpen] = useState(false);
@@ -1010,7 +1080,7 @@ const ErgoSection = ({ product, testers, testerGroups, onUpdateProduct, highligh
         </div>
         <div className="space-y-6">
           {product.ergoProjects.map((project: ErgoProject) => (
-             <ProjectCard key={project.id} project={project} testers={testers} product={product} userRole={userRole} canEdit={canEdit} onOpenAddTask={(pid: string, cat: ErgoProjectCategory) => setAddTaskModalState({ isOpen: true, context: { projectId: pid, category: cat } })} onEditTaskName={(pid: string, cat: ErgoProjectCategory, tid: string, name: string) => setEditTaskModalState({ isOpen: true, context: { projectId: pid, category: cat, taskId: tid, currentName: name } })} onDeleteTask={(pid: string, cat: ErgoProjectCategory, tid: string) => onUpdateProduct({...product, ergoProjects: product.ergoProjects.map((p: any) => p.id === pid ? {...p, tasks: {...p.tasks, [cat]: p.tasks[cat].filter((t: any) => t.id !== tid)}} : p)})} onOpenTaskResults={(cat: ErgoProjectCategory, taskId: string) => setTaskResultModalState({ isOpen: true, context: { projectId: project.id, category: cat, taskId } })} onDeleteProject={() => onUpdateProduct({...product, ergoProjects: product.ergoProjects.filter((p: any) => p.id !== project.id)})} onEditProject={() => { setEditingProject(project); setStartEvaluationModalOpen(true); }} categoryTranslations={{'Resistance profile': 'Resistance profile', 'Experience': 'Experience', 'Stroke': 'Stroke', 'Other Suggestion': 'Other Suggestion'}} onStatusClick={(pid: string, cat: ErgoProjectCategory, tid: string, testerId: string, cur: NgDecisionStatus, eco: string) => setStatusModalState({ isOpen: true, context: { projectId: pid, category: cat, taskId: tid, testerId, currentStatus: cur, linkedEcoId: eco } })} onEditNgReason={(cat: ErgoProjectCategory, taskId: string, testerId: string) => setNgReasonModalState({ isOpen: true, context: { projectId: project.id, category: cat, taskId, testerId } })} highlightedFeedback={highlightedFeedback} />
+             <ProjectCard key={project.id} project={project} testers={testers} product={product} userRole={userRole} canEdit={canEdit} onOpenAddTask={(pid: string, cat: ErgoProjectCategory) => setAddTaskModalState({ isOpen: true, context: { projectId: pid, category: cat } })} onEditTaskName={(pid: string, cat: ErgoProjectCategory, tid: string, name: string) => setEditTaskModalState({ isOpen: true, context: { projectId: pid, category: cat, taskId: tid, currentName: name } })} onDeleteTask={(pid: string, cat: ErgoProjectCategory, tid: string) => onUpdateProduct({...product, ergoProjects: product.ergoProjects.map((p: any) => p.id === pid ? {...p, tasks: {...p.tasks, [cat]: p.tasks[cat].filter((t: any) => t.id !== tid)}} : p)})} onOpenTaskResults={(cat: ErgoProjectCategory, taskId: string) => setTaskResultModalState({ isOpen: true, context: { projectId: project.id, category: cat, taskId } })} onDeleteProject={() => onUpdateProduct({...product, ergoProjects: product.ergoProjects.filter((p: any) => p.id !== project.id)})} onEditProject={() => { setEditingProject(project); setStartEvaluationModalOpen(true); }} categoryTranslations={{'Resistance profile': 'Resistance profile', 'Experience': 'Experience', 'Stroke': 'Stroke', 'Other Suggestion': 'Other Suggestion'}} onStatusClick={(pid: string, cat: ErgoProjectCategory, tid: string, testerId: string, cur: NgDecisionStatus, eco: string) => setStatusModalState({ isOpen: true, context: { projectId: pid, category: cat, taskId: tid, testerId, currentStatus: cur, linkedEcoId: eco } })} onEditNgReason={(cat: ErgoProjectCategory, taskId: string, testerId: string) => setNgReasonModalState({ isOpen: true, context: { projectId: project.id, category: cat, taskId, testerId } })} highlightedFeedback={highlightedFeedback} onOpenLightbox={onOpenLightbox} />
           ))}
         </div>
       </div>
@@ -1071,6 +1141,7 @@ const ErgoSection = ({ product, testers, testerGroups, onUpdateProduct, highligh
                                 onStatusClick={() => setFeedbackStatusModal({ isOpen: true, feedback: fb })} 
                                 onEdit={() => setFeedbackModalState({ isOpen: true, feedback: fb })} 
                                 onDelete={() => onUpdateProduct({...product, customerFeedback: product.customerFeedback.filter((f: any) => f.id !== fb.id)})} 
+                                onOpenLightbox={onOpenLightbox}
                             />
                         ))
                     ) : (
@@ -1099,10 +1170,10 @@ const ErgoSection = ({ product, testers, testerGroups, onUpdateProduct, highligh
         </div>
       </div>
 
-      {isStartEvaluationModalOpen && <StartEvaluationModal yOffset={evaluationModalYOffset} onClose={() => setStartEvaluationModalOpen(false)} onStartProject={(name: any, ids: any) => { if(editingProject) { onUpdateProduct({...product, ergoProjects: product.ergoProjects.map((p: any) => p.id === editingProject.id ? {...p, name, testerIds: ids} : p)}); } else { onUpdateProduct({...product, ergoProjects: [...product.ergoProjects, {id: `proj-${Date.now()}`, name, date: new Date().toISOString().split('T')[0], testerIds: ids, overallStatus: 'PENDING', tasks: {'Resistance profile':[], 'Experience':[], 'Stroke':[], 'Other Suggestion':[]}, uniqueNgReasons: {}}]}); } setStartEvaluationModalOpen(false); }} allTesters={testers} testerGroups={testerGroups} project={editingProject} />}
+      {isStartEvaluationModalOpen && <StartEvaluationModal yOffset={evaluationModalYOffset} onClose={() => setStartEvaluationModalOpen(false)} onStartProject={(name: any, ids: any, version?: string) => { if(editingProject) { onUpdateProduct({...product, ergoProjects: product.ergoProjects.map((p: any) => p.id === editingProject.id ? {...p, name, testerIds: ids, version} : p)}); } else { onUpdateProduct({...product, ergoProjects: [...product.ergoProjects, {id: `proj-${Date.now()}`, name, date: new Date().toISOString().split('T')[0], version, testerIds: ids, overallStatus: 'PENDING', tasks: {'Resistance profile':[], 'Experience':[], 'Stroke':[], 'Other Suggestion':[]}, uniqueNgReasons: {}}]}); } setStartEvaluationModalOpen(false); }} allTesters={testers} testerGroups={testerGroups} project={editingProject} />}
       {addTaskModalState.isOpen && <AddTaskModal onClose={() => setAddTaskModalState({isOpen:false})} onSave={(name: any) => { const {projectId, category} = addTaskModalState.context; onUpdateProduct({...product, ergoProjects: product.ergoProjects.map((p: any) => p.id === projectId ? {...p, tasks: {...p.tasks, [category]: [...p.tasks[category], {id: `t-${Date.now()}`, name: {en: name, zh: name}, passTesterIds: [], ngReasons: []}]}} : p)}); setAddTaskModalState({isOpen:false}); }} />}
       {taskResultModalState.isOpen && <SetTaskResultsModal onClose={() => setTaskResultModalState({isOpen:false})} onSave={(ids: any) => { const {projectId, category, taskId} = taskResultModalState.context; onUpdateProduct({...product, ergoProjects: product.ergoProjects.map((p: any) => p.id === projectId ? {...p, tasks: {...p.tasks, [category]: p.tasks[category].map((t: any) => t.id === taskId ? {...t, passTesterIds: ids, ngReasons: p.testerIds.filter((tid: any) => !ids.includes(tid)).map((tid: any) => t.ngReasons.find((r: any) => r.testerId === tid) || {testerId: tid, reason: {en: '', zh: ''}, decisionStatus: 'PENDING'})} : t)}} : p)}); setTaskResultModalState({isOpen:false}); }} context={taskResultModalState.context} project={product.ergoProjects.find((p: any) => p.id === taskResultModalState.context.projectId)} testers={testers} />}
-      {ngReasonModalState.isOpen && <SetPassNgModal onClose={() => setNgReasonModalState({isOpen:false})} onSet={(reason: any, isNew: any, atts: any, type: any) => { const {projectId, category, taskId, testerId} = ngReasonModalState.context; onUpdateProduct({...product, ergoProjects: product.ergoProjects.map((p: any) => p.id === projectId ? {...p, tasks: {...p.tasks, [category]: p.tasks[category].map((t: any) => t.id === taskId ? {...t, ngReasons: t.ngReasons.map((ng: any) => ng.testerId === testerId ? {...ng, reason, attachmentUrls: atts, decisionStatus: type === 'IDEA' ? 'IDEA' : ng.decisionStatus} : ng)} : t)}} : p)}); setNgReasonModalState({isOpen:false}); }} existingReason={product.ergoProjects.find((p: any) => p.id === ngReasonModalState.context.projectId)?.tasks[ngReasonModalState.context.category].find((t: any) => t.id === ngReasonModalState.context.taskId)?.ngReasons.find((ng: any) => ng.testerId === ngReasonModalState.context.testerId)} />}
+      {ngReasonModalState.isOpen && <SetPassNgModal onClose={() => setNgReasonModalState({isOpen:false})} onSet={(reason: any, isNew: any, atts: any, captions: any) => { const {projectId, category, taskId, testerId} = ngReasonModalState.context; onUpdateProduct({...product, ergoProjects: product.ergoProjects.map((p: any) => p.id === projectId ? {...p, tasks: {...p.tasks, [category]: p.tasks[category].map((t: any) => t.id === taskId ? {...t, ngReasons: t.ngReasons.map((ng: any) => ng.testerId === testerId ? {...ng, reason, attachmentUrls: atts, attachmentCaptions: captions} : ng)} : t)}} : p)}); setNgReasonModalState({isOpen:false}); }} existingReason={product.ergoProjects.find((p: any) => p.id === ngReasonModalState.context.projectId)?.tasks[ngReasonModalState.context.category].find((t: any) => t.id === ngReasonModalState.context.taskId)?.ngReasons.find((ng: any) => ng.testerId === ngReasonModalState.context.testerId)} />}
       
       {statusModalState.isOpen && (
           <StatusDecisionModal 
@@ -1138,6 +1209,7 @@ const ErgoSection = ({ product, testers, testerGroups, onUpdateProduct, highligh
                       affectedCustomers: [], 
                       status: EcoStatus.EVALUATING, 
                       imageUrls: ng.attachmentUrls || [], 
+                      imageCaptions: ng.attachmentCaptions || [],
                       sourceFeedbacks: [{projectId, category, taskId, testerId}],
                       updatedAt: timestamp 
                   };
@@ -1200,6 +1272,7 @@ const ErgoSection = ({ product, testers, testerGroups, onUpdateProduct, highligh
                     affectedCustomers: [], 
                     status: EcoStatus.EVALUATING, 
                     imageUrls: f.attachmentUrls || [], 
+                    imageCaptions: f.attachmentCaptions || [],
                     sourceFeedbacks: [{category: f.category, feedbackId: f.id}],
                     updatedAt: timestamp 
                 };
@@ -1281,9 +1354,7 @@ const EcoModal = ({ isOpen, onClose, onSave, eco, productVersions }: any) => {
             </div>
             <div>
               <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Version</label>
-              <select value={formData.version} onChange={e => setFormData({...formData, version: e.target.value})} className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl outline-none font-bold">
-                {productVersions.map((v: string) => <option key={v} value={v}>{v}</option>)}
-              </select>
+              <input type="text" required value={formData.version} onChange={e => setFormData({...formData, version: e.target.value})} className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl outline-none font-bold" placeholder="e.g. v1.1" />
             </div>
           </div>
           <div>
@@ -1326,7 +1397,8 @@ const TestModal = ({ isOpen, onClose, onSave, test, productVersions }: any) => {
     score: 0,
     status: TestStatus.PENDING,
     details: { en: '', zh: '' },
-    attachmentUrls: [] as string[]
+    attachmentUrls: [] as string[],
+    attachmentCaptions: [] as string[]
   });
   const [isUploading, setIsUploading] = useState(false);
 
@@ -1339,7 +1411,8 @@ const TestModal = ({ isOpen, onClose, onSave, test, productVersions }: any) => {
         score: test.score || 0,
         status: test.status || TestStatus.PENDING,
         details: test.details || { en: '', zh: '' },
-        attachmentUrls: test.attachmentUrls || []
+        attachmentUrls: test.attachmentUrls || [],
+        attachmentCaptions: test.attachmentCaptions || []
       });
     }
   }, [test]);
@@ -1355,12 +1428,22 @@ const TestModal = ({ isOpen, onClose, onSave, test, productVersions }: any) => {
     setIsUploading(true);
     try {
       const urls = await Promise.all(Array.from(files).map(file => api.uploadImage(file as File)));
-      setFormData({ ...formData, attachmentUrls: [...formData.attachmentUrls, ...urls] });
+      setFormData({ 
+        ...formData, 
+        attachmentUrls: [...formData.attachmentUrls, ...urls],
+        attachmentCaptions: [...formData.attachmentCaptions, ...urls.map(() => '')]
+      });
     } catch (err) {
       alert('Upload failed');
     } finally {
       setIsUploading(false);
     }
+  };
+
+  const handleCaptionChange = (idx: number, val: string) => {
+    const newCaptions = [...formData.attachmentCaptions];
+    newCaptions[idx] = val;
+    setFormData({ ...formData, attachmentCaptions: newCaptions });
   };
 
   if (!isOpen) return null;
@@ -1383,13 +1466,36 @@ const TestModal = ({ isOpen, onClose, onSave, test, productVersions }: any) => {
               <input type="number" min="0" max="100" required value={formData.score} onChange={e => setFormData({...formData, score: Number(e.target.value)})} className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl outline-none font-bold" />
             </div>
           </div>
-          <div>
-            <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Test Name</label>
-            <input type="text" required value={formData.testName.en} onChange={e => setFormData({...formData, testName: {en: e.target.value, zh: e.target.value}})} className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl outline-none font-bold" />
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Test Name</label>
+              <input type="text" required value={formData.testName.en} onChange={e => setFormData({...formData, testName: {en: e.target.value, zh: e.target.value}})} className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl outline-none font-bold" />
+            </div>
+            <div>
+              <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Test Version</label>
+              <input type="text" required value={formData.version} onChange={e => setFormData({...formData, version: e.target.value})} className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl outline-none font-bold" placeholder="e.g. v2.4" />
+            </div>
           </div>
           <div>
             <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Details</label>
             <textarea value={formData.details.en} onChange={e => setFormData({...formData, details: {en: e.target.value, zh: e.target.value}})} className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl outline-none font-medium resize-none" rows={3} />
+          </div>
+          <div>
+            <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Evidence & Captions</label>
+            <div className="space-y-4">
+              <div className="flex flex-wrap gap-2">
+                {formData.attachmentUrls.map((url, i) => (
+                  <div key={i} className="space-y-1">
+                    <img src={url} className="w-20 h-20 rounded-lg object-cover border border-slate-200" />
+                    <input type="text" value={formData.attachmentCaptions[i]} onChange={e => handleCaptionChange(i, e.target.value)} placeholder="Caption..." className="w-20 text-[8px] px-1 py-0.5 border border-slate-200 rounded" />
+                  </div>
+                ))}
+                <label className="w-20 h-20 rounded-lg border-2 border-dashed border-slate-200 flex items-center justify-center cursor-pointer hover:bg-slate-50">
+                  {isUploading ? <Loader2 size={20} className="animate-spin text-slate-400" /> : <Plus size={20} className="text-slate-400" />}
+                  <input type="file" multiple className="hidden" onChange={handleFileUpload} />
+                </label>
+              </div>
+            </div>
           </div>
           <div className="flex gap-4 pt-6">
             <button type="button" onClick={onClose} className="flex-1 py-4 text-slate-400 font-bold hover:bg-slate-50 rounded-2xl transition-all">Cancel</button>
@@ -1419,11 +1525,16 @@ const NoShipmentModal = ({ isOpen, onClose, version }: any) => {
 
 const StartEvaluationModal = ({ yOffset, onClose, onStartProject, allTesters, testerGroups, project }: any) => {
   const [name, setName] = useState(project ? project.name.en : '');
+  const [version, setVersion] = useState(project?.version || '');
   const [selectedTesterIds, setSelectedTesterIds] = useState<string[]>(project ? project.testerIds : []);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    onStartProject({ en: name, zh: name }, selectedTesterIds);
+    onStartProject({ en: name, zh: name }, selectedTesterIds, version);
+  };
+
+  const handleGroupSelect = (ids: string[]) => {
+      setSelectedTesterIds(prev => Array.from(new Set([...prev, ...ids])));
   };
 
   return (
@@ -1434,13 +1545,37 @@ const StartEvaluationModal = ({ yOffset, onClose, onStartProject, allTesters, te
           <button onClick={onClose} className="p-2 rounded-full hover:bg-slate-100"><X size={24} /></button>
         </div>
         <form onSubmit={handleSubmit} className="p-8 space-y-6">
-          <div>
-            <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Project Title</label>
-            <input required type="text" value={name} onChange={e => setName(e.target.value)} className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none font-bold" />
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Project Title</label>
+              <input required type="text" value={name} onChange={e => setName(e.target.value)} className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none font-bold" />
+            </div>
+            <div>
+              <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Evaluation Version</label>
+              <input type="text" value={version} onChange={e => setVersion(e.target.value)} className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none font-bold" placeholder="e.g. v1.0 Pilot" />
+            </div>
           </div>
+          
+          <div>
+            <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-4">Quick Group Add</label>
+            <div className="flex flex-wrap gap-2 mb-6">
+                {testerGroups?.map(group => (
+                    <button 
+                        key={group.id} 
+                        type="button" 
+                        onClick={() => handleGroupSelect(group.testerIds)}
+                        className="px-4 py-2 bg-indigo-50 border border-indigo-200 text-indigo-700 rounded-xl text-xs font-bold hover:bg-indigo-100 transition-all flex items-center gap-2"
+                    >
+                        <Users2 size={14}/> {group.name.en}
+                    </button>
+                ))}
+                {(!testerGroups || testerGroups.length === 0) && <span className="text-xs text-slate-300 italic">No tester groups defined.</span>}
+            </div>
+          </div>
+
           <div>
             <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-4">Select Testers ({selectedTesterIds.length})</label>
-            <div className="grid grid-cols-4 sm:grid-cols-6 gap-3 max-h-[300px] overflow-y-auto p-2">
+            <div className="grid grid-cols-4 sm:grid-cols-6 gap-3 max-h-[300px] overflow-y-auto p-2 border border-slate-100 rounded-2xl">
               {allTesters.map((tester: Tester) => (
                 <div 
                   key={tester.id} 
@@ -1514,6 +1649,31 @@ const SetTaskResultsModal = ({ onClose, onSave, context, project, testers }: any
 
 const SetPassNgModal = ({ onClose, onSet, existingReason }: any) => {
     const [reason, setReason] = useState(existingReason?.reason?.en || '');
+    const [imageUrls, setImageUrls] = useState<string[]>(existingReason?.attachmentUrls || []);
+    const [imageCaptions, setImageCaptions] = useState<string[]>(existingReason?.attachmentCaptions || []);
+    const [isUploading, setIsUploading] = useState(false);
+
+    const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const files = e.target.files;
+        if (!files) return;
+        setIsUploading(true);
+        try {
+            const urls = await Promise.all(Array.from(files).map(file => api.uploadImage(file as File)));
+            setImageUrls(prev => [...prev, ...urls]);
+            setImageCaptions(prev => [...prev, ...urls.map(() => '')]);
+        } catch (err) {
+            alert('Upload failed');
+        } finally {
+            setIsUploading(false);
+        }
+    };
+
+    const handleCaptionChange = (idx: number, val: string) => {
+        const next = [...imageCaptions];
+        next[idx] = val;
+        setImageCaptions(next);
+    };
+
     return (
         <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md animate-fade-in">
             <div className="bg-white rounded-[2.5rem] shadow-2xl w-full max-w-lg animate-slide-up overflow-hidden">
@@ -1521,14 +1681,29 @@ const SetPassNgModal = ({ onClose, onSet, existingReason }: any) => {
                     <h3 className="text-xl font-bold text-slate-900 uppercase tracking-tight">Set NG Feedback</h3>
                     <button onClick={onClose} className="text-slate-400 hover:text-slate-600"><X size={24}/></button>
                 </div>
-                <div className="p-8 space-y-6">
+                <div className="p-8 space-y-6 max-h-[70vh] overflow-y-auto custom-scrollbar">
                     <div>
                         <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-3">Reason / Suggestion</label>
                         <textarea required value={reason} onChange={e => setReason(e.target.value)} className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none font-bold min-h-[120px]" placeholder="Detailed description..."/>
                     </div>
+                    <div>
+                        <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-3">Evidence Photos & Captions</label>
+                        <div className="flex flex-wrap gap-2 mb-2">
+                            {imageUrls.map((url, i) => (
+                                <div key={i} className="space-y-1">
+                                    <img src={url} className="w-20 h-20 rounded-lg object-cover border border-slate-200" />
+                                    <input type="text" value={imageCaptions[i]} onChange={e => handleCaptionChange(i, e.target.value)} placeholder="Caption..." className="w-20 text-[8px] px-1 py-0.5 border border-slate-200 rounded" />
+                                </div>
+                            ))}
+                            <label className="w-20 h-20 rounded-lg border-2 border-dashed border-slate-200 flex items-center justify-center cursor-pointer hover:bg-slate-50">
+                                {isUploading ? <Loader2 size={20} className="animate-spin text-slate-400" /> : <Plus size={20} className="text-slate-400" />}
+                                <input type="file" multiple className="hidden" onChange={handleFileUpload} />
+                            </label>
+                        </div>
+                    </div>
                     <div className="flex gap-4">
                         <button onClick={onClose} className="flex-1 py-4 text-slate-400 font-bold hover:bg-slate-50 rounded-2xl">Cancel</button>
-                        <button onClick={() => onSet({en: reason, zh: reason}, false, [])} className="flex-1 py-4 bg-slate-900 text-white font-bold rounded-2xl hover:bg-slate-800 transition-all">Update Feedback</button>
+                        <button onClick={() => onSet({en: reason, zh: reason}, false, imageUrls, imageCaptions)} className="flex-1 py-4 bg-slate-900 text-white font-bold rounded-2xl hover:bg-slate-800 transition-all">Update Feedback</button>
                     </div>
                 </div>
             </div>
@@ -1570,6 +1745,30 @@ const FeedbackModal = ({ onClose, onSave, feedback }: any) => {
     const [content, setContent] = useState(feedback ? feedback.content.en : '');
     const [source, setSource] = useState(feedback ? feedback.source : '');
     const [category, setCategory] = useState<ErgoProjectCategory>(feedback ? feedback.category : 'Experience');
+    const [imageUrls, setImageUrls] = useState<string[]>(feedback?.attachmentUrls || []);
+    const [imageCaptions, setImageCaptions] = useState<string[]>(feedback?.attachmentCaptions || []);
+    const [isUploading, setIsUploading] = useState(false);
+
+    const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const files = e.target.files;
+        if (!files) return;
+        setIsUploading(true);
+        try {
+            const urls = await Promise.all(Array.from(files).map(file => api.uploadImage(file as File)));
+            setImageUrls(prev => [...prev, ...urls]);
+            setImageCaptions(prev => [...prev, ...urls.map(() => '')]);
+        } catch (err) {
+            alert('Upload failed');
+        } finally {
+            setIsUploading(false);
+        }
+    };
+
+    const handleCaptionChange = (idx: number, val: string) => {
+        const next = [...imageCaptions];
+        next[idx] = val;
+        setImageCaptions(next);
+    };
 
     return (
         <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md animate-fade-in">
@@ -1578,7 +1777,7 @@ const FeedbackModal = ({ onClose, onSave, feedback }: any) => {
                     <h3 className="text-xl font-bold text-slate-900 uppercase tracking-tight">Feedback Entry</h3>
                     <button onClick={onClose} className="text-slate-400 hover:text-slate-600"><X size={24}/></button>
                 </div>
-                <div className="p-8 space-y-6">
+                <div className="p-8 space-y-6 max-h-[80vh] overflow-y-auto custom-scrollbar">
                     <div>
                         <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-3">Content</label>
                         <textarea required value={content} onChange={e => setContent(e.target.value)} className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none font-medium min-h-[140px] resize-none" placeholder="Description of market observation..."/>
@@ -1587,9 +1786,24 @@ const FeedbackModal = ({ onClose, onSave, feedback }: any) => {
                         <div><label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-3">Source</label><input type="text" value={source} onChange={e => setSource(e.target.value)} className="w-full px-5 py-3 bg-slate-50 border border-slate-200 rounded-2xl outline-none font-bold" /></div>
                         <div><label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-3">Category</label><select value={category} onChange={e => setCategory(e.target.value as any)} className="w-full px-5 py-3 bg-slate-50 border border-slate-200 rounded-2xl outline-none font-bold">{['Resistance profile', 'Experience', 'Stroke', 'Other Suggestion'].map(c => <option key={c} value={c}>{c}</option>)}</select></div>
                     </div>
+                    <div>
+                        <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-3">Visual Evidence & Captions</label>
+                        <div className="flex flex-wrap gap-2">
+                            {imageUrls.map((url, i) => (
+                                <div key={i} className="space-y-1">
+                                    <img src={url} className="w-20 h-20 rounded-lg object-cover border border-slate-200" />
+                                    <input type="text" value={imageCaptions[i]} onChange={e => handleCaptionChange(i, e.target.value)} placeholder="Caption..." className="w-20 text-[8px] px-1 py-0.5 border border-slate-200 rounded" />
+                                </div>
+                            ))}
+                            <label className="w-20 h-20 rounded-lg border-2 border-dashed border-slate-200 flex items-center justify-center cursor-pointer hover:bg-slate-50">
+                                {isUploading ? <Loader2 size={20} className="animate-spin text-slate-400" /> : <Plus size={20} className="text-slate-400" />}
+                                <input type="file" multiple className="hidden" onChange={handleFileUpload} />
+                            </label>
+                        </div>
+                    </div>
                     <div className="flex gap-4 pt-4">
                         <button onClick={onClose} className="flex-1 py-4 text-slate-400 font-bold hover:bg-slate-50 rounded-2xl">Cancel</button>
-                        <button onClick={() => onSave({ content: {en: content, zh: content}, source, category, date: new Date().toISOString().split('T')[0] })} className="flex-1 py-4 bg-slate-900 text-white font-bold rounded-2xl">Save Entry</button>
+                        <button onClick={() => onSave({ content: {en: content, zh: content}, source, category, date: new Date().toISOString().split('T')[0], attachmentUrls: imageUrls, attachmentCaptions: imageCaptions })} className="flex-1 py-4 bg-slate-900 text-white font-bold rounded-2xl">Save Entry</button>
                     </div>
                 </div>
             </div>
