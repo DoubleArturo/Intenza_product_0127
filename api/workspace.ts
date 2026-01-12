@@ -29,38 +29,26 @@ export default async function handler(request: VercelRequest, response: VercelRe
       return response.status(200).json(rows[0].content);
     }
     
-    // 2. 儲存資料 (POST) - 部分更新 (Partial Update)
+    // 2. 儲存資料 (POST)
     if (request.method === 'POST') {
-      const partialState = request.body;
+      const state = request.body;
       
-      // 驗證 Payload 是否為物件
-      if (!partialState || typeof partialState !== 'object' || Array.isArray(partialState)) {
-        return response.status(400).json({ error: 'Payload must be a JSON object' });
+      if (!state) {
+        return response.status(400).json({ error: 'Payload is empty' });
       }
 
-      const jsonString = JSON.stringify(partialState);
+      const jsonString = JSON.stringify(state);
       
-      // 檢查體積 (Vercel Postgres 單一欄位限制約 4.5MB)
+      // 檢查體積 (Vercel Postgres 有單一欄位限制，Serverless Function 有 4.5MB 限制)
       if (jsonString.length > 4 * 1024 * 1024) {
-         return response.status(413).json({ error: 'Payload too large. Please optimize image sizes.' });
+         return response.status(413).json({ error: 'Payload too large. Try reducing image sizes.' });
       }
 
-      /**
-       * 使用 jsonb_merge_patch 實現「部分更新」。
-       * 1. 如果資料不存在，直接插入。
-       * 2. 如果資料存在，將舊 content 與新 content 合併。
-       * 採用 COALESCE 防止 null 合併導致資料遺失。
-       */
       await client.sql`
         INSERT INTO workspace_storage (id, content, updated_at)
-        VALUES ('global_state', ${jsonString}::jsonb, NOW())
+        VALUES ('global_state', ${jsonString}, NOW())
         ON CONFLICT (id) 
-        DO UPDATE SET 
-          content = jsonb_merge_patch(
-            COALESCE(workspace_storage.content, '{}'::jsonb), 
-            ${jsonString}::jsonb
-          ), 
-          updated_at = NOW();
+        DO UPDATE SET content = ${jsonString}, updated_at = NOW()
       `;
       
       return response.status(200).json({ success: true });
@@ -68,9 +56,9 @@ export default async function handler(request: VercelRequest, response: VercelRe
     
     return response.status(405).json({ error: 'Method Not Allowed' });
   } catch (error) {
-    console.error('Workspace Storage Error:', error);
+    console.error('Database Operation Failed:', error);
     return response.status(500).json({ 
-      error: 'Sync Failed', 
+      error: 'Database error', 
       details: (error as Error).message 
     });
   } finally {

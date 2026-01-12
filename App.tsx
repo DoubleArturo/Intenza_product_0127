@@ -76,46 +76,32 @@ const App = () => {
     return str[language] || str.en || str.zh || '';
   }, [language]);
 
-  /**
-   * handleSyncToCloud 支援「部分更新」
-   */
-  const handleSyncToCloud = useCallback(async (isAutoSync = false, partialData?: Partial<AppState>) => {
+  const handleSyncToCloud = useCallback(async (isAutoSync = false) => {
     if (isSyncingRef.current || !isLoggedIn || currentUser?.role === 'viewer') return;
     
     isSyncingRef.current = true;
     setSyncStatus('saving');
     
-    // 如果傳入 partialData 為空物件，則不執行同步
-    if (partialData && Object.keys(partialData).length === 0) {
-      setSyncStatus('idle');
-      isSyncingRef.current = false;
-      return;
-    }
-
-    const payload = partialData || {
+    const state: AppState = {
       products, seriesList, shipments, testers, testerGroups, users, auditLogs, language, showAiInsights, maxHistorySteps, customLogoUrl, globalStatusLightSize, dashboardColumns, cardAspectRatio, chartColorStyle, analyticsTooltipScale, analyticsTooltipPosition, evaluationModalYOffset
     };
 
     try {
-      await api.saveData(payload as any);
+      await api.saveData(state);
       setSyncStatus('success');
       setTimeout(() => {
         setSyncStatus('idle');
         isSyncingRef.current = false;
-      }, isAutoSync ? 1500 : 3000);
+      }, isAutoSync ? 2000 : 3000);
     } catch (error: any) {
-      console.error('Cloud Sync Error:', error);
       setSyncStatus('error');
       setErrorDetail(error.message || 'Connection Error');
       isSyncingRef.current = false;
-      // 3秒後恢復 idle 以允許下次嘗試
-      setTimeout(() => setSyncStatus('idle'), 3000);
     }
   }, [products, seriesList, shipments, testers, testerGroups, users, auditLogs, language, showAiInsights, maxHistorySteps, customLogoUrl, globalStatusLightSize, dashboardColumns, cardAspectRatio, chartColorStyle, analyticsTooltipScale, analyticsTooltipPosition, evaluationModalYOffset, isLoggedIn, currentUser]);
 
   const handleLogout = useCallback(async () => {
     if (currentUser) {
-      let updatedLogs: AuditLog[] = [];
       setAuditLogs(prev => {
         const logs = [...prev];
         const lastIndex = [...logs].reverse().findIndex(l => l.username === currentUser.username && !l.logoutTime);
@@ -132,13 +118,9 @@ const App = () => {
                 durationMinutes: diffMins
             };
         }
-        updatedLogs = logs;
         return logs;
       });
       
-      // 登出時執行部分更新
-      handleSyncToCloud(true, { auditLogs: updatedLogs });
-
       setTimeout(() => {
         setIsLoggedIn(false);
         setCurrentUser(null);
@@ -147,7 +129,7 @@ const App = () => {
       setIsLoggedIn(false);
       setCurrentUser(null);
     }
-  }, [currentUser, handleSyncToCloud]);
+  }, [currentUser]);
 
   useEffect(() => {
     const handleBrowserClose = () => {
@@ -170,12 +152,15 @@ const App = () => {
           durationMinutes: diffMins
         };
 
-        const partialPayload = { auditLogs: logs };
+        const finalState: AppState = {
+          ...currentState,
+          auditLogs: logs
+        };
 
         fetch('/api/workspace', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(partialPayload),
+          body: JSON.stringify(finalState),
           keepalive: true
         });
       }
@@ -191,17 +176,13 @@ const App = () => {
       username: user.username,
       loginTime: new Date().toLocaleString()
     };
+    setAuditLogs(prev => [...prev, newLog]);
     
-    setAuditLogs(prev => {
-      const next = [...prev, newLog];
-      handleSyncToCloud(true, { auditLogs: next });
-      return next;
-    });
-    
+    // Find matching full user record for permissions
     const fullUser = users.find(u => u.username === user.username) || user;
     setCurrentUser(fullUser);
     setIsLoggedIn(true);
-  }, [users, handleSyncToCloud]);
+  }, [users]);
 
   const handleLoadFromCloud = useCallback(async () => {
     if (isSyncingRef.current) return;
@@ -228,8 +209,8 @@ const App = () => {
         if (cloudData.analyticsTooltipScale !== undefined) setAnalyticsTooltipScale(cloudData.analyticsTooltipScale);
         if (cloudData.analyticsTooltipPosition) setAnalyticsTooltipPosition(cloudData.analyticsTooltipPosition);
         if (cloudData.evaluationModalYOffset !== undefined) setEvaluationModalYOffset(cloudData.evaluationModalYOffset);
+        setSyncStatus('success');
       }
-      setSyncStatus('success');
       initialLoadDone.current = true;
     } catch (error) {
       console.error('Cloud load error:', error);
@@ -243,7 +224,7 @@ const App = () => {
   const handleResetShipments = useCallback(() => {
     if (currentUser?.role === 'viewer') return;
     setShipments([]);
-    setTimeout(() => handleSyncToCloud(true, { shipments: [] }), 100);
+    setTimeout(() => handleSyncToCloud(true), 100);
   }, [handleSyncToCloud, currentUser]);
 
   useEffect(() => {
@@ -267,7 +248,7 @@ const App = () => {
 
   useEffect(() => {
     if (isLoggedIn && initialLoadDone.current && currentUser?.role !== 'viewer') {
-      const timer = setTimeout(() => handleSyncToCloud(true), 2500);
+      const timer = setTimeout(() => handleSyncToCloud(true), 2000);
       return () => clearTimeout(timer);
     }
   }, [users, seriesList, products, testers, testerGroups, shipments, auditLogs, customLogoUrl, globalStatusLightSize, dashboardColumns, cardAspectRatio, chartColorStyle, analyticsTooltipScale, analyticsTooltipPosition, evaluationModalYOffset, isLoggedIn, handleSyncToCloud, currentUser]);
@@ -404,10 +385,7 @@ const App = () => {
                 {syncStatus === 'saving' && <Loader2 size={18} className="animate-spin" />}
                 {syncStatus === 'success' && <CheckCircle size={18} />}
                 {syncStatus === 'error' && <AlertCircle size={18} />}
-                <div className="flex flex-col">
-                  <span className="text-sm font-bold">{syncStatus === 'saving' ? t({en: 'Syncing', zh: '同步中'}) : syncStatus === 'success' ? t({en: 'Cloud Updated', zh: '雲端已更新'}) : t({en: 'Sync Error', zh: '同步異常'})}</span>
-                  {syncStatus === 'error' && errorDetail && <span className="text-[10px] opacity-80 font-mono">{errorDetail}</span>}
-                </div>
+                <span className="text-sm font-bold">{syncStatus === 'saving' ? t({en: 'Syncing', zh: '同步中'}) : syncStatus === 'success' ? t({en: 'Cloud Updated', zh: '雲端已更新'}) : t({en: 'Sync Error', zh: '同步異常'})}</span>
               </div>
             </div>
           )}
