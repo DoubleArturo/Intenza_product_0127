@@ -1391,7 +1391,7 @@ const EcoModal = ({ isOpen, onClose, onSave, eco, productVersions }: any) => {
 
 const TestModal = ({ isOpen, onClose, onSave, test, productVersions }: any) => {
   const [formData, setFormData] = useState({
-    category: 'Structural',
+    category: 'Mechanical',
     testName: { en: '', zh: '' },
     version: productVersions[0] || 'v1.0',
     score: 0,
@@ -1401,11 +1401,16 @@ const TestModal = ({ isOpen, onClose, onSave, test, productVersions }: any) => {
     attachmentCaptions: [] as string[]
   });
   const [isUploading, setIsUploading] = useState(false);
+  const [testType, setTestType] = useState('Durable Test');
 
   useEffect(() => {
     if (test) {
+      const predefined = ['Durable Test', 'Salt Spray Test', 'Packaging Test'];
+      const currentNameEn = test.testName?.en || '';
+      const isCustom = currentNameEn && !predefined.includes(currentNameEn);
+      
       setFormData({
-        category: test.category || 'Structural',
+        category: test.category || 'Mechanical',
         testName: test.testName || { en: '', zh: '' },
         version: test.version || 'v1.0',
         score: test.score || 0,
@@ -1414,6 +1419,7 @@ const TestModal = ({ isOpen, onClose, onSave, test, productVersions }: any) => {
         attachmentUrls: test.attachmentUrls || [],
         attachmentCaptions: test.attachmentCaptions || []
       });
+      setTestType(isCustom ? 'CUSTOM' : (currentNameEn || 'Durable Test'));
     }
   }, [test]);
 
@@ -1446,6 +1452,20 @@ const TestModal = ({ isOpen, onClose, onSave, test, productVersions }: any) => {
     setFormData({ ...formData, attachmentCaptions: newCaptions });
   };
 
+  const handleTestTypeChange = (type: string) => {
+      setTestType(type);
+      if (type !== 'CUSTOM') {
+          const mapping: Record<string, LocalizedString> = {
+              'Durable Test': { en: 'Durable Test', zh: '耐久測試' },
+              'Salt Spray Test': { en: 'Salt Spray Test', zh: '鹽霧測試' },
+              'Packaging Test': { en: 'Packaging Test', zh: '包裝測試' }
+          };
+          setFormData({ ...formData, testName: mapping[type] });
+      } else {
+          setFormData({ ...formData, testName: { en: '', zh: '' } });
+      }
+  };
+
   if (!isOpen) return null;
 
   return (
@@ -1459,7 +1479,15 @@ const TestModal = ({ isOpen, onClose, onSave, test, productVersions }: any) => {
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Category</label>
-              <input type="text" required value={formData.category} onChange={e => setFormData({...formData, category: e.target.value})} className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl outline-none font-bold" />
+              <select 
+                  required 
+                  value={formData.category} 
+                  onChange={e => setFormData({...formData, category: e.target.value})} 
+                  className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl outline-none font-bold"
+              >
+                  <option value="Mechanical">Mechanical (機構測試)</option>
+                  <option value="Electronic">Electronic (電子測試)</option>
+              </select>
             </div>
             <div>
               <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Score (%)</label>
@@ -1469,7 +1497,27 @@ const TestModal = ({ isOpen, onClose, onSave, test, productVersions }: any) => {
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Test Name</label>
-              <input type="text" required value={formData.testName.en} onChange={e => setFormData({...formData, testName: {en: e.target.value, zh: e.target.value}})} className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl outline-none font-bold" />
+              <select 
+                  required 
+                  value={testType} 
+                  onChange={e => handleTestTypeChange(e.target.value)}
+                  className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl outline-none font-bold mb-2"
+              >
+                  <option value="Durable Test">耐久測試 (Durable Test)</option>
+                  <option value="Salt Spray Test">鹽霧測試 (Salt Spray Test)</option>
+                  <option value="Packaging Test">包裝測試 (Packaging Test)</option>
+                  <option value="CUSTOM">自訂測試 (Custom Test)</option>
+              </select>
+              {testType === 'CUSTOM' && (
+                  <input 
+                      type="text" 
+                      required 
+                      value={formData.testName.en} 
+                      placeholder="手寫自訂名稱 / Custom Name"
+                      onChange={e => setFormData({...formData, testName: {en: e.target.value, zh: e.target.value}})} 
+                      className="w-full px-4 py-2 bg-white border border-slate-200 rounded-xl outline-none font-bold animate-fade-in" 
+                  />
+              )}
             </div>
             <div>
               <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Test Version</label>
