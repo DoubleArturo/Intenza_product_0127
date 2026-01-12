@@ -1300,6 +1300,7 @@ const EcoModal = ({ isOpen, onClose, onSave, eco, productVersions }: any) => {
     version: productVersions[0] || 'v1.0',
     description: { en: '', zh: '' },
     status: EcoStatus.EVALUATING,
+    implementationDate: '',
     imageUrls: [] as string[]
   });
   const [isUploading, setIsUploading] = useState(false);
@@ -1312,6 +1313,7 @@ const EcoModal = ({ isOpen, onClose, onSave, eco, productVersions }: any) => {
         version: eco.version || 'v1.0',
         description: eco.description || { en: '', zh: '' },
         status: eco.status || EcoStatus.EVALUATING,
+        implementationDate: eco.implementationDate || '',
         imageUrls: eco.imageUrls || []
       });
     }
@@ -1356,11 +1358,25 @@ const EcoModal = ({ isOpen, onClose, onSave, eco, productVersions }: any) => {
               <input type="text" required value={formData.version} onChange={e => setFormData({...formData, version: e.target.value})} className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl outline-none font-bold" placeholder="e.g. v1.1" />
             </div>
           </div>
-          <div>
-            <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Status</label>
-            <select value={formData.status} onChange={e => setFormData({...formData, status: e.target.value as EcoStatus})} className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl outline-none font-bold">
-              {Object.values(EcoStatus).map(s => <option key={s} value={s}>{s}</option>)}
-            </select>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Status</label>
+              <select value={formData.status} onChange={e => setFormData({...formData, status: e.target.value as EcoStatus})} className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl outline-none font-bold">
+                {Object.values(EcoStatus).map(s => <option key={s} value={s}>{s}</option>)}
+              </select>
+            </div>
+            {formData.status === EcoStatus.IN_PRODUCTION && (
+              <div className="animate-fade-in">
+                <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Implementation Date (導入量產日期)</label>
+                <input 
+                  type="date" 
+                  required 
+                  value={formData.implementationDate} 
+                  onChange={e => setFormData({...formData, implementationDate: e.target.value})} 
+                  className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl outline-none font-bold" 
+                />
+              </div>
+            )}
           </div>
           <div>
             <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Description (EN)</label>
