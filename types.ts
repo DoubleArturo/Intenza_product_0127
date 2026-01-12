@@ -1,4 +1,3 @@
-
 export type Language = 'en' | 'zh';
 
 export interface LocalizedString {
@@ -219,6 +218,7 @@ export interface AppState {
   analyticsTooltipScale?: number;
   analyticsTooltipPosition?: 'TOP_LEFT' | 'TOP_RIGHT' | 'BOTTOM_LEFT' | 'BOTTOM_RIGHT' | 'FOLLOW';
   evaluationModalYOffset?: number;
+  lastShipmentUpdate?: string;
 }
 
 export interface Tester {

@@ -34,6 +34,7 @@ interface AnalyticsProps {
   products: ProductModel[];
   shipments: ShipmentData[];
   testers?: Tester[];
+  lastShipmentUpdate?: string;
   onImportData: (data: ShipmentData[]) => void;
   onBatchAddProducts: (products: any[]) => void;
   showAiInsights: boolean;
@@ -47,7 +48,7 @@ type DimensionFilter = 'DATA_DRILL' | 'BUYER' | 'COLOR';
 type ViewMode = 'SHIPMENTS' | 'ERGONOMICS' | 'DURABILITY';
 
 const Analytics: React.FC<AnalyticsProps> = ({ 
-  products, shipments, onImportData, onBatchAddProducts, showAiInsights, userRole, chartColorStyle = 'COLORFUL',
+  products, shipments, lastShipmentUpdate, onImportData, onBatchAddProducts, showAiInsights, userRole, chartColorStyle = 'COLORFUL',
   tooltipScale = 2, tooltipPosition = 'TOP_LEFT'
 }) => {
   const { language, t } = useContext(LanguageContext);
@@ -346,6 +347,12 @@ const Analytics: React.FC<AnalyticsProps> = ({
         <div>
           <h1 className="text-4xl font-black text-slate-900 tracking-tight">Product Info. Dashboard</h1>
           <p className="text-slate-500 mt-2 font-medium">Quality metrics and shipment analytics at a glance.</p>
+          {lastShipmentUpdate && (
+            <div className="flex items-center gap-1.5 mt-2 animate-fade-in">
+              <Clock size={12} className="text-slate-400" />
+              <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Last Updated: {lastShipmentUpdate}</span>
+            </div>
+          )}
         </div>
         {canImport && (
           <div className="flex gap-3">
