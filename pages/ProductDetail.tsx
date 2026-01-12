@@ -55,7 +55,7 @@ const ProductDetail: React.FC<ProductDetailProps> = ({ products, shipments = [],
   const [editingTest, setEditingTest] = useState<TestResult | null>(null);
   
   const [isNoShipmentModalOpen, setIsNoShipmentModalOpen] = useState(false);
-  const [selectedVersionForModal, setSelectedVersionForModal] = useState('');
+  const [selectedVersionForModal] = useState('');
 
   const ergoSectionRef = useRef<HTMLDivElement>(null);
   const [highlightedFeedback, setHighlightedFeedback] = useState<{projectId?: string, taskId?: string, testerId?: string, feedbackId?: string} | null>(null);
@@ -632,7 +632,7 @@ const ProjectCard = ({ project, testers, product, onOpenAddTask, onEditTaskName,
                     <h3 className="text-lg font-bold text-slate-900">{t(project.name)}</h3>
                     <div className="flex items-center gap-3 mt-1">
                         <span className="text-xs text-slate-400 flex items-center gap-1"><Calendar size={12}/> {project.date}</span>
-                        {project.version && <span className="text-xs font-bold text-intenza-600 bg-intenza-50 px-2 py-0.5 rounded border border-intenza-100 ml-2">{project.version}</span>}
+                        {project.version && <span className="text-xs font-bold text-intenza-600 bg-intenza-50 arrow-2 py-0.5 rounded border border-intenza-100 ml-2">{project.version}</span>}
                         <span className="text-xs text-slate-400 flex items-center gap-1"><Users size={12}/> {project.testerIds.length} Testers</span>
                     </div>
                 </div>
@@ -744,9 +744,11 @@ const ProjectCard = ({ project, testers, product, onOpenAddTask, onEditTaskName,
     );
 };
 
-// Fix: Add missing DesignSection component
+// Fix: Add missing DesignSection component and resolve name errors
 const DesignSection = ({ product, shipments, userRole, canEdit, onAddEco, onEditEco, onDeleteEco, onDeleteVersion, onSetCurrentVersion, onNavigateToSource, onOpenLightbox, onNoShipment }: any) => {
-  const { t } = useContext(LanguageContext);
+  /* Fix: Destructure language from context and initialize navigate */
+  const { t, language } = useContext(LanguageContext);
+  const navigate = useNavigate();
   const versions = useMemo(() => {
     const vSet = new Set([product.currentVersion, ...product.designHistory.map(h => h.version)]);
     return Array.from(vSet).sort().reverse();
@@ -832,6 +834,7 @@ const DesignSection = ({ product, shipments, userRole, canEdit, onAddEco, onEdit
                   <div className="mt-6 flex gap-4">
                       {hasShipment ? (
                         <button 
+                          /* Fix: navigate is now defined via useNavigate() in DesignSection scope */
                           onClick={() => navigate('/analytics', { state: { autoDrill: { sku: product.sku, version: v } } })}
                           className="flex items-center gap-2 px-4 py-2 bg-slate-900 text-white rounded-xl text-xs font-black uppercase tracking-widest hover:bg-slate-800 transition-all shadow-lg shadow-slate-900/10"
                         >

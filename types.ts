@@ -219,6 +219,7 @@ export interface AppState {
   analyticsTooltipScale?: number;
   analyticsTooltipPosition?: 'TOP_LEFT' | 'TOP_RIGHT' | 'BOTTOM_LEFT' | 'BOTTOM_RIGHT' | 'FOLLOW';
   evaluationModalYOffset?: number;
+  lastImportDate?: string;
 }
 
 export interface Tester {
