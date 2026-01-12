@@ -1,4 +1,3 @@
-
 import React, { useState, useMemo, useRef, useContext, useEffect } from 'react';
 import { 
   PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer, 
@@ -398,7 +397,7 @@ const Analytics: React.FC<AnalyticsProps> = ({
                 </div>
               )}
               <div className="flex bg-slate-100 p-1 rounded-xl shadow-inner">
-                <button onClick={() => setViewMode('SHIPMENTS')} className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-black transition-all ${viewMode === 'SHIPMENTS' ? 'bg-white shadow-md text-intenza-600' : 'text-slate-400'}`}><BarIcon size={14}/> SHIPMENT</button>
+                <button onClick={() => setViewMode('SHIPMENTS')} className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-black transition-all ${viewMode === 'SHIPMENTS' ? 'bg-white shadow-md text-intenza-600' : 'text-slate-400'}`}><BarIcon size={14}/> DELIVERED</button>
                 <button onClick={() => setViewMode('ERGONOMICS')} className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-black transition-all ${viewMode === 'ERGONOMICS' ? 'bg-white shadow-md text-indigo-600' : 'text-slate-400'}`}><ShieldCheck size={14}/> ERGO</button>
                 <button onClick={() => setViewMode('DURABILITY')} className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-black transition-all ${viewMode === 'DURABILITY' ? 'bg-white shadow-md text-emerald-600' : 'text-slate-400'}`}><Zap size={14}/> DURABILITY</button>
               </div>
@@ -410,7 +409,7 @@ const Analytics: React.FC<AnalyticsProps> = ({
               <>
                 <div className="absolute top-10 right-10 flex flex-col items-end z-30">
                    <span className="text-[10px] font-black text-slate-300 uppercase tracking-widest">Active Metric</span>
-                   <span className="text-xs font-black text-intenza-600 uppercase tracking-tight">Units Shipped</span>
+                   <span className="text-xs font-black text-intenza-600 uppercase tracking-tight">Units Delivered</span>
                 </div>
                 <div className="flex-1 mt-6 animate-fade-in">
                   <ResponsiveContainer width="100%" height={500}>
