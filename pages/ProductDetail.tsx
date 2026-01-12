@@ -1,4 +1,3 @@
-
 import React, { useState, useMemo, useEffect, useContext, useRef } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { 
@@ -1472,7 +1471,7 @@ const TestModal = ({ isOpen, onClose, onSave, test, productVersions }: any) => {
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md animate-fade-in">
       <div className="bg-white rounded-[2.5rem] shadow-2xl w-full max-w-2xl animate-slide-up overflow-hidden border border-white/20">
         <div className="flex justify-between items-center p-8 border-b border-slate-100">
-          <h2 className="text-2xl font-black text-slate-900">{test ? 'Edit Test' : 'New Durability Test'}</h2>
+          <h2 className="text-2xl font-black text-slate-900">{test ? 'Edit Test' : 'Add New Test'}</h2>
           <button onClick={onClose} className="p-2 rounded-full hover:bg-slate-100 text-slate-500"><X size={24} /></button>
         </div>
         <form onSubmit={handleSubmit} className="p-8 space-y-6 max-h-[70vh] overflow-y-auto custom-scrollbar">
