@@ -197,6 +197,7 @@ export interface AuditLog {
   loginTime: string;
   logoutTime?: string;
   durationMinutes?: number;
+  note?: string;
 }
 
 export interface AppState {
@@ -219,6 +220,7 @@ export interface AppState {
   analyticsTooltipPosition?: 'TOP_LEFT' | 'TOP_RIGHT' | 'BOTTOM_LEFT' | 'BOTTOM_RIGHT' | 'FOLLOW';
   evaluationModalYOffset?: number;
   lastShipmentUpdate?: string;
+  heartbeats?: Record<string, number>;
 }
 
 export interface Tester {

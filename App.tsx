@@ -106,6 +106,25 @@ const App = () => {
   }, [language]);
 
   /**
+   * Heartbeat Mechanism: 每 30 秒向後端發送一次心跳
+   */
+  useEffect(() => {
+    let interval: ReturnType<typeof setInterval>;
+    if (isLoggedIn && currentUser) {
+      interval = setInterval(() => {
+        fetch('/api/heartbeat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username: currentUser.username })
+        }).catch(err => console.debug('Heartbeat silent failure', err));
+      }, 30000);
+    }
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [isLoggedIn, currentUser]);
+
+  /**
    * handleSyncToCloud 支援「部分更新」
    */
   const handleSyncToCloud = useCallback(async (isAutoSync = false, partialData?: Partial<AppState>) => {
