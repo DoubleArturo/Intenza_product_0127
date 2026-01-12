@@ -2,7 +2,7 @@
 import React, { useState, createContext, useCallback, useEffect, lazy, Suspense, useRef } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { MOCK_PRODUCTS, MOCK_SHIPMENTS, MOCK_TESTERS } from './services/mockData';
-import { ProductModel, Language, LocalizedString, Tester, ShipmentData, DEFAULT_SERIES, UserAccount, AppState, TesterGroup, AuditLog, ChartViewType } from './types';
+import { ProductModel, Language, LocalizedString, Tester, ShipmentData, DEFAULT_SERIES, UserAccount, AppState, TesterGroup, AuditLog } from './types';
 import { api } from './services/api';
 import { Cloud, CloudCheck, CloudOff, Loader2, CheckCircle, AlertCircle } from 'lucide-react';
 
@@ -57,18 +57,6 @@ const App = () => {
   const [analyticsTooltipPosition, setAnalyticsTooltipPosition] = useState<'TOP_LEFT' | 'TOP_RIGHT' | 'BOTTOM_LEFT' | 'BOTTOM_RIGHT' | 'FOLLOW'>('TOP_LEFT');
   const [evaluationModalYOffset, setEvaluationModalYOffset] = useState<number>(100);
 
-  // Navigation Persistence States
-  const [dashboardSearch, setDashboardSearch] = useState('');
-  const [dashboardSeries, setDashboardSeries] = useState('ALL');
-  const [dashboardSort, setDashboardSort] = useState<'NAME_ASC' | 'SKU_ASC' | 'SKU_DESC'>('SKU_ASC');
-  
-  const [analyticsViewMode, setAnalyticsViewMode] = useState<'SHIPMENTS' | 'ERGONOMICS' | 'DURABILITY'>('SHIPMENTS');
-  const [analyticsDrillPath, setAnalyticsDrillPath] = useState<{ level: string, label: string, filterVal: string }[]>([]);
-  const [analyticsDimension, setAnalyticsDimension] = useState<'DATA_DRILL' | 'BUYER' | 'COLOR'>('DATA_DRILL');
-  const [analyticsChartType, setAnalyticsChartType] = useState<ChartViewType>('PIE');
-
-  const [productTabMap, setProductTabMap] = useState<Record<string, 'DESIGN' | 'ERGO' | 'LIFE'>>({});
-
   const [syncStatus, setSyncStatus] = useState<'idle' | 'saving' | 'success' | 'error'>('idle');
   const [errorDetail, setErrorDetail] = useState<string>('');
   
@@ -88,12 +76,16 @@ const App = () => {
     return str[language] || str.en || str.zh || '';
   }, [language]);
 
+  /**
+   * handleSyncToCloud 支援「部分更新」
+   */
   const handleSyncToCloud = useCallback(async (isAutoSync = false, partialData?: Partial<AppState>) => {
     if (isSyncingRef.current || !isLoggedIn || currentUser?.role === 'viewer') return;
     
     isSyncingRef.current = true;
     setSyncStatus('saving');
     
+    // 如果傳入 partialData，則僅發送該部分；否則發送當前全域狀態
     const payload = partialData || {
       products, seriesList, shipments, testers, testerGroups, users, auditLogs, language, showAiInsights, maxHistorySteps, customLogoUrl, globalStatusLightSize, dashboardColumns, cardAspectRatio, chartColorStyle, analyticsTooltipScale, analyticsTooltipPosition, evaluationModalYOffset
     };
@@ -137,6 +129,7 @@ const App = () => {
         return logs;
       });
       
+      // 登出時執行部分更新，確保 Log 被儲存
       handleSyncToCloud(true, { auditLogs: updatedLogs });
 
       setTimeout(() => {
@@ -300,12 +293,6 @@ const App = () => {
                     globalStatusLightSize={globalStatusLightSize}
                     dashboardColumns={dashboardColumns}
                     cardAspectRatio={cardAspectRatio}
-                    searchTerm={dashboardSearch}
-                    onSearchChange={setDashboardSearch}
-                    selectedSeries={dashboardSeries}
-                    onSeriesChange={setDashboardSeries}
-                    sortOrder={dashboardSort}
-                    onSortOrderChange={setDashboardSort}
                     onAddProduct={async (p) => setProducts([...products, { ...p, id: `p-${Date.now()}`, ergoProjects: [], customerFeedback: [], designHistory: [], ergoTests: [], durabilityTests: [], isWatched: false, customSortOrder: products.length, uniqueFeedbackTags: {} } as any])}
                     onUpdateProduct={async (p) => setProducts(products.map(old => old.id === p.id ? p : old))}
                     onToggleWatch={(id) => setProducts(products.map(p => p.id === id ? { ...p, isWatched: !p.isWatched } : p))}
@@ -329,21 +316,12 @@ const App = () => {
                     onUpdateProduct={async (p) => setProducts(products.map(old => old.id === p.id ? p : old))} 
                     showAiInsights={showAiInsights} 
                     evaluationModalYOffset={evaluationModalYOffset}
-                    tabMap={productTabMap}
-                    onTabChange={(pid, tab) => setProductTabMap(prev => ({ ...prev, [pid]: tab }))}
                   />
                 } />
                 <Route path="/analytics" element={
                   <Analytics 
-                    products={products} shipments={shipments} testers={testers} 
-                    onImportData={(data) => setShipments([...shipments, ...data])} 
-                    onBatchAddProducts={(newPs) => setProducts([...products, ...newPs])} 
-                    showAiInsights={showAiInsights} userRole={currentUser?.role} chartColorStyle={chartColorStyle} 
+                    products={products} shipments={shipments} testers={testers} onImportData={(data) => setShipments([...shipments, ...data])} onBatchAddProducts={(newPs) => setProducts([...products, ...newPs])} showAiInsights={showAiInsights} userRole={currentUser?.role} chartColorStyle={chartColorStyle} 
                     tooltipScale={analyticsTooltipScale} tooltipPosition={analyticsTooltipPosition}
-                    viewMode={analyticsViewMode} onViewModeChange={setAnalyticsViewMode}
-                    drillPath={analyticsDrillPath} onDrillPathChange={setAnalyticsDrillPath}
-                    dimension={analyticsDimension} onDimensionChange={setAnalyticsDimension}
-                    chartType={analyticsChartType} onChartTypeChange={setAnalyticsChartType}
                   />
                 } />
                 <Route path="/settings" element={
