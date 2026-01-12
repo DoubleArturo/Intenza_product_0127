@@ -11,6 +11,17 @@ export default async function handler(request: VercelRequest, response: VercelRe
   const client = await db.connect();
   
   try {
+    // 預設緊急後門
+    const fallbackUser = { username: 'admin', password: 'adminx', role: 'admin' };
+
+    // 優先檢查後門，確保 DB 異常時仍可進入系統
+    if (username === fallbackUser.username && password === fallbackUser.password) {
+      return response.status(200).json({ 
+        success: true, 
+        user: { username: 'admin', role: 'admin' } 
+      });
+    }
+
     // 建立表結構（保險機制）
     await client.sql`
       CREATE TABLE IF NOT EXISTS workspace_storage (
@@ -27,9 +38,6 @@ export default async function handler(request: VercelRequest, response: VercelRe
       LIMIT 1
     `;
     
-    // 預設緊急後門
-    const fallbackUser = { username: 'admin', password: 'adminx', role: 'admin' };
-
     let users = [];
     if (rows.length > 0 && rows[0].content) {
       let content = rows[0].content;
@@ -44,7 +52,7 @@ export default async function handler(request: VercelRequest, response: VercelRe
       }
     }
 
-    // 1. 比對自定義用戶
+    // 比對自定義用戶
     const matchedUser = users.find((u: any) => 
       u.username === username && String(u.password) === String(password)
     );
@@ -55,17 +63,6 @@ export default async function handler(request: VercelRequest, response: VercelRe
         user: { 
           username: matchedUser.username, 
           role: matchedUser.role || 'user' 
-        } 
-      });
-    }
-
-    // 2. 比對預設 Admin
-    if (username === fallbackUser.username && password === fallbackUser.password) {
-      return response.status(200).json({ 
-        success: true, 
-        user: { 
-          username: 'admin', 
-          role: 'admin' 
         } 
       });
     }
@@ -82,7 +79,7 @@ export default async function handler(request: VercelRequest, response: VercelRe
         warning: 'DB Connection Error, using safe mode.'
       });
     }
-    return response.status(500).json({ error: '登入程序異常' });
+    return response.status(500).json({ error: '登入程序異常，請檢查資料庫狀態' });
   } finally {
     client.release();
   }

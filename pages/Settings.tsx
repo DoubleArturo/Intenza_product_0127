@@ -26,7 +26,7 @@ interface SettingsProps {
   onUpdateUser: (user: UserAccount) => void;
   onDeleteUser: (id: string) => void;
   onDeleteAuditLogs: () => void;
-  onSyncCloud: () => Promise<void>;
+  onSyncCloud: (isAuto?: boolean, partial?: Partial<AppState>) => Promise<void>;
   onLogout: () => void;
   syncStatus: 'idle' | 'saving' | 'success' | 'error';
   onResetDashboard?: () => void;
@@ -185,45 +185,10 @@ const Settings: React.FC<SettingsProps> = ({
     { label: t({ en: 'Cinematic (16:9)', zh: '寬螢幕 (16:9)' }), value: '16/9' },
   ];
 
-  const tooltipPositions = [
-    { label: 'TOP-L', value: 'TOP_LEFT' },
-    { label: 'TOP-R', value: 'TOP_RIGHT' },
-    { label: 'BTM-L', value: 'BOTTOM_LEFT' },
-    { label: 'BTM-R', value: 'BOTTOM_RIGHT' },
-    { label: 'FOLLOW', value: 'FOLLOW' },
-  ];
-
   // Logs derived stats
   const logsCount = currentAppState.auditLogs?.length || 0;
   const lastLog = logsCount > 0 ? (currentAppState.auditLogs || [])[(currentAppState.auditLogs || []).length - 1] : null;
   const activeSessions = (currentAppState.auditLogs || []).filter(l => !l.logoutTime).length;
-
-  const products = currentAppState.products || [];
-
-  // Grouped products based on series
-  const groupedProducts = useMemo(() => {
-    const groups: Record<string, ProductModel[]> = {};
-    products.forEach(p => {
-      const sName = t(p.series);
-      if (!groups[sName]) groups[sName] = [];
-      groups[sName].push(p);
-    });
-    return groups;
-  }, [products, t]);
-
-  // Fix: Explicitly cast Object.entries to fix 'unknown' type errors when filtering
-  const filteredGroups = useMemo(() => {
-    const filtered: Record<string, ProductModel[]> = {};
-    (Object.entries(groupedProducts) as [string, ProductModel[]][]).forEach(([sName, items]) => {
-      const matches = items.filter(p => 
-        t(p.modelName).toLowerCase().includes(searchTerm.toLowerCase()) || 
-        p.sku.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        sName.toLowerCase().includes(searchTerm.toLowerCase())
-      );
-      if (matches.length > 0) filtered[sName] = matches;
-    });
-    return filtered;
-  }, [groupedProducts, searchTerm, t]);
 
   return (
     <div className="p-8 max-w-5xl mx-auto animate-fade-in space-y-8">
@@ -380,7 +345,6 @@ const Settings: React.FC<SettingsProps> = ({
              </div>
           </section>
 
-          {/* REFACTORED: ACCOUNT SESSION TRACKING LOGS (Summary View) */}
           <section className="bg-white rounded-2xl border border-slate-200 p-8 shadow-sm group">
              <div className="flex items-center justify-between mb-8 pb-4 border-b border-slate-100">
                 <div className="flex items-center gap-2">
@@ -391,7 +355,6 @@ const Settings: React.FC<SettingsProps> = ({
                     <button onClick={handleExportLogs} className="p-2 text-slate-400 hover:text-slate-900 transition-colors" title="Export CSV/JSON"><Download size={18} /></button>
                 </div>
              </div>
-
              <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 mb-8">
                 <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
                     <span className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Total Sessions</span>
@@ -409,11 +372,7 @@ const Settings: React.FC<SettingsProps> = ({
                     <span className="text-sm font-bold text-slate-700 block truncate">{lastLog ? `${lastLog.username} (${new Date(lastLog.loginTime).toLocaleDateString()})` : 'N/A'}</span>
                 </div>
              </div>
-
-             <button 
-                onClick={() => setIsLogBrowserOpen(true)}
-                className="w-full py-4 bg-indigo-50 hover:bg-indigo-100 border-2 border-dashed border-indigo-200 rounded-2xl flex items-center justify-center gap-3 transition-all text-indigo-600 font-black uppercase tracking-widest group/btn"
-             >
+             <button onClick={() => setIsLogBrowserOpen(true)} className="w-full py-4 bg-indigo-50 hover:bg-indigo-100 border-2 border-dashed border-indigo-200 rounded-2xl flex items-center justify-center gap-3 transition-all text-indigo-600 font-black uppercase tracking-widest group/btn">
                 <Database size={20} className="group-hover/btn:scale-110 transition-transform" />
                 <span>點入瀏覽完整日誌歷史</span>
                 <ChevronRight size={18} />
@@ -444,11 +403,10 @@ const Settings: React.FC<SettingsProps> = ({
            <section className="bg-white rounded-2xl border border-slate-200 p-8 shadow-sm">
               <div className="flex items-center gap-2 mb-6"><Cloud className="text-intenza-600" size={20} /><h2 className="text-xl font-bold text-slate-900">雲端同步狀態</h2></div>
               <div className="space-y-3">
-                  <button onClick={onSyncCloud} disabled={syncStatus === 'saving'} className={`w-full py-3 rounded-xl font-bold transition-all flex items-center justify-center gap-2 shadow-lg ${syncStatus === 'saving' ? 'bg-slate-100 text-slate-400' : 'bg-intenza-600 text-white hover:bg-intenza-700 shadow-intenza-600/20'}`}>{syncStatus === 'saving' ? <Loader2 size={18} className="animate-spin" /> : <Cloud size={18} />}{syncStatus === 'saving' ? '正在同步數據...' : '立即同步至 Postgres'}</button>
+                  <button onClick={() => onSyncCloud()} disabled={syncStatus === 'saving'} className={`w-full py-3 rounded-xl font-bold transition-all flex items-center justify-center gap-2 shadow-lg ${syncStatus === 'saving' ? 'bg-slate-100 text-slate-400' : 'bg-intenza-600 text-white hover:bg-intenza-700 shadow-intenza-600/20'}`}>{syncStatus === 'saving' ? <Loader2 size={18} className="animate-spin" /> : <Cloud size={18} />}{syncStatus === 'saving' ? '正在同步數據...' : '立即同步至 Postgres'}</button>
                   <button onClick={async () => { try { const tf = new File(["test"], "test.txt"); await api.uploadImage(tf); showNotification('Vercel Blob 連線正常！', 'success'); } catch (e) { showNotification('Blob 連線失敗', 'error'); } }} className="w-full py-3 rounded-xl font-bold border border-slate-200 text-slate-700 hover:bg-slate-50 transition-all flex items-center justify-center gap-2"><Activity size={18} className="text-emerald-500" />測試 Blob 雲端連線</button>
               </div>
            </section>
-
            <section className="bg-white rounded-2xl border border-slate-200 p-8 shadow-sm">
               <div className="flex items-center justify-between mb-2"><h2 className="text-xl font-bold text-slate-900">容量使用率</h2><span className="text-[10px] bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full font-bold">LIVE</span></div>
               <p className="text-sm text-slate-500 mb-6">監控 Vercel 與 Postgres 資源配額。</p>
@@ -463,7 +421,6 @@ const Settings: React.FC<SettingsProps> = ({
                 </div>
               </div>
            </section>
-
            <section className="bg-white rounded-2xl border border-slate-200 p-8 shadow-sm">
              <h2 className="text-xl font-bold text-slate-900 mb-4">專案本地備份</h2>
              <div className="grid grid-cols-1 gap-4">
@@ -540,10 +497,6 @@ const UserAccountModal: React.FC<{
   );
 };
 
-/**
- * Granular Permissions Modal
- * Updated: Organizes SKUs by series and provides bulk toggles for each series group.
- */
 const PermissionsModal: React.FC<{
   isOpen: boolean;
   onClose: () => void;
@@ -564,14 +517,10 @@ const PermissionsModal: React.FC<{
   const handleToggleModule = (sku: string, module: 'design' | 'ergo' | 'durability') => {
     setSkuPermissions(prev => {
       const current = prev[sku] || { design: false, ergo: false, durability: false };
-      return {
-        ...prev,
-        [sku]: { ...current, [module]: !current[module] }
-      };
+      return { ...prev, [sku]: { ...current, [module]: !current[module] } };
     });
   };
 
-  // Grouped products based on series
   const groupedProducts = useMemo(() => {
     const groups: Record<string, ProductModel[]> = {};
     products.forEach(p => {
@@ -582,7 +531,6 @@ const PermissionsModal: React.FC<{
     return groups;
   }, [products, t]);
 
-  // Fix: Explicitly cast Object.entries to fix 'unknown' type errors when filtering
   const filteredGroups = useMemo(() => {
     const filtered: Record<string, ProductModel[]> = {};
     (Object.entries(groupedProducts) as [string, ProductModel[]][]).forEach(([sName, items]) => {
@@ -596,18 +544,11 @@ const PermissionsModal: React.FC<{
     return filtered;
   }, [groupedProducts, searchTerm, t]);
 
-  /**
-   * Bulk toggle for all SKUs in a specific series
-   */
   const handleBulkToggleSeriesModule = (sName: string, module: 'design' | 'ergo' | 'durability') => {
     const targetSkus = groupedProducts[sName] || [];
     if (targetSkus.length === 0) return;
-
-    // Determine if we should select all or deselect all
-    // If ANY sku in this series is false for this module, we select all. Otherwise, deselect all.
     const isModuleAllEnabled = targetSkus.every(p => skuPermissions[p.sku]?.[module]);
     const newStateValue = !isModuleAllEnabled;
-
     setSkuPermissions(prev => {
       const next = { ...prev };
       targetSkus.forEach(p => {
@@ -631,350 +572,121 @@ const PermissionsModal: React.FC<{
           </div>
           <button onClick={onClose} className="p-3 bg-slate-50 text-slate-500 rounded-full hover:bg-slate-100 transition-colors"><X size={24} /></button>
         </header>
-
         <div className="flex-1 overflow-y-auto p-8 space-y-12 custom-scrollbar">
-          {/* Series Access (Master Level) */}
           <section>
-            <div className="flex items-center gap-2 mb-4">
-              <Layers className="text-indigo-500" size={18} />
-              <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest">Series Level Authorization (Full Access)</h3>
-            </div>
+            <div className="flex items-center gap-2 mb-4"><Layers className="text-indigo-500" size={18} /><h3 className="text-sm font-black text-slate-900 uppercase tracking-widest">Series Level Authorization (Full Access)</h3></div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {seriesList.map(s => {
                 const sName = t(s);
                 const isSelected = allowedSeries.includes(sName);
                 return (
-                  <button 
-                    key={sName}
-                    onClick={() => handleToggleSeriesBase(sName)}
-                    className={`flex items-center justify-between p-4 rounded-2xl border-2 transition-all ${
-                      isSelected ? 'bg-indigo-50 border-indigo-500 text-indigo-700 shadow-md' : 'bg-slate-50 border-slate-50 text-slate-500 hover:border-slate-200'
-                    }`}
-                  >
+                  <button key={sName} onClick={() => handleToggleSeriesBase(sName)} className={`flex items-center justify-between p-4 rounded-2xl border-2 transition-all ${isSelected ? 'bg-indigo-50 border-indigo-500 text-indigo-700 shadow-md' : 'bg-slate-50 border-slate-50 text-slate-500 hover:border-slate-200'}`}>
                     <span className="font-bold text-xs uppercase">{sName}</span>
-                    <div className={`w-5 h-5 rounded-full flex items-center justify-center border ${isSelected ? 'bg-indigo-500 border-indigo-400 text-white' : 'border-slate-200'}`}>
-                      {isSelected && <CheckCircle size={12} strokeWidth={4} />}
-                    </div>
+                    <div className={`w-5 h-5 rounded-full flex items-center justify-center border ${isSelected ? 'bg-indigo-500 border-indigo-400 text-white' : 'border-slate-200'}`}>{isSelected && <CheckCircle size={12} strokeWidth={4} />}</div>
                   </button>
                 );
               })}
             </div>
           </section>
-
-          {/* SKU / Module Access */}
           <section>
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
-              <div className="flex items-center gap-2">
-                <Settings2 className="text-slate-900" size={18} />
-                <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest">Specific SKU & Module Control</h3>
-              </div>
-              <div className="relative w-full md:w-64">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={14} />
-                <input 
-                  type="text" 
-                  placeholder="Filter SKUs..." 
-                  value={searchTerm}
-                  onChange={e => setSearchTerm(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2 bg-slate-100 border-none rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-indigo-500/20"
-                />
-              </div>
-            </div>
-
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6"><div className="flex items-center gap-2"><Settings2 className="text-slate-900" size={18} /><h3 className="text-sm font-black text-slate-900 uppercase tracking-widest">Specific SKU & Module Control</h3></div><div className="relative w-full md:w-64"><Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={14} /><input type="text" placeholder="Filter SKUs..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="w-full pl-10 pr-4 py-2 bg-slate-100 border-none rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-indigo-500/20" /></div></div>
             <div className="border border-slate-100 rounded-3xl overflow-hidden shadow-sm bg-slate-50/50">
               <table className="w-full text-left">
-                <thead>
-                  <tr className="bg-white text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] border-b border-slate-100">
-                    <th className="px-6 py-4">Product Detail</th>
-                    <th className="px-6 py-4 text-center">Design / ECO</th>
-                    <th className="px-6 py-4 text-center">Ergonomics</th>
-                    <th className="px-6 py-4 text-center">Durability</th>
-                  </tr>
-                </thead>
+                <thead><tr className="bg-white text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] border-b border-slate-100"><th className="px-6 py-4">Product Detail</th><th className="px-6 py-4 text-center">Design / ECO</th><th className="px-6 py-4 text-center">Ergonomics</th><th className="px-6 py-4 text-center">Durability</th></tr></thead>
                 <tbody className="divide-y divide-slate-100">
-                  {/* Fix: Explicitly cast Object.entries results to avoid 'unknown' type errors */}
                   {(Object.entries(filteredGroups) as [string, ProductModel[]][]).map(([sName, groupItems]) => {
                     const allDesign = groupItems.every(p => skuPermissions[p.sku]?.design);
                     const allErgo = groupItems.every(p => skuPermissions[p.sku]?.ergo);
                     const allDura = groupItems.every(p => skuPermissions[p.sku]?.durability);
-
                     return (
                       <React.Fragment key={sName}>
-                        {/* SERIES HEADER ROW (BULK TOGGLE) */}
                         <tr className="bg-slate-100/80 border-y border-slate-200">
-                          <td className="px-6 py-3">
-                            <div className="flex items-center gap-2">
-                              <CheckSquare size={14} className="text-slate-900" />
-                              <span className="text-[11px] font-black text-slate-900 uppercase tracking-widest">{sName}</span>
-                            </div>
-                          </td>
-                          <td className="px-6 py-3 text-center">
-                            <BulkSeriesToggle 
-                              active={allDesign} 
-                              onClick={() => handleBulkToggleSeriesModule(sName, 'design')} 
-                              color="indigo" 
-                            />
-                          </td>
-                          <td className="px-6 py-3 text-center">
-                            <BulkSeriesToggle 
-                              active={allErgo} 
-                              onClick={() => handleBulkToggleSeriesModule(sName, 'ergo')} 
-                              color="emerald" 
-                            />
-                          </td>
-                          <td className="px-6 py-3 text-center">
-                            <BulkSeriesToggle 
-                              active={allDura} 
-                              onClick={() => handleBulkToggleSeriesModule(sName, 'durability')} 
-                              color="rose" 
-                            />
-                          </td>
+                          <td className="px-6 py-3"><div className="flex items-center gap-2"><CheckSquare size={14} className="text-slate-900" /><span className="text-[11px] font-black text-slate-900 uppercase tracking-widest">{sName}</span></div></td>
+                          <td className="px-6 py-3 text-center"><BulkSeriesToggle active={allDesign} onClick={() => handleBulkToggleSeriesModule(sName, 'design')} color="indigo" /></td>
+                          <td className="px-6 py-3 text-center"><BulkSeriesToggle active={allErgo} onClick={() => handleBulkToggleSeriesModule(sName, 'ergo')} color="emerald" /></td>
+                          <td className="px-6 py-3 text-center"><BulkSeriesToggle active={allDura} onClick={() => handleBulkToggleSeriesModule(sName, 'durability')} color="rose" /></td>
                         </tr>
-
-                        {/* PRODUCT ROWS */}
                         {groupItems.map(p => {
                           const perms = skuPermissions[p.sku] || { design: false, ergo: false, durability: false };
                           return (
                             <tr key={p.id} className="hover:bg-white transition-colors">
-                              <td className="px-6 py-4 pl-10">
-                                <div className="flex items-center gap-3">
-                                  <div className="w-8 h-8 rounded-lg bg-white border border-slate-100 flex items-center justify-center overflow-hidden">
-                                    {p.imageUrl ? <img src={p.imageUrl} className="w-full h-full object-contain" /> : <ImageIcon size={14} className="text-slate-200" />}
-                                  </div>
-                                  <div>
-                                    <div className="text-xs font-black text-slate-900 leading-none">{t(p.modelName)}</div>
-                                    <div className="text-[10px] font-bold text-slate-400 mt-1 uppercase tracking-tighter">{p.sku}</div>
-                                  </div>
-                                </div>
-                              </td>
-                              <td className="px-6 py-4 text-center">
-                                <ModuleToggle active={perms.design} onClick={() => handleToggleModule(p.sku, 'design')} icon={<GitCommit size={14} />} color="indigo" />
-                              </td>
-                              <td className="px-6 py-4 text-center">
-                                <ModuleToggle active={perms.ergo} onClick={() => handleToggleModule(p.sku, 'ergo')} icon={<UserCheck size={14} />} color="emerald" />
-                              </td>
-                              <td className="px-6 py-4 text-center">
-                                <ModuleToggle active={perms.durability} onClick={() => handleToggleModule(p.sku, 'durability')} icon={<Activity size={14} />} color="rose" />
-                              </td>
+                              <td className="px-6 py-4 pl-10"><div className="flex items-center gap-3"><div className="w-8 h-8 rounded-lg bg-white border border-slate-100 flex items-center justify-center overflow-hidden">{p.imageUrl ? <img src={p.imageUrl} className="w-full h-full object-contain" /> : <ImageIcon size={14} className="text-slate-200" />}</div><div><div className="text-xs font-black text-slate-900 leading-none">{t(p.modelName)}</div><div className="text-[10px] font-bold text-slate-400 mt-1 uppercase tracking-tighter">{p.sku}</div></div></div></td>
+                              <td className="px-6 py-4 text-center"><ModuleToggle active={perms.design} onClick={() => handleToggleModule(p.sku, 'design')} icon={<GitCommit size={14} />} color="indigo" /></td>
+                              <td className="px-6 py-4 text-center"><ModuleToggle active={perms.ergo} onClick={() => handleToggleModule(p.sku, 'ergo')} icon={<UserCheck size={14} />} color="emerald" /></td>
+                              <td className="px-6 py-4 text-center"><ModuleToggle active={perms.durability} onClick={() => handleToggleModule(p.sku, 'durability')} icon={<Activity size={14} />} color="rose" /></td>
                             </tr>
                           );
                         })}
                       </React.Fragment>
                     );
                   })}
-                  {Object.keys(filteredGroups).length === 0 && (
-                    <tr>
-                      <td colSpan={4} className="px-6 py-12 text-center text-slate-400 font-bold uppercase tracking-widest">No SKUs Match Filter</td>
-                    </tr>
-                  )}
                 </tbody>
               </table>
             </div>
           </section>
         </div>
-
         <footer className="p-8 border-t border-slate-100 bg-white flex gap-4">
           <button onClick={onClose} className="flex-1 py-4 text-slate-400 font-black uppercase tracking-widest hover:bg-slate-50 rounded-2xl transition-all">Cancel</button>
-          <button 
-            onClick={() => onSave({ allowedSeries, skuPermissions })} 
-            className="flex-1 py-4 bg-slate-900 text-white font-black uppercase tracking-widest rounded-2xl hover:bg-slate-800 transition-all shadow-xl shadow-slate-900/20 active:scale-[0.98]"
-          >
-            Save Permissions
-          </button>
+          <button onClick={() => onSave({ allowedSeries, skuPermissions })} className="flex-1 py-4 bg-slate-900 text-white font-black uppercase tracking-widest rounded-2xl hover:bg-slate-800 transition-all shadow-xl shadow-slate-900/20 active:scale-[0.98]">Save Permissions</button>
         </footer>
       </div>
     </div>
   );
 };
 
-const ModuleToggle = ({ active, onClick, icon, color }: { active: boolean, onClick: () => void, icon: React.ReactNode, color: string }) => {
+const ModuleToggle = ({ active, onClick, icon, color }: any) => {
   const colors: Record<string, string> = {
     indigo: active ? 'bg-indigo-600 text-white shadow-indigo-600/20' : 'bg-white text-slate-300 border-slate-100',
     emerald: active ? 'bg-emerald-600 text-white shadow-emerald-600/20' : 'bg-white text-slate-300 border-slate-100',
     rose: active ? 'bg-rose-600 text-white shadow-rose-600/20' : 'bg-white text-slate-300 border-slate-100',
   };
-
-  return (
-    <button 
-      onClick={onClick}
-      className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all shadow-sm border ${colors[color]} hover:scale-110 active:scale-95 mx-auto`}
-    >
-      {icon}
-    </button>
-  );
+  return <button onClick={onClick} className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all shadow-sm border ${colors[color]} hover:scale-110 active:scale-95 mx-auto`}>{icon}</button>;
 };
 
-const BulkSeriesToggle = ({ active, onClick, color }: { active: boolean, onClick: () => void, color: string }) => {
+const BulkSeriesToggle = ({ active, onClick, color }: any) => {
   const colors: Record<string, string> = {
     indigo: active ? 'bg-indigo-600 text-white' : 'bg-white text-slate-400 border-slate-300 hover:border-indigo-400',
     emerald: active ? 'bg-emerald-600 text-white' : 'bg-white text-slate-400 border-slate-300 hover:border-emerald-400',
     rose: active ? 'bg-rose-600 text-white' : 'bg-white text-slate-400 border-slate-300 hover:border-rose-400',
   };
-
-  return (
-    <button 
-      onClick={onClick}
-      className={`px-3 py-1.5 rounded-lg border text-[9px] font-black uppercase tracking-tighter transition-all flex items-center gap-1.5 mx-auto ${colors[color]}`}
-    >
-      {active ? <CheckSquare size={12} /> : <Square size={12} />}
-      {active ? 'Deselect All' : 'Select All'}
-    </button>
-  );
+  return <button onClick={onClick} className={`px-3 py-1.5 rounded-lg border text-[9px] font-black uppercase tracking-tighter transition-all flex items-center gap-1.5 mx-auto ${colors[color]}`}>{active ? <CheckSquare size={12} /> : <Square size={12} />} {active ? 'Deselect All' : 'Select All'}</button>;
 };
 
-/**
- * REFACTORED BROWSER MODAL FOR AUDIT LOGS
- */
-const AuditLogBrowserModal: React.FC<{
-    isOpen: boolean;
-    onClose: () => void;
-    logs: AuditLog[];
-    onDeleteAll: () => void;
-    onExport: () => void;
-}> = ({ isOpen, onClose, logs, onDeleteAll, onExport }) => {
+const AuditLogBrowserModal: React.FC<{ isOpen: boolean; onClose: () => void; logs: AuditLog[]; onDeleteAll: () => void; onExport: () => void; }> = ({ isOpen, onClose, logs, onDeleteAll, onExport }) => {
     const [searchTerm, setSearchTerm] = useState('');
     const [filterStatus, setFilterStatus] = useState<'ALL' | 'ACTIVE' | 'COMPLETED'>('ALL');
-
     const filteredLogs = useMemo(() => {
-        return [...logs]
-            .reverse()
-            .filter(log => {
+        return [...logs].reverse().filter(log => {
                 const matchesSearch = log.username.toLowerCase().includes(searchTerm.toLowerCase());
-                const matchesFilter = 
-                    filterStatus === 'ALL' || 
-                    (filterStatus === 'ACTIVE' && !log.logoutTime) || 
-                    (filterStatus === 'COMPLETED' && log.logoutTime);
+                const matchesFilter = filterStatus === 'ALL' || (filterStatus === 'ACTIVE' && !log.logoutTime) || (filterStatus === 'COMPLETED' && log.logoutTime);
                 return matchesSearch && matchesFilter;
-            });
+        });
     }, [logs, searchTerm, filterStatus]);
-
     const activeSessions = useMemo(() => logs.filter(l => !l.logoutTime).length, [logs]);
-
     if (!isOpen) return null;
-
     return (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-0 md:p-8 bg-slate-900/60 backdrop-blur-md animate-fade-in">
             <div className="bg-white md:rounded-[2.5rem] shadow-2xl w-full h-full max-w-6xl overflow-hidden flex flex-col animate-slide-up">
-                {/* Header */}
                 <header className="p-8 border-b border-slate-100 flex flex-col md:flex-row md:items-center justify-between gap-6 bg-white sticky top-0 z-10">
-                    <div>
-                        <div className="flex items-center gap-3 mb-1">
-                            <div className="p-2 bg-indigo-600 text-white rounded-xl shadow-lg shadow-indigo-600/20"><History size={24} /></div>
-                            <h2 className="text-3xl font-black text-slate-900 tracking-tight uppercase">完整帳號日誌歷史</h2>
-                        </div>
-                        <p className="text-slate-400 font-bold text-xs uppercase tracking-[0.2em]">{logs.length} Total Sessions Recorded</p>
-                    </div>
-                    
-                    <div className="flex items-center gap-4">
-                        <div className="flex gap-2">
-                            <button onClick={onExport} className="p-3 bg-slate-50 hover:bg-slate-100 text-slate-600 rounded-2xl transition-all border border-slate-100" title="Export Logs"><Download size={20}/></button>
-                            <button onClick={onDeleteAll} className="p-3 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded-2xl transition-all border border-rose-100" title="Purge History"><Trash2 size={20}/></button>
-                        </div>
-                        <div className="h-10 w-px bg-slate-100 hidden md:block mx-2" />
-                        <button onClick={onClose} className="p-3 bg-slate-900 text-white rounded-2xl hover:bg-slate-800 transition-all shadow-xl shadow-slate-900/20"><X size={24} strokeWidth={3} /></button>
-                    </div>
+                    <div><div className="flex items-center gap-3 mb-1"><div className="p-2 bg-indigo-600 text-white rounded-xl shadow-lg shadow-indigo-600/20"><History size={24} /></div><h2 className="text-3xl font-black text-slate-900 tracking-tight uppercase">完整帳號日誌歷史</h2></div><p className="text-slate-400 font-bold text-xs uppercase tracking-[0.2em]">{logs.length} Total Sessions Recorded</p></div>
+                    <div className="flex items-center gap-4"><div className="flex gap-2"><button onClick={onExport} className="p-3 bg-slate-50 hover:bg-slate-100 text-slate-600 rounded-2xl transition-all border border-slate-100"><Download size={20}/></button><button onClick={onDeleteAll} className="p-3 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded-2xl transition-all border border-rose-100"><Trash2 size={20}/></button></div><div className="h-10 w-px bg-slate-100 hidden md:block mx-2" /><button onClick={onClose} className="p-3 bg-slate-900 text-white rounded-2xl hover:bg-slate-800 transition-all shadow-xl shadow-slate-900/20"><X size={24} strokeWidth={3} /></button></div>
                 </header>
-
-                {/* Filter Bar */}
                 <div className="px-8 py-6 bg-slate-50/50 border-b border-slate-100 flex flex-col md:flex-row items-center gap-6">
-                    <div className="relative flex-1 w-full">
-                        <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
-                        <input 
-                            type="text" 
-                            placeholder="搜尋帳號名稱..." 
-                            value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
-                            className="w-full pl-12 pr-4 py-3 bg-white border-2 border-slate-100 rounded-2xl text-sm font-bold focus:border-indigo-500 outline-none transition-all shadow-sm"
-                        />
-                    </div>
-                    <div className="flex bg-white p-1.5 rounded-2xl shadow-sm border border-slate-100 shrink-0">
-                        {['ALL', 'ACTIVE', 'COMPLETED'].map((status) => (
-                            <button 
-                                key={status}
-                                onClick={() => setFilterStatus(status as any)}
-                                className={`px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${
-                                    filterStatus === status 
-                                    ? 'bg-indigo-600 text-white shadow-lg' 
-                                    : 'text-slate-400 hover:text-slate-600'
-                                }`}
-                            >
-                                {status}
-                            </button>
+                    <div className="relative flex-1 w-full"><Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" /><input type="text" placeholder="搜尋帳號名稱..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="w-full pl-12 pr-4 py-3 bg-white border-2 border-slate-100 rounded-2xl text-sm font-bold focus:border-indigo-500 outline-none shadow-sm" /></div>
+                    <div className="flex bg-white p-1.5 rounded-2xl shadow-sm border border-slate-100 shrink-0">{['ALL', 'ACTIVE', 'COMPLETED'].map((status) => (<button key={status} onClick={() => setFilterStatus(status as any)} className={`px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${filterStatus === status ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-400 hover:text-slate-600'}`}>{status}</button>))}</div>
+                </div>
+                <div className="flex-1 overflow-y-auto custom-scrollbar p-8">
+                    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                        {filteredLogs.map((log) => (
+                            <div key={log.id} className="bg-white rounded-3xl border-2 border-slate-50 p-6 hover:border-indigo-100 hover:shadow-xl transition-all group relative overflow-hidden">
+                                <div className={`absolute top-0 right-0 w-16 h-1 bg-gradient-to-l ${!log.logoutTime ? 'from-emerald-500 to-emerald-300' : 'from-slate-200 to-slate-100'}`} />
+                                <div className="flex items-center gap-4 mb-6"><div className={`w-12 h-12 rounded-2xl flex items-center justify-center shadow-sm ${!log.logoutTime ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-100 text-slate-400'}`}><UserRound size={24} /></div><div><h3 className="font-black text-slate-900 uppercase tracking-tight text-lg">{log.username}</h3><div className="flex items-center gap-1.5 mt-0.5">{!log.logoutTime ? <span className="flex items-center gap-1 text-[10px] font-black text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-md uppercase"><div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />Currently Active</span> : <span className="text-[10px] font-black text-slate-400 bg-slate-50 px-2 py-0.5 rounded-md uppercase">Session Ended</span>}</div></div></div>
+                                <div className="space-y-4"><div className="grid grid-cols-2 gap-4 border-t border-slate-50 pt-4"><div><span className="block text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">Login Time</span><span className="text-[11px] font-bold text-slate-700">{log.loginTime}</span></div><div><span className="block text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">Logout Time</span><span className="text-[11px] font-bold text-slate-700">{log.logoutTime || '-'}</span></div></div><div className="bg-slate-50 rounded-2xl p-4 flex items-center justify-between border border-slate-100 shadow-inner"><div className="flex items-center gap-2"><Clock size={16} className="text-indigo-400" /><span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Duration</span></div><span className="text-sm font-black text-indigo-600 font-mono">{log.durationMinutes ? `${log.durationMinutes}m` : (log.logoutTime ? '< 1m' : 'Live')}</span></div></div>
+                            </div>
                         ))}
                     </div>
                 </div>
-
-                {/* Main Content Area */}
-                <div className="flex-1 overflow-hidden relative flex flex-col">
-                    <div className="flex-1 overflow-y-auto custom-scrollbar p-8">
-                        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-                            {filteredLogs.length > 0 ? filteredLogs.map((log) => (
-                                <div key={log.id} className="bg-white rounded-3xl border-2 border-slate-50 p-6 hover:border-indigo-100 hover:shadow-xl hover:shadow-indigo-500/5 transition-all group relative overflow-hidden">
-                                    <div className={`absolute top-0 right-0 w-16 h-1 bg-gradient-to-l ${!log.logoutTime ? 'from-emerald-500 to-emerald-300' : 'from-slate-200 to-slate-100'}`} />
-                                    <div className="flex justify-between items-start mb-6">
-                                        <div className="flex items-center gap-4">
-                                            <div className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-colors shadow-sm ${!log.logoutTime ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-100 text-slate-400'}`}>
-                                                <UserRound size={24} />
-                                            </div>
-                                            <div>
-                                                <h3 className="font-black text-slate-900 uppercase tracking-tight text-lg">{log.username}</h3>
-                                                <div className="flex items-center gap-1.5 mt-0.5">
-                                                    {!log.logoutTime ? (
-                                                        <span className="flex items-center gap-1 text-[10px] font-black text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-md uppercase">
-                                                            <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                                                            Currently Active
-                                                        </span>
-                                                    ) : (
-                                                        <span className="text-[10px] font-black text-slate-400 bg-slate-50 px-2 py-0.5 rounded-md uppercase">Session Ended</span>
-                                                    )}
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div className="space-y-4">
-                                        <div className="grid grid-cols-2 gap-4 border-t border-slate-50 pt-4">
-                                            <div>
-                                                <span className="block text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">Login Time</span>
-                                                <span className="text-[11px] font-bold text-slate-700 leading-tight">{log.loginTime}</span>
-                                            </div>
-                                            <div>
-                                                <span className="block text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">Logout Time</span>
-                                                <span className="text-[11px] font-bold text-slate-700 leading-tight">{log.logoutTime || '-'}</span>
-                                            </div>
-                                        </div>
-                                        <div className="bg-slate-50 rounded-2xl p-4 flex items-center justify-between border border-slate-100 shadow-inner">
-                                            <div className="flex items-center gap-2">
-                                                <Clock size={16} className="text-indigo-400" />
-                                                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Session Duration</span>
-                                            </div>
-                                            <span className="text-sm font-black text-indigo-600 font-mono">
-                                                {log.durationMinutes ? `${log.durationMinutes}m` : (log.logoutTime ? '< 1m' : 'Live')}
-                                            </span>
-                                        </div>
-                                    </div>
-                                    <div className="mt-6 pt-4 border-t border-slate-50 opacity-0 group-hover:opacity-100 transition-opacity flex justify-end">
-                                        <div className="text-[8px] font-black text-slate-300 uppercase tracking-tighter">Session ID: {log.id}</div>
-                                    </div>
-                                </div>
-                            )) : (
-                                <div className="col-span-full flex flex-col items-center justify-center py-32 text-slate-300 space-y-4">
-                                    <div className="p-8 bg-slate-50 rounded-full"><Database size={64} className="opacity-20" /></div>
-                                    <p className="font-black text-lg uppercase tracking-widest">找不到符合條件的日誌</p>
-                                </div>
-                            )}
-                        </div>
-                    </div>
-                </div>
-
-                <footer className="p-6 bg-slate-900 text-white flex flex-col sm:flex-row items-center justify-between gap-4">
-                    <div className="flex items-center gap-4">
-                        <div className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Analytics Insights</div>
-                        <div className="flex gap-4">
-                             <div className="flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]" /><span className="text-xs font-bold">{activeSessions} Active</span></div>
-                             <div className="flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-indigo-500" /><span className="text-xs font-bold">{logs.length} Total Logs</span></div>
-                        </div>
-                    </div>
-                    <div className="text-[10px] font-bold text-slate-500 uppercase italic">Records are synchronized with cloud workspace automatically.</div>
-                </footer>
+                <footer className="p-6 bg-slate-900 text-white flex items-center justify-between"><div className="flex items-center gap-4"><div className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Analytics</div><div className="flex gap-4"><div className="flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]" /><span className="text-xs font-bold">{activeSessions} Active</span></div><div className="flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-indigo-500" /><span className="text-xs font-bold">{logs.length} Total Logs</span></div></div></div><div className="text-[10px] font-bold text-slate-500 uppercase italic tracking-widest">Synced with Cloud Postgres</div></footer>
             </div>
         </div>
     );

@@ -29,26 +29,32 @@ export default async function handler(request: VercelRequest, response: VercelRe
       return response.status(200).json(rows[0].content);
     }
     
-    // 2. 儲存資料 (POST)
+    // 2. 儲存資料 (POST) - 部分更新 (Partial Update)
     if (request.method === 'POST') {
-      const state = request.body;
+      const partialState = request.body;
       
-      if (!state) {
-        return response.status(400).json({ error: 'Payload is empty' });
+      if (!partialState || typeof partialState !== 'object') {
+        return response.status(400).json({ error: 'Payload must be a JSON object' });
       }
 
-      const jsonString = JSON.stringify(state);
+      const jsonString = JSON.stringify(partialState);
       
-      // 檢查體積 (Vercel Postgres 有單一欄位限制，Serverless Function 有 4.5MB 限制)
+      // 檢查體積 (Vercel Postgres 單一欄位限制約 4.5MB)
       if (jsonString.length > 4 * 1024 * 1024) {
-         return response.status(413).json({ error: 'Payload too large. Try reducing image sizes.' });
+         return response.status(413).json({ error: 'Payload too large. Please optimize image sizes.' });
       }
 
+      /**
+       * 使用 jsonb_merge_patch 實現「合併更新」。
+       * 此方法只會更新傳入的 top-level 鍵值，保留資料庫中其餘未傳入的資料。
+       */
       await client.sql`
         INSERT INTO workspace_storage (id, content, updated_at)
-        VALUES ('global_state', ${jsonString}, NOW())
+        VALUES ('global_state', ${jsonString}::jsonb, NOW())
         ON CONFLICT (id) 
-        DO UPDATE SET content = ${jsonString}, updated_at = NOW()
+        DO UPDATE SET 
+          content = jsonb_merge_patch(COALESCE(workspace_storage.content, '{}'::jsonb), ${jsonString}::jsonb), 
+          updated_at = NOW()
       `;
       
       return response.status(200).json({ success: true });
@@ -58,7 +64,7 @@ export default async function handler(request: VercelRequest, response: VercelRe
   } catch (error) {
     console.error('Database Operation Failed:', error);
     return response.status(500).json({ 
-      error: 'Database error', 
+      error: 'Database sync error', 
       details: (error as Error).message 
     });
   } finally {
