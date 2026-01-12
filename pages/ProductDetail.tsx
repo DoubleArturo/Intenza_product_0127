@@ -331,7 +331,10 @@ const ProductDetail: React.FC<ProductDetailProps> = ({ products, shipments = [],
     <div className="min-h-screen bg-slate-50/50 w-full">
       <div className="bg-white border-b border-slate-200 sticky top-0 z-20 animate-fade-in">
         <div className="w-full px-8 py-6">
-          <button onClick={() => navigate('/')} className="flex items-center text-sm text-slate-500 hover:text-slate-800 mb-4 transition-colors">
+          <button 
+            onClick={() => window.history.state && window.history.state.idx > 0 ? navigate(-1) : navigate('/')} 
+            className="flex items-center text-sm text-slate-500 hover:text-slate-800 mb-4 transition-colors"
+          >
             <ArrowLeft size={16} className="mr-1" /> Back to Portfolio
           </button>
           <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
@@ -860,7 +863,7 @@ const DesignSection = ({ product, shipments, userRole, canEdit, onAddEco, onEdit
                                 <div className={`mt-3 px-2 py-1 rounded-md text-[10px] font-black uppercase tracking-widest w-fit border shadow-sm ${ecoStatusStyles[change.status as EcoStatus]}`}>
                                     {ecoStatusTranslations[change.status as EcoStatus]}
                                 </div>
-                                <div className="flex flex-col gap-2 text-slate-400 text-[10px] font-bold uppercase tracking-widest mt-4">
+                                <div className="flex items-center gap-2 text-slate-400 text-[10px] font-bold uppercase tracking-widest mt-4">
                                     <div className="flex items-center gap-2"><Calendar size={12} className="text-slate-300" />Issue: {change.date}</div>
                                     {change.updatedAt && (
                                         <div className="flex items-center gap-2 text-intenza-500 bg-intenza-50/50 px-1.5 py-0.5 rounded w-fit"><RefreshCw size={10} />Updated: {change.updatedAt}</div>
@@ -1171,7 +1174,7 @@ const ErgoSection = ({ product, testers, testerGroups, onUpdateProduct, highligh
       </div>
 
       {isStartEvaluationModalOpen && <StartEvaluationModal yOffset={evaluationModalYOffset} onClose={() => setStartEvaluationModalOpen(false)} onStartProject={(name: any, ids: any, version?: string) => { if(editingProject) { onUpdateProduct({...product, ergoProjects: product.ergoProjects.map((p: any) => p.id === editingProject.id ? {...p, name, testerIds: ids, version} : p)}); } else { onUpdateProduct({...product, ergoProjects: [...product.ergoProjects, {id: `proj-${Date.now()}`, name, date: new Date().toISOString().split('T')[0], version, testerIds: ids, overallStatus: 'PENDING', tasks: {'Resistance profile':[], 'Experience':[], 'Stroke':[], 'Other Suggestion':[]}, uniqueNgReasons: {}}]}); } setStartEvaluationModalOpen(false); }} allTesters={testers} testerGroups={testerGroups} project={editingProject} />}
-      {addTaskModalState.isOpen && <AddTaskModal onClose={() => setAddTaskModalState({isOpen:false})} onSave={(name: any) => { const {projectId, category} = addTaskModalState.context; onUpdateProduct({...product, ergoProjects: product.ergoProjects.map((p: any) => p.id === projectId ? {...p, tasks: {...p.tasks, [category]: [...p.tasks[category], {id: `t-${Date.now()}`, name: {en: name, zh: name}, passTesterIds: [], ngReasons: []}]}} : p)}); setAddTaskModalState({isOpen:false}); }} />}
+      {addTaskModalState.isOpen && <AddTaskModal onClose={() => setAddTaskModalState({isOpen:false})} onSave={(name: any) => { const {projectId, category} = addTaskModalState.context; onUpdateProduct({...product, ergoProjects: product.ergoProjects.map((p: any) => p.id === projectId ? {...p, tasks: {...p.tasks, [category]: [...p.tasks[category], {id: `t-${Date.now()}`, name: {en: name, zh: name}, passTesterIds: [], ngReasons: p.testerIds.filter((tid: any) => !p.tasks[category].find((t:any)=>t.id === `t-${Date.now()}`)?.passTesterIds.includes(tid)).map((tid: any) => ({testerId: tid, reason: {en: '', zh: ''}, decisionStatus: 'PENDING'}) ) }]}} : p)}); setAddTaskModalState({isOpen:false}); }} />}
       {taskResultModalState.isOpen && <SetTaskResultsModal onClose={() => setTaskResultModalState({isOpen:false})} onSave={(ids: any) => { const {projectId, category, taskId} = taskResultModalState.context; onUpdateProduct({...product, ergoProjects: product.ergoProjects.map((p: any) => p.id === projectId ? {...p, tasks: {...p.tasks, [category]: p.tasks[category].map((t: any) => t.id === taskId ? {...t, passTesterIds: ids, ngReasons: p.testerIds.filter((tid: any) => !ids.includes(tid)).map((tid: any) => t.ngReasons.find((r: any) => r.testerId === tid) || {testerId: tid, reason: {en: '', zh: ''}, decisionStatus: 'PENDING'})} : t)}} : p)}); setTaskResultModalState({isOpen:false}); }} context={taskResultModalState.context} project={product.ergoProjects.find((p: any) => p.id === taskResultModalState.context.projectId)} testers={testers} />}
       {ngReasonModalState.isOpen && <SetPassNgModal onClose={() => setNgReasonModalState({isOpen:false})} onSet={(reason: any, isNew: any, atts: any, captions: any) => { const {projectId, category, taskId, testerId} = ngReasonModalState.context; onUpdateProduct({...product, ergoProjects: product.ergoProjects.map((p: any) => p.id === projectId ? {...p, tasks: {...p.tasks, [category]: p.tasks[category].map((t: any) => t.id === taskId ? {...t, ngReasons: t.ngReasons.map((ng: any) => ng.testerId === testerId ? {...ng, reason, attachmentUrls: atts, attachmentCaptions: captions} : ng)} : t)}} : p)}); setNgReasonModalState({isOpen:false}); }} existingReason={product.ergoProjects.find((p: any) => p.id === ngReasonModalState.context.projectId)?.tasks[ngReasonModalState.context.category].find((t: any) => t.id === ngReasonModalState.context.taskId)?.ngReasons.find((ng: any) => ng.testerId === ngReasonModalState.context.testerId)} />}
       
@@ -1292,97 +1295,49 @@ const ErgoSection = ({ product, testers, testerGroups, onUpdateProduct, highligh
   );
 };
 
-// --- Sub-components for Modals ---
+// --- Missing Modals ---
 
 const EcoModal = ({ isOpen, onClose, onSave, eco, productVersions }: any) => {
   const [formData, setFormData] = useState({
-    ecoNumber: '',
-    date: new Date().toISOString().split('T')[0],
-    version: productVersions[0] || 'v1.0',
-    description: { en: '', zh: '' },
-    status: EcoStatus.EVALUATING,
-    imageUrls: [] as string[]
+    ecoNumber: eco?.ecoNumber || '',
+    version: eco?.version || productVersions[0] || 'v1.0',
+    date: eco?.date || new Date().toISOString().split('T')[0],
+    description: eco?.description?.en || '',
+    status: eco?.status || EcoStatus.EVALUATING,
+    imageUrls: eco?.imageUrls || []
   });
-  const [isUploading, setIsUploading] = useState(false);
 
-  useEffect(() => {
-    if (eco) {
-      setFormData({
-        ecoNumber: eco.ecoNumber || '',
-        date: eco.date || new Date().toISOString().split('T')[0],
-        version: eco.version || 'v1.0',
-        description: eco.description || { en: '', zh: '' },
-        status: eco.status || EcoStatus.EVALUATING,
-        imageUrls: eco.imageUrls || []
-      });
-    }
-  }, [eco]);
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    onSave(formData);
-  };
-
-  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (!files) return;
-    setIsUploading(true);
-    try {
-      const urls = await Promise.all(Array.from(files).map(file => api.uploadImage(file as File)));
-      setFormData({ ...formData, imageUrls: [...formData.imageUrls, ...urls] });
-    } catch (err) {
-      alert('Upload failed');
-    } finally {
-      setIsUploading(false);
+  const handleUpload = async (e: any) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const url = await api.uploadImage(file);
+      setFormData({...formData, imageUrls: [...formData.imageUrls, url]});
     }
   };
 
   if (!isOpen) return null;
-
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md animate-fade-in">
-      <div className="bg-white rounded-[2.5rem] shadow-2xl w-full max-w-2xl animate-slide-up overflow-hidden border border-white/20">
-        <div className="flex justify-between items-center p-8 border-b border-slate-100">
-          <h2 className="text-2xl font-black text-slate-900">{eco ? 'Edit ECO' : 'Add New ECO'}</h2>
-          <button onClick={onClose} className="p-2 rounded-full hover:bg-slate-100 text-slate-500"><X size={24} /></button>
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
+      <div className="bg-white rounded-3xl shadow-2xl w-full max-w-xl p-8 overflow-y-auto max-h-[90vh]">
+        <div className="flex justify-between items-center mb-6">
+          <h2 className="text-xl font-bold">{eco ? 'Edit ECO' : 'Add New ECO'}</h2>
+          <button onClick={onClose}><X size={20}/></button>
         </div>
-        <form onSubmit={handleSubmit} className="p-8 space-y-6 max-h-[70vh] overflow-y-auto custom-scrollbar">
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">ECO Number</label>
-              <input type="text" required value={formData.ecoNumber} onChange={e => setFormData({...formData, ecoNumber: e.target.value})} className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl outline-none font-bold" />
-            </div>
-            <div>
-              <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Version</label>
-              <input type="text" required value={formData.version} onChange={e => setFormData({...formData, version: e.target.value})} className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl outline-none font-bold" placeholder="e.g. v1.1" />
-            </div>
-          </div>
+        <form onSubmit={(e) => { e.preventDefault(); onSave({...formData, description: {en: formData.description, zh: formData.description}}); }} className="space-y-4">
+          <div><label className="block text-xs font-bold mb-1">ECO Number</label><input required className="w-full border rounded-lg p-2" value={formData.ecoNumber} onChange={e => setFormData({...formData, ecoNumber: e.target.value})} /></div>
+          <div><label className="block text-xs font-bold mb-1">Version</label><select className="w-full border rounded-lg p-2" value={formData.version} onChange={e => setFormData({...formData, version: e.target.value})}>{productVersions.map((v: string) => <option key={v} value={v}>{v}</option>)}</select></div>
+          <div><label className="block text-xs font-bold mb-1">Description</label><textarea required className="w-full border rounded-lg p-2" value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})} /></div>
+          <div><label className="block text-xs font-bold mb-1">Status</label><select className="w-full border rounded-lg p-2" value={formData.status} onChange={e => setFormData({...formData, status: e.target.value as any})}>{Object.values(EcoStatus).map(s => <option key={s} value={s}>{s}</option>)}</select></div>
           <div>
-            <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Status</label>
-            <select value={formData.status} onChange={e => setFormData({...formData, status: e.target.value as EcoStatus})} className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl outline-none font-bold">
-              {Object.values(EcoStatus).map(s => <option key={s} value={s}>{s}</option>)}
-            </select>
-          </div>
-          <div>
-            <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Description (EN)</label>
-            <textarea required value={formData.description.en} onChange={e => setFormData({...formData, description: {en: e.target.value, zh: e.target.value}})} className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl outline-none font-medium resize-none" rows={3} />
-          </div>
-          <div>
-            <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Evidence</label>
+            <label className="block text-xs font-bold mb-2">Attachments</label>
             <div className="flex flex-wrap gap-2">
-              {formData.imageUrls.map((url, i) => (
-                <img key={i} src={url} className="w-20 h-20 rounded-lg object-cover border border-slate-200" />
+              {formData.imageUrls.map((url: string, i: number) => (
+                <div key={i} className="w-12 h-12 rounded border overflow-hidden"><img src={url} className="w-full h-full object-cover" /></div>
               ))}
-              <label className="w-20 h-20 rounded-lg border-2 border-dashed border-slate-200 flex items-center justify-center cursor-pointer hover:bg-slate-50">
-                {isUploading ? <Loader2 size={20} className="animate-spin text-slate-400" /> : <Plus size={20} className="text-slate-400" />}
-                <input type="file" multiple className="hidden" onChange={handleFileUpload} />
-              </label>
+              <label className="w-12 h-12 border-2 border-dashed rounded flex items-center justify-center cursor-pointer hover:bg-slate-50"><Upload size={16}/><input type="file" className="hidden" onChange={handleUpload}/></label>
             </div>
           </div>
-          <div className="flex gap-4 pt-6">
-            <button type="button" onClick={onClose} className="flex-1 py-4 text-slate-400 font-bold hover:bg-slate-50 rounded-2xl transition-all">Cancel</button>
-            <button type="submit" className="flex-1 py-4 bg-slate-900 text-white font-bold rounded-2xl hover:bg-slate-800 transition-all">Save ECO</button>
-          </div>
+          <div className="flex gap-4 pt-4"><button type="button" onClick={onClose} className="flex-1 py-2 border rounded-xl">Cancel</button><button type="submit" className="flex-1 py-2 bg-slate-900 text-white rounded-xl">Save</button></div>
         </form>
       </div>
     </div>
@@ -1391,164 +1346,49 @@ const EcoModal = ({ isOpen, onClose, onSave, eco, productVersions }: any) => {
 
 const TestModal = ({ isOpen, onClose, onSave, test, productVersions }: any) => {
   const [formData, setFormData] = useState({
-    category: 'Mechanical',
-    testName: { en: '', zh: '' },
-    version: productVersions[0] || 'v1.0',
-    score: 0,
-    status: TestStatus.PENDING,
-    details: { en: '', zh: '' },
-    attachmentUrls: [] as string[],
-    attachmentCaptions: [] as string[]
+    testName: test?.testName?.en || '',
+    category: test?.category || '',
+    version: test?.version || productVersions[0] || 'v1.0',
+    status: test?.status || TestStatus.PENDING,
+    score: test?.score || 0,
+    details: test?.details?.en || '',
+    attachmentUrls: test?.attachmentUrls || []
   });
-  const [isUploading, setIsUploading] = useState(false);
-  const [testType, setTestType] = useState('Durable Test');
 
-  useEffect(() => {
-    if (test) {
-      const predefined = ['Durable Test', 'Salt Spray Test', 'Packaging Test'];
-      const currentNameEn = test.testName?.en || '';
-      const isCustom = currentNameEn && !predefined.includes(currentNameEn);
-      
-      setFormData({
-        category: test.category || 'Mechanical',
-        testName: test.testName || { en: '', zh: '' },
-        version: test.version || 'v1.0',
-        score: test.score || 0,
-        status: test.status || TestStatus.PENDING,
-        details: test.details || { en: '', zh: '' },
-        attachmentUrls: test.attachmentUrls || [],
-        attachmentCaptions: test.attachmentCaptions || []
-      });
-      setTestType(isCustom ? 'CUSTOM' : (currentNameEn || 'Durable Test'));
+  const handleUpload = async (e: any) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const url = await api.uploadImage(file);
+      setFormData({...formData, attachmentUrls: [...formData.attachmentUrls, url]});
     }
-  }, [test]);
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    onSave(formData);
-  };
-
-  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (!files) return;
-    setIsUploading(true);
-    try {
-      const urls = await Promise.all(Array.from(files).map(file => api.uploadImage(file as File)));
-      setFormData({ 
-        ...formData, 
-        attachmentUrls: [...formData.attachmentUrls, ...urls],
-        attachmentCaptions: [...formData.attachmentCaptions, ...urls.map(() => '')]
-      });
-    } catch (err) {
-      alert('Upload failed');
-    } finally {
-      setIsUploading(false);
-    }
-  };
-
-  const handleCaptionChange = (idx: number, val: string) => {
-    const newCaptions = [...formData.attachmentCaptions];
-    newCaptions[idx] = val;
-    setFormData({ ...formData, attachmentCaptions: newCaptions });
-  };
-
-  const handleTestTypeChange = (type: string) => {
-      setTestType(type);
-      if (type !== 'CUSTOM') {
-          const mapping: Record<string, LocalizedString> = {
-              'Durable Test': { en: 'Durable Test', zh: '耐久測試' },
-              'Salt Spray Test': { en: 'Salt Spray Test', zh: '鹽霧測試' },
-              'Packaging Test': { en: 'Packaging Test', zh: '包裝測試' }
-          };
-          setFormData({ ...formData, testName: mapping[type] });
-      } else {
-          setFormData({ ...formData, testName: { en: '', zh: '' } });
-      }
   };
 
   if (!isOpen) return null;
-
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md animate-fade-in">
-      <div className="bg-white rounded-[2.5rem] shadow-2xl w-full max-w-2xl animate-slide-up overflow-hidden border border-white/20">
-        <div className="flex justify-between items-center p-8 border-b border-slate-100">
-          <h2 className="text-2xl font-black text-slate-900">{test ? 'Edit Test' : 'New Durability Test'}</h2>
-          <button onClick={onClose} className="p-2 rounded-full hover:bg-slate-100 text-slate-500"><X size={24} /></button>
-        </div>
-        <form onSubmit={handleSubmit} className="p-8 space-y-6 max-h-[70vh] overflow-y-auto custom-scrollbar">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
+      <div className="bg-white rounded-3xl shadow-2xl w-full max-w-xl p-8 overflow-y-auto max-h-[90vh]">
+        <h2 className="text-xl font-bold mb-6">{test ? 'Edit Test' : 'Add Test Result'}</h2>
+        <form onSubmit={(e) => { e.preventDefault(); onSave({...formData, testName: {en: formData.testName, zh: formData.testName}, details: {en: formData.details, zh: formData.details}}); }} className="space-y-4">
+          <div><label className="block text-xs font-bold mb-1">Test Name</label><input required className="w-full border rounded-lg p-2" value={formData.testName} onChange={e => setFormData({...formData, testName: e.target.value})} /></div>
           <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Category</label>
-              <select 
-                  required 
-                  value={formData.category} 
-                  onChange={e => setFormData({...formData, category: e.target.value})} 
-                  className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl outline-none font-bold"
-              >
-                  <option value="Mechanical">Mechanical (機構測試)</option>
-                  <option value="Electronic">Electronic (電子測試)</option>
-              </select>
-            </div>
-            <div>
-              <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Score (%)</label>
-              <input type="number" min="0" max="100" required value={formData.score} onChange={e => setFormData({...formData, score: Number(e.target.value)})} className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl outline-none font-bold" />
-            </div>
+            <div><label className="block text-xs font-bold mb-1">Category</label><input required className="w-full border rounded-lg p-2" value={formData.category} onChange={e => setFormData({...formData, category: e.target.value})} /></div>
+            <div><label className="block text-xs font-bold mb-1">Version</label><select className="w-full border rounded-lg p-2" value={formData.version} onChange={e => setFormData({...formData, version: e.target.value})}>{productVersions.map((v: string) => <option key={v} value={v}>{v}</option>)}</select></div>
           </div>
           <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Test Name</label>
-              <select 
-                  required 
-                  value={testType} 
-                  onChange={e => handleTestTypeChange(e.target.value)}
-                  className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl outline-none font-bold mb-2"
-              >
-                  <option value="Durable Test">耐久測試 (Durable Test)</option>
-                  <option value="Salt Spray Test">鹽霧測試 (Salt Spray Test)</option>
-                  <option value="Packaging Test">包裝測試 (Packaging Test)</option>
-                  <option value="CUSTOM">自訂測試 (Custom Test)</option>
-              </select>
-              {testType === 'CUSTOM' && (
-                  <input 
-                      type="text" 
-                      required 
-                      value={formData.testName.en} 
-                      placeholder="手寫自訂名稱 / Custom Name"
-                      onChange={e => setFormData({...formData, testName: {en: e.target.value, zh: e.target.value}})} 
-                      className="w-full px-4 py-2 bg-white border border-slate-200 rounded-xl outline-none font-bold animate-fade-in" 
-                  />
-              )}
-            </div>
-            <div>
-              <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Test Version</label>
-              <input type="text" required value={formData.version} onChange={e => setFormData({...formData, version: e.target.value})} className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl outline-none font-bold" placeholder="e.g. v2.4" />
-            </div>
+            <div><label className="block text-xs font-bold mb-1">Status</label><select className="w-full border rounded-lg p-2" value={formData.status} onChange={e => setFormData({...formData, status: e.target.value as any})}>{Object.values(TestStatus).map(s => <option key={s} value={s}>{s}</option>)}</select></div>
+            <div><label className="block text-xs font-bold mb-1">Score (%)</label><input type="number" min="0" max="100" className="w-full border rounded-lg p-2" value={formData.score} onChange={e => setFormData({...formData, score: Number(e.target.value)})} /></div>
           </div>
+          <div><label className="block text-xs font-bold mb-1">Details</label><textarea className="w-full border rounded-lg p-2" value={formData.details} onChange={e => setFormData({...formData, details: e.target.value})} /></div>
           <div>
-            <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Details</label>
-            <textarea value={formData.details.en} onChange={e => setFormData({...formData, details: {en: e.target.value, zh: e.target.value}})} className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl outline-none font-medium resize-none" rows={3} />
-          </div>
-          <div>
-            <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Evidence & Captions</label>
-            <div className="space-y-4">
-              <div className="flex flex-wrap gap-2">
-                {formData.attachmentUrls.map((url, i) => (
-                  <div key={i} className="space-y-1">
-                    <img src={url} className="w-20 h-20 rounded-lg object-cover border border-slate-200" />
-                    <input type="text" value={formData.attachmentCaptions[i]} onChange={e => handleCaptionChange(i, e.target.value)} placeholder="Caption..." className="w-20 text-[8px] px-1 py-0.5 border border-slate-200 rounded" />
-                  </div>
-                ))}
-                <label className="w-20 h-20 rounded-lg border-2 border-dashed border-slate-200 flex items-center justify-center cursor-pointer hover:bg-slate-50">
-                  {isUploading ? <Loader2 size={20} className="animate-spin text-slate-400" /> : <Plus size={20} className="text-slate-400" />}
-                  <input type="file" multiple className="hidden" onChange={handleFileUpload} />
-                </label>
-              </div>
+            <label className="block text-xs font-bold mb-2">Attachments</label>
+            <div className="flex flex-wrap gap-2">
+              {formData.attachmentUrls.map((url: string, i: number) => (
+                <div key={i} className="w-12 h-12 rounded border overflow-hidden"><img src={url} className="w-full h-full object-cover" /></div>
+              ))}
+              <label className="w-12 h-12 border-2 border-dashed rounded flex items-center justify-center cursor-pointer hover:bg-slate-50"><Upload size={16}/><input type="file" className="hidden" onChange={handleUpload}/></label>
             </div>
           </div>
-          <div className="flex gap-4 pt-6">
-            <button type="button" onClick={onClose} className="flex-1 py-4 text-slate-400 font-bold hover:bg-slate-50 rounded-2xl transition-all">Cancel</button>
-            <button type="submit" className="flex-1 py-4 bg-slate-900 text-white font-bold rounded-2xl hover:bg-slate-800 transition-all">Save Test</button>
-          </div>
+          <div className="flex gap-4 pt-4"><button type="button" onClick={onClose} className="flex-1 py-3 border rounded-xl font-bold">Cancel</button><button type="submit" className="flex-1 py-3 bg-slate-900 text-white rounded-xl font-bold">Save</button></div>
         </form>
       </div>
     </div>
@@ -1558,89 +1398,64 @@ const TestModal = ({ isOpen, onClose, onSave, test, productVersions }: any) => {
 const NoShipmentModal = ({ isOpen, onClose, version }: any) => {
   if (!isOpen) return null;
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md animate-fade-in">
-      <div className="bg-white rounded-3xl shadow-2xl p-8 max-w-sm text-center animate-slide-up">
-        <div className="w-16 h-16 bg-amber-50 rounded-full flex items-center justify-center text-amber-500 mx-auto mb-4">
-          <AlertTriangle size={32} />
-        </div>
-        <h3 className="text-xl font-bold text-slate-900 mb-2">No Shipment Records</h3>
-        <p className="text-slate-500 text-sm mb-6">版本 {version} 尚未有全球出貨記錄。</p>
-        <button onClick={onClose} className="w-full py-3 bg-slate-900 text-white font-bold rounded-xl hover:bg-slate-800 transition-all">Understood</button>
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
+      <div className="bg-white rounded-2xl shadow-2xl max-w-md p-8 text-center">
+        <div className="w-16 h-16 bg-amber-50 text-amber-500 rounded-full flex items-center justify-center mx-auto mb-4"><Info size={32}/></div>
+        <h3 className="text-xl font-bold mb-2">No Market Data Found</h3>
+        <p className="text-slate-500 text-sm mb-6">Version {version} has no recorded shipments yet. This version might be too new or restricted to domestic testing.</p>
+        <button onClick={onClose} className="w-full py-3 bg-slate-900 text-white rounded-xl font-bold">Close</button>
       </div>
     </div>
   );
 };
 
 const StartEvaluationModal = ({ yOffset, onClose, onStartProject, allTesters, testerGroups, project }: any) => {
-  const [name, setName] = useState(project ? project.name.en : '');
-  const [version, setVersion] = useState(project?.version || '');
-  const [selectedTesterIds, setSelectedTesterIds] = useState<string[]>(project ? project.testerIds : []);
+  const { t } = useContext(LanguageContext);
+  const [name, setName] = useState(project ? t(project.name) : '');
+  const [version, setVersion] = useState(project?.version || 'v1.0');
+  const [selectedTesterIds, setSelectedTesterIds] = useState<string[]>(project?.testerIds || []);
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    onStartProject({ en: name, zh: name }, selectedTesterIds, version);
+  const handleToggleTester = (id: string) => {
+    setSelectedTesterIds(prev => prev.includes(id) ? prev.filter(tid => tid !== id) : [...prev, id]);
   };
 
-  const handleGroupSelect = (ids: string[]) => {
-      setSelectedTesterIds(prev => Array.from(new Set([...prev, ...ids])));
+  const handleSelectGroup = (ids: string[]) => {
+    setSelectedTesterIds(Array.from(new Set([...selectedTesterIds, ...ids])));
   };
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-start justify-center p-4 bg-slate-900/60 backdrop-blur-md animate-fade-in overflow-y-auto">
-      <div className="bg-white rounded-[2.5rem] shadow-2xl w-full max-w-3xl animate-slide-up overflow-hidden mt-10" style={{ transform: `translateY(${yOffset}px)` }}>
-        <div className="p-8 border-b border-slate-100 flex justify-between items-center">
-          <h2 className="text-2xl font-black text-slate-900">{project ? 'Edit Evaluation' : 'New Evaluation Project'}</h2>
-          <button onClick={onClose} className="p-2 rounded-full hover:bg-slate-100"><X size={24} /></button>
+    <div className="fixed inset-0 z-50 flex items-start justify-center p-4 bg-slate-900/50 backdrop-blur-sm overflow-y-auto pt-20">
+      <div className="bg-white rounded-3xl shadow-2xl w-full max-w-2xl p-8" style={{ marginTop: `${yOffset}px` }}>
+        <div className="flex justify-between items-center mb-6">
+          <h2 className="text-2xl font-bold">{project ? 'Edit Project' : 'Start Ergo Evaluation'}</h2>
+          <button onClick={onClose}><X size={24}/></button>
         </div>
-        <form onSubmit={handleSubmit} className="p-8 space-y-6">
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Project Title</label>
-              <input required type="text" value={name} onChange={e => setName(e.target.value)} className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none font-bold" />
-            </div>
-            <div>
-              <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Evaluation Version</label>
-              <input type="text" value={version} onChange={e => setVersion(e.target.value)} className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none font-bold" placeholder="e.g. v1.0 Pilot" />
-            </div>
-          </div>
+        <div className="space-y-6">
+          <div><label className="block text-xs font-bold mb-2 uppercase text-slate-400">Project Name</label><input value={name} onChange={e => setName(e.target.value)} className="w-full border rounded-xl p-3" placeholder="e.g. Prototype User Testing" /></div>
+          <div><label className="block text-xs font-bold mb-2 uppercase text-slate-400">Version</label><input value={version} onChange={e => setVersion(e.target.value)} className="w-full border rounded-xl p-3" placeholder="v1.0" /></div>
           
           <div>
-            <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-4">Quick Group Add</label>
-            <div className="flex flex-wrap gap-2 mb-6">
-                {testerGroups?.map(group => (
-                    <button 
-                        key={group.id} 
-                        type="button" 
-                        onClick={() => handleGroupSelect(group.testerIds)}
-                        className="px-4 py-2 bg-indigo-50 border border-indigo-200 text-indigo-700 rounded-xl text-xs font-bold hover:bg-indigo-100 transition-all flex items-center gap-2"
-                    >
-                        <Users2 size={14}/> {group.name.en}
-                    </button>
-                ))}
-                {(!testerGroups || testerGroups.length === 0) && <span className="text-xs text-slate-300 italic">No tester groups defined.</span>}
+            <label className="block text-xs font-bold mb-2 uppercase text-slate-400">Tester Selection ({selectedTesterIds.length})</label>
+            <div className="flex flex-wrap gap-2 mb-4">
+              {testerGroups.map((g: any) => (
+                <button key={g.id} onClick={() => handleSelectGroup(g.testerIds)} className="px-3 py-1 bg-indigo-50 text-indigo-600 rounded-lg text-xs font-bold border border-indigo-100">+ {t(g.name)}</button>
+              ))}
+            </div>
+            <div className="grid grid-cols-4 gap-3 max-h-48 overflow-y-auto p-1">
+              {allTesters.map((tester: any) => {
+                const isSelected = selectedTesterIds.includes(tester.id);
+                return (
+                  <div key={tester.id} onClick={() => handleToggleTester(tester.id)} className={`cursor-pointer rounded-xl border-2 p-1 transition-all ${isSelected ? 'border-indigo-500 bg-indigo-50' : 'border-slate-100 hover:border-slate-200'}`}>
+                    <img src={tester.imageUrl} className="w-full aspect-square object-cover rounded-lg mb-1" />
+                    <div className="text-[9px] font-bold text-center truncate">{tester.name}</div>
+                  </div>
+                );
+              })}
             </div>
           </div>
 
-          <div>
-            <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-4">Select Testers ({selectedTesterIds.length})</label>
-            <div className="grid grid-cols-4 sm:grid-cols-6 gap-3 max-h-[300px] overflow-y-auto p-2 border border-slate-100 rounded-2xl">
-              {allTesters.map((tester: Tester) => (
-                <div 
-                  key={tester.id} 
-                  onClick={() => selectedTesterIds.includes(tester.id) ? setSelectedTesterIds(selectedTesterIds.filter(id => id !== tester.id)) : setSelectedTesterIds([...selectedTesterIds, tester.id])}
-                  className={`relative aspect-square rounded-xl overflow-hidden cursor-pointer border-2 transition-all ${selectedTesterIds.includes(tester.id) ? 'border-intenza-600 scale-105' : 'border-transparent opacity-60'}`}
-                >
-                  <img src={tester.imageUrl} className="w-full h-full object-cover" />
-                  {selectedTesterIds.includes(tester.id) && <div className="absolute top-1 right-1 bg-intenza-600 text-white rounded-full p-0.5"><Check size={12} /></div>}
-                </div>
-              ))}
-            </div>
-          </div>
-          <div className="flex gap-4">
-            <button type="button" onClick={onClose} className="flex-1 py-4 text-slate-400 font-bold hover:bg-slate-50 rounded-2xl">Cancel</button>
-            <button type="submit" className="flex-1 py-4 bg-slate-900 text-white font-bold rounded-2xl">Confirm</button>
-          </div>
-        </form>
+          <div className="flex gap-4 pt-4"><button onClick={onClose} className="flex-1 py-3 border rounded-xl font-bold">Cancel</button><button onClick={() => onStartProject({en: name, zh: name}, selectedTesterIds, version)} className="flex-1 py-3 bg-slate-900 text-white rounded-xl font-bold">Confirm</button></div>
+        </div>
       </div>
     </div>
   );
@@ -1649,242 +1464,199 @@ const StartEvaluationModal = ({ yOffset, onClose, onStartProject, allTesters, te
 const AddTaskModal = ({ onClose, onSave }: any) => {
   const [name, setName] = useState('');
   return (
-    <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md animate-fade-in">
-      <div className="bg-white rounded-3xl shadow-2xl p-8 w-full max-w-md animate-slide-up">
-        <h3 className="text-xl font-bold text-slate-900 mb-6">Add New Task</h3>
-        <input required type="text" value={name} onChange={e => setName(e.target.value)} className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl mb-6 outline-none font-bold" />
-        <div className="flex gap-3">
-          <button onClick={onClose} className="flex-1 py-3 text-slate-400 font-bold hover:bg-slate-50 rounded-xl">Cancel</button>
-          <button onClick={() => onSave(name)} className="flex-1 py-3 bg-slate-900 text-white font-bold rounded-xl">Add Task</button>
-        </div>
+    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6">
+        <h3 className="text-lg font-bold mb-4">Add Evaluation Task</h3>
+        <input autoFocus value={name} onChange={e => setName(e.target.value)} className="w-full border rounded-lg p-2 mb-6" placeholder="Task name..." />
+        <div className="flex gap-3"><button onClick={onClose} className="flex-1 py-2 border rounded-lg">Cancel</button><button onClick={() => onSave(name)} className="flex-1 py-2 bg-slate-900 text-white rounded-lg">Add Task</button></div>
       </div>
     </div>
   );
 };
 
 const SetTaskResultsModal = ({ onClose, onSave, context, project, testers }: any) => {
-  const task = project.tasks[context.category].find((t: any) => t.id === context.taskId);
-  const [passTesterIds, setPassTesterIds] = useState<string[]>(task.passTesterIds);
+  const [passTesterIds, setPassTesterIds] = useState<string[]>(project.tasks[context.category].find((t: any) => t.id === context.taskId)?.passTesterIds || []);
+  const handleToggle = (id: string) => {
+    setPassTesterIds(prev => prev.includes(id) ? prev.filter(tid => tid !== id) : [...prev, id]);
+  };
+  const projectTesters = testers.filter((t: any) => project.testerIds.includes(t.id));
+
   return (
-    <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md animate-fade-in">
-      <div className="bg-white rounded-[2.5rem] shadow-2xl w-full max-w-xl animate-slide-up overflow-hidden">
-        <div className="p-8 border-b border-slate-100 bg-slate-50/50 flex justify-between items-center">
-            <h3 className="text-xl font-bold text-slate-900">Set Pass/NG Results</h3>
+    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg p-6">
+        <h3 className="text-lg font-bold mb-4">Set Pass/NG Results</h3>
+        <p className="text-xs text-slate-500 mb-4 uppercase font-bold">Select testers who PASSED this task:</p>
+        <div className="grid grid-cols-2 gap-3 mb-6 max-h-60 overflow-y-auto p-1">
+          {projectTesters.map((t: any) => {
+            const isPass = passTesterIds.includes(t.id);
+            return (
+              <div key={t.id} onClick={() => handleToggle(t.id)} className={`flex items-center gap-3 p-2 rounded-xl border-2 cursor-pointer transition-all ${isPass ? 'border-emerald-500 bg-emerald-50' : 'border-slate-100'}`}>
+                <img src={t.imageUrl} className="w-8 h-8 rounded-full object-cover" />
+                <span className="text-xs font-bold">{t.name}</span>
+                <div className="ml-auto">
+                    <div className={`w-5 h-5 rounded border flex items-center justify-center ${isPass ? 'bg-emerald-500 border-emerald-500' : 'border-slate-200'}`}>
+                        {isPass && <Check size={14} className="text-white" />}
+                    </div>
+                </div>
+              </div>
+            );
+          })}
         </div>
-        <div className="p-8 space-y-6">
-            <div className="grid grid-cols-2 gap-3">
-                {project.testerIds.map((tid: string) => {
-                    const tester = testers.find((ts: any) => ts.id === tid);
-                    const isSelected = passTesterIds.includes(tid);
-                    return (
-                        <div key={tid} onClick={() => isSelected ? setPassTesterIds(passTesterIds.filter(id => id !== tid)) : setPassTesterIds([...passTesterIds, tid])} className={`flex items-center gap-3 p-3 rounded-xl border-2 transition-all cursor-pointer ${isSelected ? 'bg-emerald-50 border-emerald-500 shadow-sm' : 'bg-white border-slate-100 hover:border-slate-200'}`}>
-                            <div className="w-10 h-10 rounded-full overflow-hidden bg-slate-200"><img src={tester?.imageUrl} className="w-full h-full object-cover" /></div>
-                            <div className="flex-1 min-w-0"><div className="text-xs font-bold text-slate-900 truncate">{tester?.name}</div><div className={`text-[10px] font-black uppercase ${isSelected ? 'text-emerald-600' : 'text-slate-400'}`}>{isSelected ? 'PASS' : 'NG'}</div></div>
-                            {isSelected && <Check size={18} className="text-emerald-500" strokeWidth={3} />}
-                        </div>
-                    );
-                })}
-            </div>
-            <div className="flex gap-4">
-              <button onClick={onClose} className="flex-1 py-4 text-slate-400 font-bold hover:bg-slate-50 rounded-2xl">Cancel</button>
-              <button onClick={() => onSave(passTesterIds)} className="flex-1 py-4 bg-slate-900 text-white font-bold rounded-2xl">Update Results</button>
-            </div>
-        </div>
+        <div className="flex gap-3"><button onClick={onClose} className="flex-1 py-2 border rounded-lg">Cancel</button><button onClick={() => onSave(passTesterIds)} className="flex-1 py-2 bg-slate-900 text-white rounded-lg">Save Results</button></div>
       </div>
     </div>
   );
 };
 
 const SetPassNgModal = ({ onClose, onSet, existingReason }: any) => {
-    const [reason, setReason] = useState(existingReason?.reason?.en || '');
-    const [imageUrls, setImageUrls] = useState<string[]>(existingReason?.attachmentUrls || []);
-    const [imageCaptions, setImageCaptions] = useState<string[]>(existingReason?.attachmentCaptions || []);
-    const [isUploading, setIsUploading] = useState(false);
+  const [reason, setReason] = useState(existingReason?.reason?.en || '');
+  const [urls, setUrls] = useState<string[]>(existingReason?.attachmentUrls || []);
+  const [captions, setCaptions] = useState<string[]>(existingReason?.attachmentCaptions || []);
 
-    const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-        const files = e.target.files;
-        if (!files) return;
-        setIsUploading(true);
-        try {
-            const urls = await Promise.all(Array.from(files).map(file => api.uploadImage(file as File)));
-            setImageUrls(prev => [...prev, ...urls]);
-            setImageCaptions(prev => [...prev, ...urls.map(() => '')]);
-        } catch (err) {
-            alert('Upload failed');
-        } finally {
-            setIsUploading(false);
-        }
-    };
+  const handleUpload = async (e: any) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const url = await api.uploadImage(file);
+      setUrls([...urls, url]);
+      setCaptions([...captions, '']);
+    }
+  };
 
-    const handleCaptionChange = (idx: number, val: string) => {
-        const next = [...imageCaptions];
-        next[idx] = val;
-        setImageCaptions(next);
-    };
-
-    return (
-        <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md animate-fade-in">
-            <div className="bg-white rounded-[2.5rem] shadow-2xl w-full max-w-lg animate-slide-up overflow-hidden">
-                <div className="p-8 border-b border-slate-100 flex justify-between items-center">
-                    <h3 className="text-xl font-bold text-slate-900 uppercase tracking-tight">Set NG Feedback</h3>
-                    <button onClick={onClose} className="text-slate-400 hover:text-slate-600"><X size={24}/></button>
+  return (
+    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
+      <div className="bg-white rounded-3xl shadow-2xl w-full max-w-lg p-8">
+        <h3 className="text-xl font-bold mb-6">NG Reason & Evidence</h3>
+        <div className="space-y-4">
+          <div><label className="block text-xs font-bold mb-1 text-slate-400 uppercase">Reason (NG Point)</label><textarea required value={reason} onChange={e => setReason(e.target.value)} className="w-full border rounded-xl p-3 h-32" /></div>
+          <div>
+            <label className="block text-xs font-bold mb-2 text-slate-400 uppercase">Attachments</label>
+            <div className="flex flex-wrap gap-2 mb-2">
+              {urls.map((url, i) => (
+                <div key={i} className="w-16 h-16 rounded-lg border overflow-hidden relative group">
+                  <img src={url} className="w-full h-full object-cover" />
+                  <button onClick={() => { setUrls(urls.filter((_, idx) => idx !== i)); setCaptions(captions.filter((_, idx) => idx !== i)); }} className="absolute inset-0 bg-red-500/80 opacity-0 group-hover:opacity-100 text-white flex items-center justify-center"><X size={16}/></button>
                 </div>
-                <div className="p-8 space-y-6 max-h-[70vh] overflow-y-auto custom-scrollbar">
-                    <div>
-                        <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-3">Reason / Suggestion</label>
-                        <textarea required value={reason} onChange={e => setReason(e.target.value)} className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none font-bold min-h-[120px]" placeholder="Detailed description..."/>
-                    </div>
-                    <div>
-                        <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-3">Evidence Photos & Captions</label>
-                        <div className="flex flex-wrap gap-2 mb-2">
-                            {imageUrls.map((url, i) => (
-                                <div key={i} className="space-y-1">
-                                    <img src={url} className="w-20 h-20 rounded-lg object-cover border border-slate-200" />
-                                    <input type="text" value={imageCaptions[i]} onChange={e => handleCaptionChange(i, e.target.value)} placeholder="Caption..." className="w-20 text-[8px] px-1 py-0.5 border border-slate-200 rounded" />
-                                </div>
-                            ))}
-                            <label className="w-20 h-20 rounded-lg border-2 border-dashed border-slate-200 flex items-center justify-center cursor-pointer hover:bg-slate-50">
-                                {isUploading ? <Loader2 size={20} className="animate-spin text-slate-400" /> : <Plus size={20} className="text-slate-400" />}
-                                <input type="file" multiple className="hidden" onChange={handleFileUpload} />
-                            </label>
-                        </div>
-                    </div>
-                    <div className="flex gap-4">
-                        <button onClick={onClose} className="flex-1 py-4 text-slate-400 font-bold hover:bg-slate-50 rounded-2xl">Cancel</button>
-                        <button onClick={() => onSet({en: reason, zh: reason}, false, imageUrls, imageCaptions)} className="flex-1 py-4 bg-slate-900 text-white font-bold rounded-2xl hover:bg-slate-800 transition-all">Update Feedback</button>
-                    </div>
-                </div>
+              ))}
+              <label className="w-16 h-16 rounded-lg border-2 border-dashed border-slate-200 flex flex-col items-center justify-center cursor-pointer hover:bg-slate-50 text-slate-400"><Upload size={16}/><input type="file" className="hidden" onChange={handleUpload}/></label>
             </div>
+          </div>
         </div>
-    );
+        <div className="flex gap-4 pt-6"><button onClick={onClose} className="flex-1 py-3 border rounded-xl font-bold">Cancel</button><button onClick={() => onSet({en: reason, zh: reason}, true, urls, captions)} className="flex-1 py-3 bg-slate-900 text-white rounded-xl font-bold">Update</button></div>
+      </div>
+    </div>
+  );
 };
 
-const StatusDecisionModal = ({ onClose, context, onSetStatus, onLinkEco, onCreateEco, activeEcos, versions }: any) => {
-    const [showEcoSelector, setShowEcoSelector] = useState(false);
-    return (
-        <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md animate-fade-in">
-            <div className="bg-white rounded-[2.5rem] shadow-2xl w-full max-w-md animate-slide-up overflow-hidden">
-                <div className="p-8 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
-                    <h3 className="font-bold text-slate-900">Decision Status</h3>
-                    <button onClick={onClose} className="text-slate-400 hover:text-slate-600"><X size={20}/></button>
+const StatusDecisionModal = ({ onClose, context, onSetStatus, onLinkEco, onCreateEco, activeEcos, versions, currentProductVersion }: any) => {
+  const [selectedVersion, setSelectedVersion] = useState(currentProductVersion || versions[0]);
+  return (
+    <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
+      <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md p-8 overflow-hidden">
+        <h3 className="text-xl font-bold mb-2">NG Decision Status</h3>
+        <p className="text-sm text-slate-500 mb-6">Select how to handle this quality issue.</p>
+        <div className="space-y-3 max-h-[60vh] overflow-y-auto pr-2 custom-scrollbar">
+          <div className="grid grid-cols-2 gap-2">
+            {Object.values(NgDecisionStatus).map(s => (
+              <button key={s} onClick={() => onSetStatus(s)} className={`px-4 py-2 rounded-xl text-xs font-bold border transition-all ${context.currentStatus === s ? 'bg-slate-900 text-white' : 'bg-slate-50 hover:bg-white border-slate-100 hover:border-slate-200'}`}>{s}</button>
+            ))}
+          </div>
+          <div className="pt-4 border-t border-slate-100">
+             <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Link to Design Change (ECO)</label>
+             <div className="space-y-2">
+                {activeEcos.map((eco: any) => (
+                  <button key={eco.id} onClick={() => onLinkEco(eco.id)} className={`w-full text-left p-3 rounded-xl border text-sm flex items-center justify-between transition-all ${context.linkedEcoId === eco.id ? 'bg-amber-50 border-amber-300 ring-2 ring-amber-200' : 'bg-white border-slate-100 hover:border-slate-300'}`}>
+                    <div className="flex flex-col"><span className="font-black text-amber-600">{eco.ecoNumber}</span><span className="text-[10px] text-slate-400 truncate w-48">{t(eco.description)}</span></div>
+                    {context.linkedEcoId === eco.id ? <CheckCircle size={16} className="text-amber-600"/> : <LinkIcon size={14} className="text-slate-300"/>}
+                  </button>
+                ))}
+                <div className="pt-2 flex flex-col gap-2">
+                   <select value={selectedVersion} onChange={e => setSelectedVersion(e.target.value)} className="w-full p-2 text-xs border rounded-lg bg-slate-50">{versions.map((v: string) => <option key={v} value={v}>{v}</option>)}</select>
+                   <button onClick={() => onCreateEco(selectedVersion)} className="w-full py-2 bg-indigo-600 text-white rounded-lg text-xs font-bold flex items-center justify-center gap-2"><Plus size={14}/> Create New ECO for this NG</button>
                 </div>
-                <div className="p-8 space-y-3">
-                    {(['PENDING', 'DISCUSSION', 'IGNORED', 'IDEA'] as NgDecisionStatus[]).map(s => (
-                        <button key={s} onClick={() => onSetStatus(s)} className={`w-full text-left px-5 py-4 rounded-2xl border-2 transition-all font-bold ${context.currentStatus === s ? 'bg-slate-900 text-white border-slate-900' : 'bg-white border-slate-100 hover:border-slate-300'}`}>{ngDecisionTranslations[s]}</button>
-                    ))}
-                    <button onClick={() => setShowEcoSelector(!showEcoSelector)} className={`w-full text-left px-5 py-4 rounded-2xl border-2 transition-all font-bold ${context.linkedEcoId ? 'bg-amber-100 border-amber-500 text-amber-700' : 'bg-white border-slate-100 hover:border-slate-300'}`}>
-                        {context.linkedEcoId ? `Linked to ECO` : 'Link to Existing ECO'}
-                    </button>
-                    {showEcoSelector && (
-                        <div className="mt-2 space-y-1 max-h-40 overflow-y-auto p-2 bg-slate-50 rounded-xl">
-                            {activeEcos.map((eco: any) => (
-                                <button key={eco.id} onClick={() => onLinkEco(eco.id)} className="w-full text-left px-3 py-2 rounded-lg text-xs font-bold bg-white border border-slate-100 hover:border-slate-900">{eco.ecoNumber} ({eco.version})</button>
-                            ))}
-                        </div>
-                    )}
-                    <button onClick={() => onCreateEco(versions[0])} className="w-full text-left px-5 py-4 rounded-2xl border-2 border-slate-900 bg-slate-900 text-white font-bold flex items-center gap-2 mt-2"><Plus size={18} /><span>Create New Rectification ECO</span></button>
-                </div>
-            </div>
+             </div>
+          </div>
         </div>
-    );
+        <button onClick={onClose} className="w-full mt-6 py-3 text-slate-400 font-bold hover:bg-slate-50 rounded-xl transition-all">Close</button>
+      </div>
+    </div>
+  );
 };
 
 const FeedbackModal = ({ onClose, onSave, feedback }: any) => {
-    const [content, setContent] = useState(feedback ? feedback.content.en : '');
-    const [source, setSource] = useState(feedback ? feedback.source : '');
-    const [category, setCategory] = useState<ErgoProjectCategory>(feedback ? feedback.category : 'Experience');
-    const [imageUrls, setImageUrls] = useState<string[]>(feedback?.attachmentUrls || []);
-    const [imageCaptions, setImageCaptions] = useState<string[]>(feedback?.attachmentCaptions || []);
-    const [isUploading, setIsUploading] = useState(false);
+  const [content, setContent] = useState(feedback?.content?.en || '');
+  const [source, setSource] = useState(feedback?.source || '');
+  const [urls, setUrls] = useState<string[]>(feedback?.attachmentUrls || []);
+  const [captions, setCaptions] = useState<string[]>(feedback?.attachmentCaptions || []);
 
-    const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-        const files = e.target.files;
-        if (!files) return;
-        setIsUploading(true);
-        try {
-            const urls = await Promise.all(Array.from(files).map(file => api.uploadImage(file as File)));
-            setImageUrls(prev => [...prev, ...urls]);
-            setImageCaptions(prev => [...prev, ...urls.map(() => '')]);
-        } catch (err) {
-            alert('Upload failed');
-        } finally {
-            setIsUploading(false);
-        }
-    };
+  const handleUpload = async (e: any) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const url = await api.uploadImage(file);
+      setUrls([...urls, url]);
+      setCaptions([...captions, '']);
+    }
+  };
 
-    const handleCaptionChange = (idx: number, val: string) => {
-        const next = [...imageCaptions];
-        next[idx] = val;
-        setImageCaptions(next);
-    };
-
-    return (
-        <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md animate-fade-in">
-            <div className="bg-white rounded-[2.5rem] shadow-2xl w-full max-w-lg animate-slide-up overflow-hidden">
-                <div className="p-8 border-b border-slate-100 flex justify-between items-center">
-                    <h3 className="text-xl font-bold text-slate-900 uppercase tracking-tight">Feedback Entry</h3>
-                    <button onClick={onClose} className="text-slate-400 hover:text-slate-600"><X size={24}/></button>
+  return (
+    <div className="fixed inset-0 z-[80] flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
+      <div className="bg-white rounded-3xl shadow-2xl w-full max-w-lg p-8 overflow-y-auto max-h-[90vh]">
+        <h3 className="text-2xl font-black text-slate-900 mb-6">{feedback ? 'Edit Feedback' : 'Add Customer Feedback'}</h3>
+        <div className="space-y-6">
+          <div><label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Content / Observation</label><textarea required value={content} onChange={e => setContent(e.target.value)} className="w-full border rounded-2xl p-4 h-40 focus:ring-2 focus:ring-intenza-500/20 outline-none" placeholder="What did the customer report?" /></div>
+          <div><label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Source / Customer Name</label><input required value={source} onChange={e => setSource(e.target.value)} className="w-full border rounded-xl p-3" placeholder="e.g. Gold's Gym" /></div>
+          <div>
+            <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Evidence / Photos</label>
+            <div className="flex flex-wrap gap-3">
+              {urls.map((url, i) => (
+                <div key={i} className="w-20 h-20 rounded-xl border overflow-hidden relative group">
+                  <img src={url} className="w-full h-full object-cover" />
+                  <button onClick={() => { setUrls(urls.filter((_, idx) => idx !== i)); setCaptions(captions.filter((_, idx) => idx !== i)); }} className="absolute inset-0 bg-red-500/80 opacity-0 group-hover:opacity-100 text-white flex items-center justify-center"><X size={20}/></button>
                 </div>
-                <div className="p-8 space-y-6 max-h-[80vh] overflow-y-auto custom-scrollbar">
-                    <div>
-                        <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-3">Content</label>
-                        <textarea required value={content} onChange={e => setContent(e.target.value)} className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none font-medium min-h-[140px] resize-none" placeholder="Description of market observation..."/>
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
-                        <div><label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-3">Source</label><input type="text" value={source} onChange={e => setSource(e.target.value)} className="w-full px-5 py-3 bg-slate-50 border border-slate-200 rounded-2xl outline-none font-bold" /></div>
-                        <div><label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-3">Category</label><select value={category} onChange={e => setCategory(e.target.value as any)} className="w-full px-5 py-3 bg-slate-50 border border-slate-200 rounded-2xl outline-none font-bold">{['Resistance profile', 'Experience', 'Stroke', 'Other Suggestion'].map(c => <option key={c} value={c}>{c}</option>)}</select></div>
-                    </div>
-                    <div>
-                        <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-3">Visual Evidence & Captions</label>
-                        <div className="flex flex-wrap gap-2">
-                            {imageUrls.map((url, i) => (
-                                <div key={i} className="space-y-1">
-                                    <img src={url} className="w-20 h-20 rounded-lg object-cover border border-slate-200" />
-                                    <input type="text" value={imageCaptions[i]} onChange={e => handleCaptionChange(i, e.target.value)} placeholder="Caption..." className="w-20 text-[8px] px-1 py-0.5 border border-slate-200 rounded" />
-                                </div>
-                            ))}
-                            <label className="w-20 h-20 rounded-lg border-2 border-dashed border-slate-200 flex items-center justify-center cursor-pointer hover:bg-slate-50">
-                                {isUploading ? <Loader2 size={20} className="animate-spin text-slate-400" /> : <Plus size={20} className="text-slate-400" />}
-                                <input type="file" multiple className="hidden" onChange={handleFileUpload} />
-                            </label>
-                        </div>
-                    </div>
-                    <div className="flex gap-4 pt-4">
-                        <button onClick={onClose} className="flex-1 py-4 text-slate-400 font-bold hover:bg-slate-50 rounded-2xl">Cancel</button>
-                        <button onClick={() => onSave({ content: {en: content, zh: content}, source, category, date: new Date().toISOString().split('T')[0], attachmentUrls: imageUrls, attachmentCaptions: imageCaptions })} className="flex-1 py-4 bg-slate-900 text-white font-bold rounded-2xl">Save Entry</button>
-                    </div>
-                </div>
+              ))}
+              <label className="w-20 h-20 rounded-xl border-4 border-dashed border-slate-100 flex flex-col items-center justify-center cursor-pointer hover:bg-slate-50 text-slate-300 hover:text-intenza-600 transition-all"><Upload size={24} /><input type="file" className="hidden" onChange={handleUpload}/></label>
             </div>
+          </div>
+          <div className="flex gap-4 pt-4"><button type="button" onClick={onClose} className="flex-1 py-4 text-slate-400 font-black uppercase tracking-widest hover:bg-slate-50 rounded-2xl transition-all">Cancel</button><button onClick={() => onSave({content: {en: content, zh: content}, source, attachmentUrls: urls, attachmentCaptions: captions})} className="flex-1 py-4 bg-slate-900 text-white font-black uppercase tracking-widest rounded-2xl hover:bg-slate-800 shadow-xl shadow-slate-900/20">Save Entry</button></div>
         </div>
-    );
+      </div>
+    </div>
+  );
 };
 
-const FeedbackStatusDecisionModal = ({ onClose, feedback, onUpdateStatus, onLinkEco, onCreateEco, activeEcos, versions }: any) => {
-    const [showEcoSelector, setShowEcoSelector] = useState(false);
-    return (
-        <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md animate-fade-in">
-            <div className="bg-white rounded-[2.5rem] shadow-2xl w-full max-w-md animate-slide-up overflow-hidden">
-                <div className="p-8 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
-                    <h3 className="font-bold text-slate-900">Feedback Decision</h3>
-                    <button onClick={onClose} className="text-slate-400 hover:text-slate-600"><X size={20}/></button>
+const FeedbackStatusDecisionModal = ({ onClose, feedback, onUpdateStatus, onLinkEco, onCreateEco, activeEcos, versions, currentProductVersion }: any) => {
+  const [selectedVersion, setSelectedVersion] = useState(currentProductVersion || versions[0]);
+  const { t } = useContext(LanguageContext);
+  return (
+    <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
+      <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md p-8">
+        <h3 className="text-xl font-bold mb-2">Feedback Action</h3>
+        <p className="text-sm text-slate-500 mb-6">Determine how to handle this customer observation.</p>
+        <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-2 custom-scrollbar">
+          <div className="grid grid-cols-1 gap-2">
+            {(['PENDING', 'DISCUSSION', 'IGNORED'] as const).map(s => (
+              <button key={s} onClick={() => onUpdateStatus(feedback.id, s)} className={`px-4 py-3 rounded-xl text-xs font-black uppercase tracking-widest border transition-all ${feedback.status === s ? 'bg-slate-900 text-white' : 'bg-slate-50 hover:bg-white border-slate-100 hover:border-slate-200'}`}>{s}</button>
+            ))}
+          </div>
+          <div className="pt-4 border-t border-slate-100">
+             <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Escalate to Design Change (ECO)</label>
+             <div className="space-y-2">
+                {activeEcos.map((eco: any) => (
+                  <button key={eco.id} onClick={() => onLinkEco(eco.id)} className={`w-full text-left p-3 rounded-xl border text-sm flex items-center justify-between transition-all ${feedback.linkedEcoId === eco.id ? 'bg-emerald-50 border-emerald-300 ring-2 ring-emerald-200' : 'bg-white border-slate-100 hover:border-slate-300'}`}>
+                    <div className="flex flex-col"><span className="font-black text-emerald-600">{eco.ecoNumber}</span><span className="text-[10px] text-slate-400 truncate w-48">{t(eco.description)}</span></div>
+                    {feedback.linkedEcoId === eco.id ? <CheckCircle size={16} className="text-emerald-600"/> : <LinkIcon size={14} className="text-slate-300"/>}
+                  </button>
+                ))}
+                <div className="pt-2 flex flex-col gap-2">
+                   <select value={selectedVersion} onChange={e => setSelectedVersion(e.target.value)} className="w-full p-2 text-xs border rounded-lg bg-slate-50">{versions.map((v: string) => <option key={v} value={v}>{v}</option>)}</select>
+                   <button onClick={() => onCreateEco(selectedVersion)} className="w-full py-2 bg-indigo-600 text-white rounded-lg text-xs font-bold flex items-center justify-center gap-2"><Plus size={14}/> Open new ECO from feedback</button>
                 </div>
-                <div className="p-8 space-y-3">
-                    {(['PENDING', 'DISCUSSION', 'IGNORED'] as any[]).map(s => (
-                        <button key={s} onClick={() => onUpdateStatus(feedback.id, s)} className={`w-full text-left px-5 py-4 rounded-2xl border-2 transition-all font-bold ${feedback.status === s ? 'bg-slate-900 text-white border-slate-900' : 'bg-white border-slate-100 hover:border-slate-300'}`}>{s}</button>
-                    ))}
-                    <button onClick={() => setShowEcoSelector(!showEcoSelector)} className={`w-full text-left px-5 py-4 rounded-2xl border-2 transition-all font-bold ${feedback.linkedEcoId ? 'bg-amber-100 border-amber-500 text-amber-700' : 'bg-white border-slate-100 hover:border-slate-300'}`}>{feedback.linkedEcoId ? `Linked to ECO` : 'Link to Existing ECO'}</button>
-                    {showEcoSelector && (
-                        <div className="mt-2 space-y-1 max-h-40 overflow-y-auto p-2 bg-slate-50 rounded-xl">
-                            {activeEcos.map((eco: any) => (
-                                <button key={eco.id} onClick={() => onLinkEco(eco.id)} className="w-full text-left px-3 py-2 rounded-lg text-xs font-bold bg-white border border-slate-100 hover:border-slate-900">{eco.ecoNumber} ({eco.version})</button>
-                            ))}
-                        </div>
-                    )}
-                    <button onClick={() => onCreateEco(versions[0])} className="w-full text-left px-5 py-4 rounded-2xl border-2 border-slate-900 bg-slate-900 text-white font-bold flex items-center gap-2 mt-2"><Plus size={18} /><span>Create Rectification ECO</span></button>
-                </div>
-            </div>
+             </div>
+          </div>
         </div>
-    );
+        <button onClick={onClose} className="w-full mt-6 py-3 text-slate-400 font-bold hover:bg-slate-50 rounded-xl transition-all">Close</button>
+      </div>
+    </div>
+  );
 };
 
 export default ProductDetail;
