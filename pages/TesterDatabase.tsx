@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect, useContext } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { ArrowLeft, Plus, Star, Upload, Ruler, Clock, User, X, Filter, Search, RotateCcw, Pencil, Trash2, CheckCircle, Loader2, Users2, ListChecks, ChevronRight, Save, Image as ImageIcon, Info, GraduationCap } from 'lucide-react';
@@ -437,7 +436,7 @@ const TesterDatabase: React.FC<TesterDatabaseProps> = ({
                     <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Rating</label>
                     <div className="flex gap-1.5 pt-1">
                       {[1, 2, 3, 4, 5].map(star => (
-                        <button key={star} type="button" onClick={() => setFormData({...formData, rating: star})} className={`transition-all ${formData.rating >= star ? 'text-amber-400' : 'text-slate-200 hover:text-slate-300'}`}><Star size={20} fill={formData.rating >= star ? "currentColor" : "none"} strokeWidth={3} /></button>
+                        <button key={star} type="button" onClick={() => setFormData({...formData, rating: star})} className={`transition-all ${formData.rating >= star ? 'text-amber-400' : 'text-slate-200 hover:text-slate-300'}`}><Star size={20} fill={formData.rating >= star ? "currentColor" : "none"} stroke={formData.rating >= star ? "#fbbf24" : "#e2e8f0"} strokeWidth={3} /></button>
                       ))}
                     </div>
                  </div>
@@ -546,63 +545,6 @@ const TesterCard: React.FC<{ tester: Tester, userRole?: string, aspectRatioClass
             </div>
         )}
 
-        {/* Detailed Experience Overlay on Hover - Light High-Contrast Design */}
-        <div className="absolute inset-0 bg-white p-8 opacity-0 group-hover:opacity-100 transition-all duration-500 z-20 flex flex-col translate-y-4 group-hover:translate-y-0 shadow-inner">
-            <div className="flex items-center gap-2 mb-6 border-b border-slate-100 pb-4">
-                <GraduationCap size={18} className="text-intenza-600" />
-                <span className="text-xs font-black uppercase tracking-[0.2em] text-slate-900">Academic & Career Profile</span>
-            </div>
-            <div className="flex-1 overflow-y-auto custom-scrollbar pr-3 pointer-events-auto">
-                {bioLines.length > 0 ? (
-                    <ul className="space-y-4">
-                        {bioLines.map((line, idx) => {
-                            // Clean common bullet characters if they exist in raw text for consistent visual style
-                            const cleanLine = line.replace(/^[\s\d\.\-\*•]+/, '').trim();
-                            return (
-                                <li key={idx} className="flex items-start gap-3">
-                                    <div className="mt-2 w-1.5 h-1.5 rounded-full bg-intenza-500 shrink-0 shadow-[0_0_5px_rgba(246,62,50,0.3)]" />
-                                    <span className="text-sm text-slate-600 leading-relaxed font-bold">
-                                        {cleanLine}
-                                    </span>
-                                </li>
-                            );
-                        })}
-                    </ul>
-                ) : (
-                    <div className="h-full flex flex-col items-center justify-center text-center opacity-40">
-                         <Info size={32} className="text-slate-300 mb-2" />
-                         <p className="text-[10px] text-slate-400 italic uppercase tracking-wider font-bold">Comprehensive profile documentation pending.</p>
-                    </div>
-                )}
-            </div>
-            <div className="mt-6 pt-5 border-t border-slate-100 flex justify-between items-end pointer-events-none">
-                <div className="flex flex-col">
-                    <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">Registry Status</span>
-                    <span className="text-[10px] font-bold text-emerald-600 flex items-center gap-1"><CheckCircle size={10} /> Verified Expert</span>
-                </div>
-                <div className="text-[10px] font-black text-slate-300 uppercase tracking-tighter">Intenza QA Div.</div>
-            </div>
-        </div>
-
-        {!selectionMode && !isViewer && (
-          <div className="absolute top-4 right-4 flex flex-col gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-30">
-             <button 
-                onClick={(e) => { e.stopPropagation(); onEdit(); }}
-                className="w-10 h-10 bg-white/95 backdrop-blur-sm rounded-full flex items-center justify-center text-slate-500 hover:text-slate-900 transition-all shadow-lg border border-slate-200 pointer-events-auto"
-                title="Edit"
-             >
-                <Pencil size={18} strokeWidth={2.5} />
-             </button>
-             <button 
-                onClick={(e) => { e.stopPropagation(); if(window.confirm('Delete this profile?')) onDelete(); }}
-                className="w-10 h-10 bg-white/95 backdrop-blur-sm rounded-full flex items-center justify-center text-slate-500 hover:text-red-600 transition-all shadow-lg border border-slate-200 pointer-events-auto"
-                title="Delete"
-             >
-                <Trash2 size={18} strokeWidth={2.5} />
-             </button>
-          </div>
-        )}
-        
         <div className="absolute bottom-4 left-4 z-10">
              <span className={`text-[9px] px-3 py-1 rounded-full uppercase font-black tracking-[0.2em] shadow-lg backdrop-blur-md ${tester.gender === 'Male' ? 'bg-blue-600 text-white' : 'bg-pink-600 text-white'}`}>
                 {tester.gender}
@@ -638,6 +580,63 @@ const TesterCard: React.FC<{ tester: Tester, userRole?: string, aspectRatioClass
                 <span className="text-sm font-bold text-slate-800 font-mono">{tester.experienceYears}y</span>
             </div>
         </div>
+      </div>
+
+      {/* Action Buttons - Maintain highest priority */}
+      {!selectionMode && !isViewer && (
+        <div className="absolute top-4 right-4 flex flex-col gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-50">
+            <button 
+                onClick={(e) => { e.stopPropagation(); onEdit(); }}
+                className="w-10 h-10 bg-white/95 backdrop-blur-sm rounded-full flex items-center justify-center text-slate-500 hover:text-slate-900 transition-all shadow-lg border border-slate-200 pointer-events-auto"
+                title="Edit"
+            >
+                <Pencil size={18} strokeWidth={2.5} />
+            </button>
+            <button 
+                onClick={(e) => { e.stopPropagation(); if(window.confirm('Delete this profile?')) onDelete(); }}
+                className="w-10 h-10 bg-white/95 backdrop-blur-sm rounded-full flex items-center justify-center text-slate-500 hover:text-red-600 transition-all shadow-lg border border-slate-200 pointer-events-auto"
+                title="Delete"
+            >
+                <Trash2 size={18} strokeWidth={2.5} />
+            </button>
+        </div>
+      )}
+
+      {/* Detailed Experience Overlay - Full Card Plate Display */}
+      <div className="absolute inset-0 bg-white p-8 opacity-0 group-hover:opacity-100 transition-all duration-500 z-40 flex flex-col translate-y-4 group-hover:translate-y-0 shadow-inner pointer-events-none group-hover:pointer-events-auto">
+          <div className="flex items-center gap-2 mb-6 border-b border-slate-100 pb-4">
+              <GraduationCap size={18} className="text-intenza-600" />
+              <span className="text-xs font-black uppercase tracking-[0.2em] text-slate-900">Academic & Career Profile</span>
+          </div>
+          <div className="flex-1 overflow-y-auto custom-scrollbar pr-3">
+              {bioLines.length > 0 ? (
+                  <ul className="space-y-5">
+                      {bioLines.map((line, idx) => {
+                          const cleanLine = line.replace(/^[\s\d\.\-\*•]+/, '').trim();
+                          return (
+                              <li key={idx} className="flex items-start gap-4">
+                                  <div className="mt-2 w-1.5 h-1.5 rounded-full bg-intenza-500 shrink-0 shadow-[0_0_5px_rgba(246,62,50,0.3)]" />
+                                  <span className="text-[13px] text-slate-800 leading-relaxed font-bold">
+                                      {cleanLine}
+                                  </span>
+                              </li>
+                          );
+                      })}
+                  </ul>
+              ) : (
+                  <div className="h-full flex flex-col items-center justify-center text-center opacity-40">
+                       <Info size={32} className="text-slate-300 mb-2" />
+                       <p className="text-[10px] text-slate-400 italic uppercase tracking-wider font-bold">Comprehensive profile documentation pending.</p>
+                  </div>
+              )}
+          </div>
+          <div className="mt-6 pt-5 border-t border-slate-100 flex justify-between items-end">
+              <div className="flex flex-col">
+                  <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">Registry Status</span>
+                  <span className="text-[10px] font-bold text-emerald-600 flex items-center gap-1"><CheckCircle size={10} /> Verified Expert</span>
+              </div>
+              <div className="text-[10px] font-black text-slate-300 uppercase tracking-tighter">Intenza QA Div.</div>
+          </div>
       </div>
     </div>
   );
