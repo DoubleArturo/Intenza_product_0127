@@ -47,7 +47,12 @@ export const Dashboard: React.FC<DashboardProps> = ({
   const navigate = useNavigate();
   const { language, t } = useContext(LanguageContext);
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedSeries, setSelectedSeries] = useState<string>('ALL');
+  
+  // Persistence: Recover series filter from sessionStorage
+  const [selectedSeries, setSelectedSeries] = useState<string>(() => {
+    return sessionStorage.getItem('dashboard_selected_series') || 'ALL';
+  });
+  
   const [sortOrder, setSortOrder] = useState<SortType>('SKU_ASC');
   
   // Tooltip State
@@ -103,6 +108,39 @@ export const Dashboard: React.FC<DashboardProps> = ({
   const canAddProduct = isAdmin || isStandard || isUploader; // Keeping basic role check for adding new ones
 
   const canEditLight = isAdmin || isStandard;
+
+  // Persistence: Store selected series whenever it changes
+  useEffect(() => {
+    sessionStorage.setItem('dashboard_selected_series', selectedSeries);
+  }, [selectedSeries]);
+
+  // Persistence: Scroll position handling
+  useEffect(() => {
+    const mainElement = document.querySelector('main');
+    
+    // Restore scroll position
+    const savedScroll = sessionStorage.getItem('dashboard_scroll_y');
+    if (mainElement && savedScroll) {
+      // Small timeout to ensure grid has rendered
+      const timer = setTimeout(() => {
+        mainElement.scrollTo({
+          top: parseInt(savedScroll, 10),
+          behavior: 'instant'
+        });
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+
+    // Save scroll position on scroll
+    const handleScroll = () => {
+      if (mainElement) {
+        sessionStorage.setItem('dashboard_scroll_y', mainElement.scrollTop.toString());
+      }
+    };
+
+    mainElement?.addEventListener('scroll', handleScroll);
+    return () => mainElement?.removeEventListener('scroll', handleScroll);
+  }, []);
   
   useEffect(() => {
     if (isModalOpen) {
