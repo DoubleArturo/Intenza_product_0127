@@ -328,7 +328,10 @@ const Settings: React.FC<SettingsProps> = ({
                 <table className="w-full text-left">
                   <thead className="bg-slate-50 text-slate-500 text-[10px] font-bold uppercase tracking-wider"><tr><th className="px-6 py-4">使用者名稱</th><th className="px-6 py-4">權限</th><th className="px-6 py-4 text-right">操作</th></tr></thead>
                   <tbody className="divide-y divide-slate-100">
-                    {currentAppState.users?.map((user) => (
+                    {currentAppState.users?.slice().sort((a, b) => {
+                      const priority: Record<string, number> = { 'admin': 0, 'viewer': 1, 'uploader': 2, 'user': 3 };
+                      return (priority[a.role] ?? 4) - (priority[b.role] ?? 4);
+                    }).map((user) => (
                       <tr key={user.id} className="hover:bg-slate-50 transition-colors">
                         <td className="px-6 py-4"><div className="flex items-center gap-3"><div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-500"><User size={16} /></div><span className="font-bold text-slate-700">{user.username}</span></div></td>
                         <td className="px-6 py-4"><span className={`px-2 py-1 rounded text-[10px] font-bold uppercase ${user.role === 'admin' ? 'bg-intenza-100 text-intenza-700' : user.role === 'uploader' ? 'bg-emerald-100 text-emerald-700' : user.role === 'viewer' ? 'bg-amber-100 text-amber-700' : 'bg-slate-100 text-slate-600'}`}>{user.role}</span></td>
