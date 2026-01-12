@@ -14,6 +14,12 @@ interface DashboardProps {
   globalStatusLightSize: 'SMALL' | 'NORMAL' | 'LARGE';
   dashboardColumns: number;
   cardAspectRatio: string;
+  searchTerm: string;
+  onSearchChange: (val: string) => void;
+  selectedSeries: string;
+  onSeriesChange: (val: string) => void;
+  sortOrder: SortType;
+  onSortOrderChange: (val: SortType) => void;
   onAddProduct: (productData: Omit<ProductModel, 'id' | 'ergoProjects' | 'customerFeedback' | 'designHistory' | 'ergoTests' | 'durabilityTests'>) => Promise<void>;
   onUpdateProduct: (product: ProductModel) => Promise<void>;
   onToggleWatch: (id: string) => void;
@@ -23,7 +29,6 @@ interface DashboardProps {
 
 type SortType = 'NAME_ASC' | 'SKU_ASC' | 'SKU_DESC';
 
-// Map for Tailwind grid-cols classes for dynamic layout
 const gridColsClassMap: Record<number, string> = {
   2: 'xl:grid-cols-2',
   3: 'xl:grid-cols-3',
@@ -32,7 +37,6 @@ const gridColsClassMap: Record<number, string> = {
   6: 'xl:grid-cols-6',
 };
 
-// Map for Tailwind aspect ratio classes
 const aspectClassMap: Record<string, string> = {
   '1/1': 'aspect-square',
   '3/4': 'aspect-[3/4]',
@@ -42,23 +46,18 @@ const aspectClassMap: Record<string, string> = {
 
 export const Dashboard: React.FC<DashboardProps> = ({ 
   products, seriesList, userRole, currentUser, globalStatusLightSize, dashboardColumns, cardAspectRatio,
+  searchTerm, onSearchChange, selectedSeries, onSeriesChange, sortOrder, onSortOrderChange,
   onAddProduct, onUpdateProduct, onToggleWatch, onDeleteProduct 
 }) => {
   const navigate = useNavigate();
   const { language, t } = useContext(LanguageContext);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [selectedSeries, setSelectedSeries] = useState<string>('ALL');
-  const [sortOrder, setSortOrder] = useState<SortType>('SKU_ASC');
   
-  // Tooltip State
   const [hoveredLightId, setHoveredLightId] = useState<string | null>(null);
   const [hoveredSafetyId, setHoveredSafetyId] = useState<string | null>(null);
   const hoverTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Direct Selection State
   const [selectorProductId, setSelectorProductId] = useState<string | null>(null);
 
-  // Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
@@ -81,27 +80,23 @@ export const Dashboard: React.FC<DashboardProps> = ({
   const isUploader = userRole === 'uploader';
   const isStandard = userRole === 'user';
   
-  // Helper to check permission for a specific SKU/Series
   const canModifyProduct = (p: ProductModel) => {
     if (isAdmin) return true;
     if (isViewer) return false;
     
     const perms = currentUser?.granularPermissions;
-    if (!perms) return isAdmin || isStandard || isUploader; // Default to old behavior if no perms set
+    if (!perms) return isAdmin || isStandard || isUploader;
     
-    // Series permission
     const seriesName = t(p.series);
     if (perms.allowedSeries.includes(seriesName)) return true;
     
-    // SKU module permission (Any module access granted means they can edit basic info)
     const skuPerm = perms.skuPermissions[p.sku];
     if (skuPerm && (skuPerm.design || skuPerm.ergo || skuPerm.durability)) return true;
     
     return false;
   };
 
-  const canAddProduct = isAdmin || isStandard || isUploader; // Keeping basic role check for adding new ones
-
+  const canAddProduct = isAdmin || isStandard || isUploader;
   const canEditLight = isAdmin || isStandard;
   
   useEffect(() => {
@@ -258,7 +253,6 @@ export const Dashboard: React.FC<DashboardProps> = ({
 
   const handleStatusLightClick = (e: React.MouseEvent, p: ProductModel) => {
     e.stopPropagation();
-    // Check permission to modify the status light for this specific SKU
     if (!canModifyProduct(p) || !canEditLight) {
         navigate(`/product/${p.id}`);
         return;
@@ -302,7 +296,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
           {seriesTabs.map((s) => (
             <button
               key={s}
-              onClick={() => setSelectedSeries(s)}
+              onClick={() => onSeriesChange(s)}
               className={`px-5 py-2 rounded-lg text-sm font-bold whitespace-nowrap transition-all ${
                 selectedSeries === s 
                   ? 'bg-white text-slate-900 shadow-md ring-1 ring-slate-200' 
@@ -321,20 +315,20 @@ export const Dashboard: React.FC<DashboardProps> = ({
               type="text"
               placeholder={t({ en: 'Search by model or SKU...', zh: '搜尋型號或 SKU...'})}
               value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
+              onChange={(e) => onSearchChange(e.target.value)}
               className="w-full pl-12 pr-4 py-3 bg-white border-2 border-slate-100 rounded-2xl focus:outline-none focus:border-slate-900 transition-all shadow-sm text-sm font-medium"
             />
           </div>
           
           <div className="flex bg-slate-100 p-1 rounded-xl shadow-inner shrink-0">
             <button 
-              onClick={() => setSortOrder('NAME_ASC')}
+              onClick={() => onSortOrderChange('NAME_ASC')}
               className={`px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${sortOrder === 'NAME_ASC' ? 'bg-white shadow-md text-slate-900' : 'text-slate-400'}`}
             >
               Name
             </button>
             <button 
-              onClick={() => setSortOrder(sortOrder === 'SKU_ASC' ? 'SKU_DESC' : 'SKU_ASC')}
+              onClick={() => onSortOrderChange(sortOrder === 'SKU_ASC' ? 'SKU_DESC' : 'SKU_ASC')}
               className={`px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2 ${sortOrder.startsWith('SKU') ? 'bg-white shadow-md text-slate-900' : 'text-slate-400'}`}
             >
               SKU {sortOrder.startsWith('SKU') && <ArrowUpDown size={12} className={sortOrder === 'SKU_DESC' ? 'rotate-180 transition-transform' : 'transition-transform'} />}
