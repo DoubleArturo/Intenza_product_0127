@@ -97,7 +97,10 @@ const App = () => {
   const isSyncingRef = useRef(false);
   const initialLoadDone = useRef(false);
 
+  // Dirty Checking References
+  const originalStateRef = useRef<Record<string, any>>({});
   const latestStateRef = useRef<AppState | null>(null);
+
   useEffect(() => {
     latestStateRef.current = {
       products, seriesList, shipments, testers, testerGroups, users, auditLogs, language, showAiInsights, maxHistorySteps, customLogoUrl, globalStatusLightSize, dashboardColumns, cardAspectRatio, chartColorStyle, analyticsTooltipScale, analyticsTooltipPosition, evaluationModalYOffset, lastShipmentUpdate
@@ -130,21 +133,51 @@ const App = () => {
   }, [isLoggedIn, currentUser]);
 
   /**
-   * handleSyncToCloud 支援「部分更新」
+   * handleSyncToCloud 實作「Dirty Checking」髒檢查機制
    */
   const handleSyncToCloud = useCallback(async (isAutoSync = false, partialData?: Partial<AppState>) => {
     if (isSyncingRef.current || !isLoggedIn || currentUser?.role === 'viewer') return;
     
-    isSyncingRef.current = true;
-    setSyncStatus('saving');
-    
-    // 如果傳入 partialData，則僅發送該部分；否則發送當前全域狀態
-    const payload = partialData || {
+    const currentState = {
       products, seriesList, shipments, testers, testerGroups, users, auditLogs, language, showAiInsights, maxHistorySteps, customLogoUrl, globalStatusLightSize, dashboardColumns, cardAspectRatio, chartColorStyle, analyticsTooltipScale, analyticsTooltipPosition, evaluationModalYOffset, lastShipmentUpdate
     };
 
+    // 1. 決定要發送的資料 (Diffing)
+    let payload: Partial<AppState> = {};
+    
+    if (partialData) {
+      payload = partialData;
+    } else {
+      // 執行髒檢查：比對頂層 Key 的變動
+      Object.keys(currentState).forEach(key => {
+        const currentVal = (currentState as any)[key];
+        const originalVal = originalStateRef.current[key];
+        
+        // 深度比對 (透過 JSON 字串化簡化複雜物件比對)
+        if (JSON.stringify(currentVal) !== JSON.stringify(originalVal)) {
+          (payload as any)[key] = currentVal;
+        }
+      });
+    }
+
+    // 2. 如果沒有任何變動，直接跳過網路請求
+    if (Object.keys(payload).length === 0) {
+      if (!isAutoSync) {
+        setSyncStatus('success');
+        setTimeout(() => setSyncStatus('idle'), 2000);
+      }
+      return;
+    }
+
+    isSyncingRef.current = true;
+    setSyncStatus('saving');
+    
     try {
       await api.saveData(payload as any);
+      
+      // 3. 同步成功後，更新 Original State 基準點
+      Object.assign(originalStateRef.current, payload);
+      
       setSyncStatus('success');
       setTimeout(() => {
         setSyncStatus('idle');
@@ -182,7 +215,7 @@ const App = () => {
         return logs;
       });
       
-      // 登出時執行部分更新，確保 Log 被儲存
+      // 登出時強制儲存 Audit Log (此處不經髒檢查，直接發送)
       handleSyncToCloud(true, { auditLogs: updatedLogs });
 
       setTimeout(() => {
@@ -190,6 +223,7 @@ const App = () => {
         setIsLoggedIn(false);
         setCurrentUser(null);
         setActiveUsersAtLogin([]);
+        originalStateRef.current = {}; // 清空基準點
       }, 500);
     } else {
       sessionStorage.removeItem('intenza_user');
@@ -274,6 +308,9 @@ const App = () => {
     try {
       const cloudData = await api.loadData();
       if (cloudData) {
+        // 儲存原始基準點快照 (Dirty Checking 原則)
+        originalStateRef.current = JSON.parse(JSON.stringify(cloudData));
+
         if (cloudData.products) setProducts(cloudData.products);
         if (cloudData.seriesList) setSeriesList(cloudData.seriesList);
         if (cloudData.shipments) setShipments(cloudData.shipments);
