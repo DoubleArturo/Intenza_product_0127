@@ -1,7 +1,7 @@
 import React, { useState, createContext, useCallback, useEffect, lazy, Suspense, useRef } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { MOCK_PRODUCTS, MOCK_SHIPMENTS, MOCK_TESTERS } from './services/mockData';
-import { ProductModel, Language, LocalizedString, Tester, ShipmentData, DEFAULT_SERIES, UserAccount, AppState, TesterGroup, AuditLog } from './types';
+import { ProductModel, Language, LocalizedString, Tester, ShipmentData, DEFAULT_SERIES, UserAccount, AppState, TesterGroup, AuditLog, AuditActivity } from './types';
 import { api } from './services/api';
 import { Cloud, CloudCheck, CloudOff, Loader2, CheckCircle, AlertCircle, AlertTriangle } from 'lucide-react';
 
@@ -133,7 +133,7 @@ const App = () => {
   }, [isLoggedIn, currentUser]);
 
   /**
-   * handleSyncToCloud 實作「Dirty Checking」髒檢查機制
+   * handleSyncToCloud 實作「Dirty Checking」髒檢查機制，並記錄操作紀錄
    */
   const handleSyncToCloud = useCallback(async (isAutoSync = false, partialData?: Partial<AppState>) => {
     if (isSyncingRef.current || !isLoggedIn || currentUser?.role === 'viewer') return;
@@ -144,6 +144,7 @@ const App = () => {
 
     // 1. 決定要發送的資料 (Diffing)
     let payload: Partial<AppState> = {};
+    let actionsTaken: string[] = [];
     
     if (partialData) {
       payload = partialData;
@@ -156,6 +157,18 @@ const App = () => {
         // 深度比對 (透過 JSON 字串化簡化複雜物件比對)
         if (JSON.stringify(currentVal) !== JSON.stringify(originalVal)) {
           (payload as any)[key] = currentVal;
+          
+          // 根據變動的 Key 產生易讀的操作紀錄描述
+          switch(key) {
+            case 'products': actionsTaken.push('更新產品目錄 (Products)'); break;
+            case 'shipments': actionsTaken.push('更新出貨數據 (Shipments)'); break;
+            case 'testers': actionsTaken.push('更新測試員資料 (Testers)'); break;
+            case 'testerGroups': actionsTaken.push('更新測試分組 (Groups)'); break;
+            case 'users': actionsTaken.push('修改使用者帳號 (Users)'); break;
+            case 'seriesList': actionsTaken.push('調整產品系列清單'); break;
+            case 'customLogoUrl': actionsTaken.push('更新系統標誌 (Logo)'); break;
+            default: if (!isAutoSync) actionsTaken.push(`修改系統參數: ${key}`);
+          }
         }
       });
     }
@@ -169,13 +182,35 @@ const App = () => {
       return;
     }
 
+    // 3. 記錄操作紀錄 (Operation Record)
+    // 排除僅包含 auditLogs 的自動更新 (避免遞迴日誌)
+    const isOnlyLogs = Object.keys(payload).length === 1 && payload.auditLogs;
+    if (actionsTaken.length > 0 && !isOnlyLogs && currentUser) {
+        const actionDesc = actionsTaken.join(', ');
+        const timestamp = new Date().toLocaleString();
+        const newActivity: AuditActivity = { timestamp, action: actionDesc };
+
+        setAuditLogs(prev => {
+            const next = [...prev];
+            const lastSessionIdx = [...next].reverse().findIndex(l => l.username === currentUser.username && !l.logoutTime);
+            if (lastSessionIdx !== -1) {
+                const actualIdx = next.length - 1 - lastSessionIdx;
+                next[actualIdx] = {
+                    ...next[actualIdx],
+                    activities: [...(next[actualIdx].activities || []), newActivity]
+                };
+            }
+            return next;
+        });
+    }
+
     isSyncingRef.current = true;
     setSyncStatus('saving');
     
     try {
       await api.saveData(payload as any);
       
-      // 3. 同步成功後，更新 Original State 基準點
+      // 4. 同步成功後，更新 Original State 基準點
       Object.assign(originalStateRef.current, payload);
       
       setSyncStatus('success');
@@ -286,7 +321,8 @@ const App = () => {
     const newLog: AuditLog = {
       id: `log-${Date.now()}`,
       username: user.username,
-      loginTime: new Date().toLocaleString()
+      loginTime: new Date().toLocaleString(),
+      activities: [{ timestamp: new Date().toLocaleString(), action: '登入系統' }]
     };
     
     setAuditLogs(prev => {
@@ -480,6 +516,7 @@ const App = () => {
                       onUpdateUser={(u) => setUsers(users.map(old => old.id === u.id ? u : old))}
                       onDeleteUser={(id) => setUsers(users.filter(u => u.id !== id))}
                       onDeleteAuditLogs={() => setAuditLogs([])}
+                      onDeleteLog={(id) => setAuditLogs(prev => prev.filter(l => l.id !== id))}
                       onSyncCloud={handleSyncToCloud} onLogout={handleLogout} syncStatus={syncStatus}
                       onResetDashboard={handleResetShipments}
                     />

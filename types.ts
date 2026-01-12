@@ -191,6 +191,11 @@ export interface ShipmentData {
 export type ChartViewType = 'PIE' | 'BAR';
 export type DrillLevel = 'CATEGORY' | 'SERIES' | 'SKU' | 'VERSION' | 'BUYER' | 'COUNTRY' | 'CUSTOMER';
 
+export interface AuditActivity {
+  timestamp: string;
+  action: string;
+}
+
 export interface AuditLog {
   id: string;
   username: string;
@@ -198,6 +203,7 @@ export interface AuditLog {
   logoutTime?: string;
   durationMinutes?: number;
   note?: string;
+  activities?: AuditActivity[];
 }
 
 export interface AppState {

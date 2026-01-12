@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useContext, useEffect, useMemo } from 'react';
 import { Plus, X, Save, Download, Upload, AlertTriangle, CheckCircle, Pencil, History, Sparkles, Shield, User, Trash2, Eye, EyeOff, Key, Database, HardDrive, Info, Cloud, LogOut, Loader2, Link as LinkIcon, Activity, Layers, ImageIcon, RotateCcw, Settings2, LayoutGrid, Maximize, Palette, MousePointer2, ClipboardList, Clock, Search, ChevronRight, Filter, UserRound, ArrowDown, GitCommit, UserCheck, CheckSquare, Square } from 'lucide-react';
 import { AppState, LocalizedString, UserAccount, AuditLog, UserPermissions, ProductModel } from '../types';
@@ -26,6 +25,7 @@ interface SettingsProps {
   onUpdateUser: (user: UserAccount) => void;
   onDeleteUser: (id: string) => void;
   onDeleteAuditLogs: () => void;
+  onDeleteLog?: (id: string) => void;
   onSyncCloud: (isAuto?: boolean, partial?: Partial<AppState>) => Promise<void>;
   onLogout: () => void;
   syncStatus: 'idle' | 'saving' | 'success' | 'error';
@@ -37,7 +37,7 @@ const Settings: React.FC<SettingsProps> = ({
   currentAppState, onLoadProject, onUpdateMaxHistory, onToggleAiInsights,
   onUpdateLogo, onUpdateStatusLightSize, onUpdateDashboardColumns, onUpdateCardAspectRatio, onUpdateChartColorStyle, 
   onUpdateAnalyticsTooltipScale, onUpdateAnalyticsTooltipPosition, onUpdateEvaluationModalYOffset,
-  onAddUser, onUpdateUser, onDeleteUser, onDeleteAuditLogs, onSyncCloud, onLogout, syncStatus, onResetDashboard
+  onAddUser, onUpdateUser, onDeleteUser, onDeleteAuditLogs, onDeleteLog, onSyncCloud, onLogout, syncStatus, onResetDashboard
 }) => {
   const { t, language } = useContext(LanguageContext);
   const [newSeriesName, setNewSeriesName] = useState('');
@@ -351,7 +351,7 @@ const Settings: React.FC<SettingsProps> = ({
              <div className="flex items-center justify-between mb-8 pb-4 border-b border-slate-100">
                 <div className="flex items-center gap-2">
                     <ClipboardList className="text-indigo-600" size={22} />
-                    <h2 className="text-xl font-black text-slate-900 tracking-tight uppercase">帳號活動追蹤記錄</h2>
+                    <h2 className="text-xl font-black text-slate-900 tracking-tight uppercase">操作紀錄 (Audit Log)</h2>
                 </div>
                 <div className="flex gap-2">
                     <button onClick={handleExportLogs} className="p-2 text-slate-400 hover:text-slate-900 transition-colors" title="Export CSV/JSON"><Download size={18} /></button>
@@ -376,7 +376,7 @@ const Settings: React.FC<SettingsProps> = ({
              </div>
              <button onClick={() => setIsLogBrowserOpen(true)} className="w-full py-4 bg-indigo-50 hover:bg-indigo-100 border-2 border-dashed border-indigo-200 rounded-2xl flex items-center justify-center gap-3 transition-all text-indigo-600 font-black uppercase tracking-widest group/btn">
                 <Database size={20} className="group-hover/btn:scale-110 transition-transform" />
-                <span>點入瀏覽完整日誌歷史</span>
+                <span>點入管理完整操作歷史</span>
                 <ChevronRight size={18} />
              </button>
           </section>
@@ -461,6 +461,7 @@ const Settings: React.FC<SettingsProps> = ({
             onClose={() => setIsLogBrowserOpen(false)}
             logs={currentAppState.auditLogs || []}
             onDeleteAll={() => { if(window.confirm('確定要清空所有追蹤日誌嗎？此動作無法復原。')) { onDeleteAuditLogs(); setIsLogBrowserOpen(false); } }}
+            onDeleteLog={(id) => { if(window.confirm('確定要刪除此筆日誌紀錄？')) onDeleteLog?.(id); }}
             onExport={handleExportLogs}
           />
       )}
@@ -654,7 +655,7 @@ const BulkSeriesToggle = ({ active, onClick, color }: any) => {
   return <button type="button" onClick={onClick} className={`px-3 py-1.5 rounded-lg border text-[9px] font-black uppercase tracking-tighter transition-all flex items-center gap-1.5 mx-auto ${colors[color]}`}>{active ? <CheckSquare size={12} /> : <Square size={12} />} {active ? 'Deselect All' : 'Select All'}</button>;
 };
 
-const AuditLogBrowserModal: React.FC<{ isOpen: boolean; onClose: () => void; logs: AuditLog[]; onDeleteAll: () => void; onExport: () => void; }> = ({ isOpen, onClose, logs, onDeleteAll, onExport }) => {
+const AuditLogBrowserModal: React.FC<{ isOpen: boolean; onClose: () => void; logs: AuditLog[]; onDeleteAll: () => void; onDeleteLog: (id: string) => void; onExport: () => void; }> = ({ isOpen, onClose, logs, onDeleteAll, onDeleteLog, onExport }) => {
     const [searchTerm, setSearchTerm] = useState('');
     const [filterStatus, setFilterStatus] = useState<'ALL' | 'ACTIVE' | 'COMPLETED'>('ALL');
     const filteredLogs = useMemo(() => {
@@ -670,25 +671,54 @@ const AuditLogBrowserModal: React.FC<{ isOpen: boolean; onClose: () => void; log
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-0 md:p-8 bg-slate-900/60 backdrop-blur-md animate-fade-in">
             <div className="bg-white md:rounded-[2.5rem] shadow-2xl w-full h-full max-w-6xl overflow-hidden flex flex-col animate-slide-up">
                 <header className="p-8 border-b border-slate-100 flex flex-col md:flex-row md:items-center justify-between gap-6 bg-white sticky top-0 z-10">
-                    <div><div className="flex items-center gap-3 mb-1"><div className="p-2 bg-indigo-600 text-white rounded-xl shadow-lg shadow-indigo-600/20"><History size={24} /></div><h2 className="text-3xl font-black text-slate-900 tracking-tight uppercase">完整帳號日誌歷史</h2></div><p className="text-slate-400 font-bold text-xs uppercase tracking-[0.2em]">{logs.length} Total Sessions Recorded</p></div>
+                    <div><div className="flex items-center gap-3 mb-1"><div className="p-2 bg-indigo-600 text-white rounded-xl shadow-lg shadow-indigo-600/20"><History size={24} /></div><h2 className="text-3xl font-black text-slate-900 tracking-tight uppercase">操作日誌管理系統</h2></div><p className="text-slate-400 font-bold text-xs uppercase tracking-[0.2em]">{logs.length} Total Sessions Recorded</p></div>
                     <div className="flex items-center gap-4"><div className="flex gap-2"><button onClick={onExport} className="p-3 bg-slate-50 hover:bg-slate-100 text-slate-600 rounded-2xl transition-all border border-slate-100"><Download size={20}/></button><button onClick={onDeleteAll} className="p-3 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded-2xl transition-all border border-rose-100"><Trash2 size={20}/></button></div><div className="h-10 w-px bg-slate-100 hidden md:block mx-2" /><button onClick={onClose} className="p-3 bg-slate-900 text-white rounded-2xl hover:bg-slate-800 transition-all shadow-xl shadow-slate-900/20"><X size={24} strokeWidth={3} /></button></div>
                 </header>
                 <div className="px-8 py-6 bg-slate-50/50 border-b border-slate-100 flex flex-col md:flex-row items-center gap-6">
                     <div className="relative flex-1 w-full"><Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" /><input type="text" placeholder="搜尋帳號名稱..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="w-full pl-12 pr-4 py-3 bg-white border-2 border-slate-100 rounded-2xl text-sm font-bold focus:border-indigo-500 outline-none shadow-sm" /></div>
                     <div className="flex bg-white p-1.5 rounded-2xl shadow-sm border border-slate-100 shrink-0">{['ALL', 'ACTIVE', 'COMPLETED'].map((status) => (<button key={status} onClick={() => setFilterStatus(status as any)} className={`px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${filterStatus === status ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-400 hover:text-slate-600'}`}>{status}</button>))}</div>
                 </div>
-                <div className="flex-1 overflow-y-auto custom-scrollbar p-8">
+                <div className="flex-1 overflow-y-auto custom-scrollbar p-8 bg-slate-50/30">
                     <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
                         {filteredLogs.map((log) => (
-                            <div key={log.id} className="bg-white rounded-3xl border-2 border-slate-50 p-6 hover:border-indigo-100 hover:shadow-xl transition-all group relative overflow-hidden">
-                                <div className={`absolute top-0 right-0 w-16 h-1 bg-gradient-to-l ${!log.logoutTime ? 'from-emerald-500 to-emerald-300' : 'from-slate-200 to-slate-100'}`} />
+                            <div key={log.id} className="bg-white rounded-3xl border-2 border-slate-50 p-6 hover:border-indigo-100 hover:shadow-xl transition-all group relative overflow-hidden flex flex-col">
+                                <button 
+                                    onClick={() => onDeleteLog(log.id)}
+                                    className="absolute top-4 right-4 p-2 text-slate-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all z-10"
+                                >
+                                    <Trash2 size={16} />
+                                </button>
+                                <div className={`absolute top-0 left-0 w-1 h-full bg-gradient-to-b ${!log.logoutTime ? 'from-emerald-500 to-emerald-300' : 'from-slate-200 to-slate-100'}`} />
                                 <div className="flex items-center gap-4 mb-6"><div className={`w-12 h-12 rounded-2xl flex items-center justify-center shadow-sm ${!log.logoutTime ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-100 text-slate-400'}`}><UserRound size={24} /></div><div><h3 className="font-black text-slate-900 uppercase tracking-tight text-lg">{log.username}</h3><div className="flex items-center gap-1.5 mt-0.5">{!log.logoutTime ? <span className="flex items-center gap-1 text-[10px] font-black text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-md uppercase"><div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />Currently Active</span> : <span className="text-[10px] font-black text-slate-400 bg-slate-50 px-2 py-0.5 rounded-md uppercase">Session Ended</span>}</div></div></div>
-                                <div className="space-y-4"><div className="grid grid-cols-2 gap-4 border-t border-slate-50 pt-4"><div><span className="block text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">Login Time</span><span className="text-[11px] font-bold text-slate-700">{log.loginTime}</span></div><div><span className="block text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">Logout Time</span><span className="text-[11px] font-bold text-slate-700">{log.logoutTime || '-'}</span></div></div><div className="bg-slate-50 rounded-2xl p-4 flex items-center justify-between border border-slate-100 shadow-inner"><div className="flex items-center gap-2"><Clock size={16} className="text-indigo-400" /><span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Duration</span></div><span className="text-sm font-black text-indigo-600 font-mono">{log.durationMinutes ? `${log.durationMinutes}m` : (log.logoutTime ? '< 1m' : 'Live')}</span></div></div>
+                                
+                                <div className="space-y-4 mb-6">
+                                    <div className="grid grid-cols-2 gap-4 border-t border-slate-50 pt-4"><div><span className="block text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">Login Time</span><span className="text-[11px] font-bold text-slate-700">{log.loginTime}</span></div><div><span className="block text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">Logout Time</span><span className="text-[11px] font-bold text-slate-700">{log.logoutTime || '-'}</span></div></div>
+                                    <div className="bg-slate-50 rounded-2xl p-4 flex items-center justify-between border border-slate-100 shadow-inner"><div className="flex items-center gap-2"><Clock size={16} className="text-indigo-400" /><span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Duration</span></div><span className="text-sm font-black text-indigo-600 font-mono">{log.durationMinutes ? `${log.durationMinutes}m` : (log.logoutTime ? '< 1m' : 'Live')}</span></div>
+                                </div>
+
+                                <div className="flex-1 space-y-3">
+                                    <div className="flex items-center gap-2 mb-2 border-b border-slate-50 pb-2">
+                                        <Activity size={12} className="text-slate-400" />
+                                        <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">操作詳細內容 (Activities)</span>
+                                    </div>
+                                    <div className="space-y-2 max-h-40 overflow-y-auto custom-scrollbar pr-2">
+                                        {log.activities && log.activities.length > 0 ? (
+                                            log.activities.map((act, i) => (
+                                                <div key={i} className="bg-slate-50/50 p-2.5 rounded-xl border border-slate-100">
+                                                    <div className="text-[8px] font-bold text-slate-300 mb-1">{act.timestamp}</div>
+                                                    <div className="text-[10px] font-bold text-slate-600 leading-relaxed">{act.action}</div>
+                                                </div>
+                                            ))
+                                        ) : (
+                                            <div className="text-center py-4 opacity-30 italic text-[10px]">No activities recorded.</div>
+                                        )}
+                                    </div>
+                                </div>
                             </div>
                         ))}
                     </div>
                 </div>
-                <footer className="p-6 bg-slate-900 text-white flex items-center justify-between"><div className="flex items-center gap-4"><div className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Analytics</div><div className="flex gap-4"><div className="flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]" /><span className="text-xs font-bold">{activeSessions} Active</span></div><div className="flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-indigo-500" /><span className="text-xs font-bold">{logs.length} Total Logs</span></div></div></div><div className="text-[10px] font-bold text-slate-500 uppercase italic tracking-widest">Synced with Cloud Postgres</div></footer>
+                <footer className="p-6 bg-slate-900 text-white flex items-center justify-between"><div className="flex items-center gap-4"><div className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Operation Audit Database</div><div className="flex gap-4"><div className="flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]" /><span className="text-xs font-bold">{activeSessions} Active</span></div><div className="flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-indigo-500" /><span className="text-xs font-bold">{logs.length} Total Logs</span></div></div></div><div className="text-[10px] font-bold text-slate-500 uppercase italic tracking-widest">Secured Audit Trail</div></footer>
             </div>
         </div>
     );
