@@ -3,7 +3,7 @@ import { Routes, Route, Navigate } from 'react-router-dom';
 import { MOCK_PRODUCTS, MOCK_SHIPMENTS, MOCK_TESTERS } from './services/mockData';
 import { ProductModel, Language, LocalizedString, Tester, ShipmentData, DEFAULT_SERIES, UserAccount, AppState, TesterGroup, AuditLog } from './types';
 import { api } from './services/api';
-import { Cloud, CloudCheck, CloudOff, Loader2, CheckCircle, AlertCircle } from 'lucide-react';
+import { Cloud, CloudCheck, CloudOff, Loader2, CheckCircle, AlertCircle, AlertTriangle } from 'lucide-react';
 
 const Dashboard = lazy(() => import('./pages/Dashboard').then(module => ({ default: module.Dashboard })));
 const ProductDetail = lazy(() => import('./pages/ProductDetail'));
@@ -33,6 +33,32 @@ const PageLoader = () => (
   </div>
 );
 
+// New Component for Multi-user Warning
+const MultiUserWarningModal = ({ users, onConfirm }: { users: string[], onConfirm: () => void }) => (
+  <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md animate-fade-in">
+    <div className="bg-white rounded-[2.5rem] shadow-2xl w-full max-w-md animate-slide-up p-10 text-center border border-white/20">
+      <div className="w-20 h-20 bg-amber-50 rounded-3xl flex items-center justify-center text-amber-500 mx-auto mb-6 shadow-sm border border-amber-100">
+        <AlertTriangle size={40} strokeWidth={2.5} />
+      </div>
+      <h2 className="text-2xl font-black text-slate-900 mb-2 uppercase tracking-tight">多人同步警示</h2>
+      <p className="text-slate-500 text-sm mb-8 leading-relaxed">
+        偵測到目前已有其他用戶在線：<br/>
+        <span className="font-black text-slate-800 mt-2 block px-4 py-2 bg-slate-50 rounded-xl">
+          {users.join(', ')}
+        </span>
+        <br/>
+        為避免資料覆蓋，請確保您的編輯與他人協調同步。
+      </p>
+      <button 
+        onClick={onConfirm}
+        className="w-full py-4 bg-slate-900 text-white font-black uppercase tracking-[0.2em] rounded-2xl hover:bg-slate-800 transition-all shadow-xl shadow-slate-900/20 active:scale-95"
+      >
+        已確認，進入系統
+      </button>
+    </div>
+  </div>
+);
+
 const App = () => {
   const [language, setLanguage] = useState<Language>('en');
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -59,6 +85,9 @@ const App = () => {
 
   const [syncStatus, setSyncStatus] = useState<'idle' | 'saving' | 'success' | 'error'>('idle');
   const [errorDetail, setErrorDetail] = useState<string>('');
+  
+  // State for concurrent user detection
+  const [activeUsersAtLogin, setActiveUsersAtLogin] = useState<string[]>([]);
   
   const isSyncingRef = useRef(false);
   const initialLoadDone = useRef(false);
@@ -135,10 +164,12 @@ const App = () => {
       setTimeout(() => {
         setIsLoggedIn(false);
         setCurrentUser(null);
+        setActiveUsersAtLogin([]);
       }, 500);
     } else {
       setIsLoggedIn(false);
       setCurrentUser(null);
+      setActiveUsersAtLogin([]);
     }
   }, [currentUser, handleSyncToCloud]);
 
@@ -179,6 +210,16 @@ const App = () => {
   }, [isLoggedIn, currentUser]);
 
   const handleLoginSuccess = useCallback((user: UserAccount) => {
+    // Before adding our new log, check if others are active
+    const currentlyActive = auditLogs
+      .filter(log => !log.logoutTime && log.username !== user.username)
+      .map(log => log.username);
+    
+    const uniqueActive = Array.from(new Set(currentlyActive));
+    if (uniqueActive.length > 0) {
+      setActiveUsersAtLogin(uniqueActive);
+    }
+
     const newLog: AuditLog = {
       id: `log-${Date.now()}`,
       username: user.username,
@@ -194,7 +235,7 @@ const App = () => {
     const fullUser = users.find(u => u.username === user.username) || user;
     setCurrentUser(fullUser);
     setIsLoggedIn(true);
-  }, [users, handleSyncToCloud]);
+  }, [users, auditLogs, handleSyncToCloud]);
 
   const handleLoadFromCloud = useCallback(async () => {
     if (isSyncingRef.current) return;
@@ -395,6 +436,14 @@ const App = () => {
               </Routes>
             </Suspense>
           </main>
+
+          {/* Active Users Warning Overlay */}
+          {activeUsersAtLogin.length > 0 && (
+            <MultiUserWarningModal 
+              users={activeUsersAtLogin} 
+              onConfirm={() => setActiveUsersAtLogin([])} 
+            />
+          )}
 
           {syncStatus !== 'idle' && (
             <div className="fixed bottom-6 right-6 z-[100] animate-slide-up">
