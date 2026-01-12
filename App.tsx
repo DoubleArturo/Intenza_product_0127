@@ -2,7 +2,7 @@
 import React, { useState, createContext, useCallback, useEffect, lazy, Suspense, useRef } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { MOCK_PRODUCTS, MOCK_SHIPMENTS, MOCK_TESTERS } from './services/mockData';
-import { ProductModel, Language, LocalizedString, Tester, ShipmentData, DEFAULT_SERIES, UserAccount, AppState, TesterGroup, AuditLog } from './types';
+import { ProductModel, Language, LocalizedString, Tester, ShipmentData, DEFAULT_SERIES, UserAccount, AppState, TesterGroup, AuditLog, ChartViewType } from './types';
 import { api } from './services/api';
 import { Cloud, CloudCheck, CloudOff, Loader2, CheckCircle, AlertCircle } from 'lucide-react';
 
@@ -42,6 +42,7 @@ const App = () => {
   const [products, setProducts] = useState<ProductModel[]>(MOCK_PRODUCTS);
   const [seriesList, setSeriesList] = useState<LocalizedString[]>(DEFAULT_SERIES);
   const [shipments, setShipments] = useState<ShipmentData[]>(MOCK_SHIPMENTS);
+  const [shipmentDataCutDate, setShipmentDataCutDate] = useState<string | undefined>(undefined);
   const [testers, setTesters] = useState<Tester[]>(MOCK_TESTERS);
   const [testerGroups, setTesterGroups] = useState<TesterGroup[]>([]);
   const [users, setUsers] = useState<UserAccount[]>([]);
@@ -57,6 +58,18 @@ const App = () => {
   const [analyticsTooltipPosition, setAnalyticsTooltipPosition] = useState<'TOP_LEFT' | 'TOP_RIGHT' | 'BOTTOM_LEFT' | 'BOTTOM_RIGHT' | 'FOLLOW'>('TOP_LEFT');
   const [evaluationModalYOffset, setEvaluationModalYOffset] = useState<number>(100);
 
+  // Navigation Persistence States
+  const [dashboardSearch, setDashboardSearch] = useState('');
+  const [dashboardSeries, setDashboardSeries] = useState('ALL');
+  const [dashboardSort, setDashboardSort] = useState<'NAME_ASC' | 'SKU_ASC' | 'SKU_DESC'>('SKU_ASC');
+  
+  const [analyticsViewMode, setAnalyticsViewMode] = useState<'SHIPMENTS' | 'ERGONOMICS' | 'DURABILITY'>('SHIPMENTS');
+  const [analyticsDrillPath, setAnalyticsDrillPath] = useState<{ level: string, label: string, filterVal: string }[]>([]);
+  const [analyticsDimension, setAnalyticsDimension] = useState<'DATA_DRILL' | 'BUYER' | 'COLOR'>('DATA_DRILL');
+  const [analyticsChartType, setAnalyticsChartType] = useState<ChartViewType>('PIE');
+
+  const [productTabMap, setProductTabMap] = useState<Record<string, 'DESIGN' | 'ERGO' | 'LIFE'>>({});
+
   const [syncStatus, setSyncStatus] = useState<'idle' | 'saving' | 'success' | 'error'>('idle');
   const [errorDetail, setErrorDetail] = useState<string>('');
   
@@ -66,9 +79,9 @@ const App = () => {
   const latestStateRef = useRef<AppState | null>(null);
   useEffect(() => {
     latestStateRef.current = {
-      products, seriesList, shipments, testers, testerGroups, users, auditLogs, language, showAiInsights, maxHistorySteps, customLogoUrl, globalStatusLightSize, dashboardColumns, cardAspectRatio, chartColorStyle, analyticsTooltipScale, analyticsTooltipPosition, evaluationModalYOffset
+      products, seriesList, shipments, shipmentDataCutDate, testers, testerGroups, users, auditLogs, language, showAiInsights, maxHistorySteps, customLogoUrl, globalStatusLightSize, dashboardColumns, cardAspectRatio, chartColorStyle, analyticsTooltipScale, analyticsTooltipPosition, evaluationModalYOffset
     };
-  }, [products, seriesList, shipments, testers, testerGroups, users, auditLogs, language, showAiInsights, maxHistorySteps, customLogoUrl, globalStatusLightSize, dashboardColumns, cardAspectRatio, chartColorStyle, analyticsTooltipScale, analyticsTooltipPosition, evaluationModalYOffset]);
+  }, [products, seriesList, shipments, shipmentDataCutDate, testers, testerGroups, users, auditLogs, language, showAiInsights, maxHistorySteps, customLogoUrl, globalStatusLightSize, dashboardColumns, cardAspectRatio, chartColorStyle, analyticsTooltipScale, analyticsTooltipPosition, evaluationModalYOffset]);
 
   const t = useCallback((str: any) => {
     if (!str) return '';
@@ -76,18 +89,14 @@ const App = () => {
     return str[language] || str.en || str.zh || '';
   }, [language]);
 
-  /**
-   * handleSyncToCloud 支援「部分更新」
-   */
   const handleSyncToCloud = useCallback(async (isAutoSync = false, partialData?: Partial<AppState>) => {
     if (isSyncingRef.current || !isLoggedIn || currentUser?.role === 'viewer') return;
     
     isSyncingRef.current = true;
     setSyncStatus('saving');
     
-    // 如果傳入 partialData，則僅發送該部分；否則發送當前全域狀態
     const payload = partialData || {
-      products, seriesList, shipments, testers, testerGroups, users, auditLogs, language, showAiInsights, maxHistorySteps, customLogoUrl, globalStatusLightSize, dashboardColumns, cardAspectRatio, chartColorStyle, analyticsTooltipScale, analyticsTooltipPosition, evaluationModalYOffset
+      products, seriesList, shipments, shipmentDataCutDate, testers, testerGroups, users, auditLogs, language, showAiInsights, maxHistorySteps, customLogoUrl, globalStatusLightSize, dashboardColumns, cardAspectRatio, chartColorStyle, analyticsTooltipScale, analyticsTooltipPosition, evaluationModalYOffset
     };
 
     try {
@@ -104,7 +113,7 @@ const App = () => {
       isSyncingRef.current = false;
       setTimeout(() => setSyncStatus('idle'), 3000);
     }
-  }, [products, seriesList, shipments, testers, testerGroups, users, auditLogs, language, showAiInsights, maxHistorySteps, customLogoUrl, globalStatusLightSize, dashboardColumns, cardAspectRatio, chartColorStyle, analyticsTooltipScale, analyticsTooltipPosition, evaluationModalYOffset, isLoggedIn, currentUser]);
+  }, [products, seriesList, shipments, shipmentDataCutDate, testers, testerGroups, users, auditLogs, language, showAiInsights, maxHistorySteps, customLogoUrl, globalStatusLightSize, dashboardColumns, cardAspectRatio, chartColorStyle, analyticsTooltipScale, analyticsTooltipPosition, evaluationModalYOffset, isLoggedIn, currentUser]);
 
   const handleLogout = useCallback(async () => {
     if (currentUser) {
@@ -129,7 +138,6 @@ const App = () => {
         return logs;
       });
       
-      // 登出時執行部分更新，確保 Log 被儲存
       handleSyncToCloud(true, { auditLogs: updatedLogs });
 
       setTimeout(() => {
@@ -207,6 +215,7 @@ const App = () => {
         if (cloudData.products) setProducts(cloudData.products);
         if (cloudData.seriesList) setSeriesList(cloudData.seriesList);
         if (cloudData.shipments) setShipments(cloudData.shipments);
+        if (cloudData.shipmentDataCutDate) setShipmentDataCutDate(cloudData.shipmentDataCutDate);
         if (cloudData.testers) setTesters(cloudData.testers);
         if (cloudData.testerGroups) setTesterGroups(cloudData.testerGroups);
         if (cloudData.users) setUsers(cloudData.users);
@@ -236,7 +245,8 @@ const App = () => {
   const handleResetShipments = useCallback(() => {
     if (currentUser?.role === 'viewer') return;
     setShipments([]);
-    setTimeout(() => handleSyncToCloud(true, { shipments: [] }), 100);
+    setShipmentDataCutDate(undefined);
+    setTimeout(() => handleSyncToCloud(true, { shipments: [], shipmentDataCutDate: undefined }), 100);
   }, [handleSyncToCloud, currentUser]);
 
   useEffect(() => {
@@ -263,7 +273,7 @@ const App = () => {
       const timer = setTimeout(() => handleSyncToCloud(true), 2500);
       return () => clearTimeout(timer);
     }
-  }, [users, seriesList, products, testers, testerGroups, shipments, auditLogs, customLogoUrl, globalStatusLightSize, dashboardColumns, cardAspectRatio, chartColorStyle, analyticsTooltipScale, analyticsTooltipPosition, evaluationModalYOffset, isLoggedIn, handleSyncToCloud, currentUser]);
+  }, [users, seriesList, products, testers, testerGroups, shipments, shipmentDataCutDate, auditLogs, customLogoUrl, globalStatusLightSize, dashboardColumns, cardAspectRatio, chartColorStyle, analyticsTooltipScale, analyticsTooltipPosition, evaluationModalYOffset, isLoggedIn, handleSyncToCloud, currentUser]);
 
   return (
     <LanguageContext.Provider value={{ language, setLanguage, t }}>
@@ -293,6 +303,12 @@ const App = () => {
                     globalStatusLightSize={globalStatusLightSize}
                     dashboardColumns={dashboardColumns}
                     cardAspectRatio={cardAspectRatio}
+                    searchTerm={dashboardSearch}
+                    onSearchChange={setDashboardSearch}
+                    selectedSeries={dashboardSeries}
+                    onSeriesChange={setDashboardSeries}
+                    sortOrder={dashboardSort}
+                    onSortOrderChange={setDashboardSort}
                     onAddProduct={async (p) => setProducts([...products, { ...p, id: `p-${Date.now()}`, ergoProjects: [], customerFeedback: [], designHistory: [], ergoTests: [], durabilityTests: [], isWatched: false, customSortOrder: products.length, uniqueFeedbackTags: {} } as any])}
                     onUpdateProduct={async (p) => setProducts(products.map(old => old.id === p.id ? p : old))}
                     onToggleWatch={(id) => setProducts(products.map(p => p.id === id ? { ...p, isWatched: !p.isWatched } : p))}
@@ -316,12 +332,25 @@ const App = () => {
                     onUpdateProduct={async (p) => setProducts(products.map(old => old.id === p.id ? p : old))} 
                     showAiInsights={showAiInsights} 
                     evaluationModalYOffset={evaluationModalYOffset}
+                    tabMap={productTabMap}
+                    onTabChange={(pid, tab) => setProductTabMap(prev => ({ ...prev, [pid]: tab }))}
                   />
                 } />
                 <Route path="/analytics" element={
                   <Analytics 
-                    products={products} shipments={shipments} testers={testers} onImportData={(data) => setShipments([...shipments, ...data])} onBatchAddProducts={(newPs) => setProducts([...products, ...newPs])} showAiInsights={showAiInsights} userRole={currentUser?.role} chartColorStyle={chartColorStyle} 
+                    products={products} shipments={shipments} testers={testers} 
+                    shipmentDataCutDate={shipmentDataCutDate}
+                    onImportData={(data) => {
+                      setShipments([...shipments, ...data]);
+                      setShipmentDataCutDate(new Date().toLocaleString());
+                    }} 
+                    onBatchAddProducts={(newPs) => setProducts([...products, ...newPs])} 
+                    showAiInsights={showAiInsights} userRole={currentUser?.role} chartColorStyle={chartColorStyle} 
                     tooltipScale={analyticsTooltipScale} tooltipPosition={analyticsTooltipPosition}
+                    viewMode={analyticsViewMode} onViewModeChange={setAnalyticsViewMode}
+                    drillPath={analyticsDrillPath} onDrillPathChange={setAnalyticsDrillPath}
+                    dimension={analyticsDimension} onDimensionChange={setAnalyticsDimension}
+                    chartType={analyticsChartType} onChartTypeChange={setAnalyticsChartType}
                   />
                 } />
                 <Route path="/settings" element={
@@ -333,11 +362,12 @@ const App = () => {
                           newList[idx] = { ...newList[idx], [language]: name };
                           setSeriesList(newList);
                       }}
-                      currentAppState={{ products, seriesList, shipments, testers, testerGroups, users, auditLogs, language, showAiInsights, maxHistorySteps, customLogoUrl, globalStatusLightSize, dashboardColumns, cardAspectRatio, chartColorStyle, analyticsTooltipScale, analyticsTooltipPosition, evaluationModalYOffset }}
+                      currentAppState={{ products, seriesList, shipments, shipmentDataCutDate, testers, testerGroups, users, auditLogs, language, showAiInsights, maxHistorySteps, customLogoUrl, globalStatusLightSize, dashboardColumns, cardAspectRatio, chartColorStyle, analyticsTooltipScale, analyticsTooltipPosition, evaluationModalYOffset }}
                       onLoadProject={(state) => {
                           if (state.products) setProducts(state.products);
                           if (state.seriesList) setSeriesList(state.seriesList);
                           if (state.shipments) setShipments(state.shipments);
+                          if (state.shipmentDataCutDate) setShipmentDataCutDate(state.shipmentDataCutDate);
                           if (state.testers) setTesters(state.testers);
                           if (state.testerGroups) setTesterGroups(state.testerGroups);
                           if (state.users) setUsers(state.users);

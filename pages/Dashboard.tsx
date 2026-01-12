@@ -14,6 +14,12 @@ interface DashboardProps {
   globalStatusLightSize: 'SMALL' | 'NORMAL' | 'LARGE';
   dashboardColumns: number;
   cardAspectRatio: string;
+  searchTerm: string;
+  onSearchChange: (val: string) => void;
+  selectedSeries: string;
+  onSeriesChange: (val: string) => void;
+  sortOrder: 'NAME_ASC' | 'SKU_ASC' | 'SKU_DESC';
+  onSortOrderChange: (val: 'NAME_ASC' | 'SKU_ASC' | 'SKU_DESC') => void;
   onAddProduct: (productData: Omit<ProductModel, 'id' | 'ergoProjects' | 'customerFeedback' | 'designHistory' | 'ergoTests' | 'durabilityTests'>) => Promise<void>;
   onUpdateProduct: (product: ProductModel) => Promise<void>;
   onToggleWatch: (id: string) => void;
@@ -21,9 +27,6 @@ interface DashboardProps {
   onDeleteProduct: (id: string) => void;
 }
 
-type SortType = 'NAME_ASC' | 'SKU_ASC' | 'SKU_DESC';
-
-// Map for Tailwind grid-cols classes for dynamic layout
 const gridColsClassMap: Record<number, string> = {
   2: 'xl:grid-cols-2',
   3: 'xl:grid-cols-3',
@@ -32,7 +35,6 @@ const gridColsClassMap: Record<number, string> = {
   6: 'xl:grid-cols-6',
 };
 
-// Map for Tailwind aspect ratio classes
 const aspectClassMap: Record<string, string> = {
   '1/1': 'aspect-square',
   '3/4': 'aspect-[3/4]',
@@ -42,23 +44,18 @@ const aspectClassMap: Record<string, string> = {
 
 export const Dashboard: React.FC<DashboardProps> = ({ 
   products, seriesList, userRole, currentUser, globalStatusLightSize, dashboardColumns, cardAspectRatio,
+  searchTerm, onSearchChange, selectedSeries, onSeriesChange, sortOrder, onSortOrderChange,
   onAddProduct, onUpdateProduct, onToggleWatch, onDeleteProduct 
 }) => {
   const navigate = useNavigate();
   const { language, t } = useContext(LanguageContext);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [selectedSeries, setSelectedSeries] = useState<string>('ALL');
-  const [sortOrder, setSortOrder] = useState<SortType>('SKU_ASC');
   
-  // Tooltip State
   const [hoveredLightId, setHoveredLightId] = useState<string | null>(null);
   const [hoveredSafetyId, setHoveredSafetyId] = useState<string | null>(null);
   const hoverTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Direct Selection State
   const [selectorProductId, setSelectorProductId] = useState<string | null>(null);
 
-  // Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
@@ -81,27 +78,23 @@ export const Dashboard: React.FC<DashboardProps> = ({
   const isUploader = userRole === 'uploader';
   const isStandard = userRole === 'user';
   
-  // Helper to check permission for a specific SKU/Series
   const canModifyProduct = (p: ProductModel) => {
     if (isAdmin) return true;
     if (isViewer) return false;
     
     const perms = currentUser?.granularPermissions;
-    if (!perms) return isAdmin || isStandard || isUploader; // Default to old behavior if no perms set
+    if (!perms) return isAdmin || isStandard || isUploader;
     
-    // Series permission
     const seriesName = t(p.series);
     if (perms.allowedSeries.includes(seriesName)) return true;
     
-    // SKU module permission (Any module access granted means they can edit basic info)
     const skuPerm = perms.skuPermissions[p.sku];
     if (skuPerm && (skuPerm.design || skuPerm.ergo || skuPerm.durability)) return true;
     
     return false;
   };
 
-  const canAddProduct = isAdmin || isStandard || isUploader; // Keeping basic role check for adding new ones
-
+  const canAddProduct = isAdmin || isStandard || isUploader;
   const canEditLight = isAdmin || isStandard;
   
   useEffect(() => {
@@ -258,7 +251,6 @@ export const Dashboard: React.FC<DashboardProps> = ({
 
   const handleStatusLightClick = (e: React.MouseEvent, p: ProductModel) => {
     e.stopPropagation();
-    // Check permission to modify the status light for this specific SKU
     if (!canModifyProduct(p) || !canEditLight) {
         navigate(`/product/${p.id}`);
         return;
@@ -302,7 +294,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
           {seriesTabs.map((s) => (
             <button
               key={s}
-              onClick={() => setSelectedSeries(s)}
+              onClick={() => onSeriesChange(s)}
               className={`px-5 py-2 rounded-lg text-sm font-bold whitespace-nowrap transition-all ${
                 selectedSeries === s 
                   ? 'bg-white text-slate-900 shadow-md ring-1 ring-slate-200' 
@@ -321,20 +313,20 @@ export const Dashboard: React.FC<DashboardProps> = ({
               type="text"
               placeholder={t({ en: 'Search by model or SKU...', zh: '搜尋型號或 SKU...'})}
               value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
+              onChange={(e) => onSearchChange(e.target.value)}
               className="w-full pl-12 pr-4 py-3 bg-white border-2 border-slate-100 rounded-2xl focus:outline-none focus:border-slate-900 transition-all shadow-sm text-sm font-medium"
             />
           </div>
           
           <div className="flex bg-slate-100 p-1 rounded-xl shadow-inner shrink-0">
             <button 
-              onClick={() => setSortOrder('NAME_ASC')}
+              onClick={() => onSortOrderChange('NAME_ASC')}
               className={`px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${sortOrder === 'NAME_ASC' ? 'bg-white shadow-md text-slate-900' : 'text-slate-400'}`}
             >
               Name
             </button>
             <button 
-              onClick={() => setSortOrder(sortOrder === 'SKU_ASC' ? 'SKU_DESC' : 'SKU_ASC')}
+              onClick={() => onSortOrderChange(sortOrder === 'SKU_ASC' ? 'SKU_DESC' : 'SKU_ASC')}
               className={`px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2 ${sortOrder.startsWith('SKU') ? 'bg-white shadow-md text-slate-900' : 'text-slate-400'}`}
             >
               SKU {sortOrder.startsWith('SKU') && <ArrowUpDown size={12} className={sortOrder === 'SKU_DESC' ? 'rotate-180 transition-transform' : 'transition-transform'} />}
@@ -361,31 +353,6 @@ export const Dashboard: React.FC<DashboardProps> = ({
               className="group bg-white rounded-[2rem] border-2 border-slate-100 shadow-sm hover:shadow-2xl hover:shadow-slate-200/60 hover:border-slate-200 transition-all duration-300 overflow-hidden flex flex-col cursor-pointer active:scale-[0.98] relative"
               onClick={() => navigate(`/product/${p.id}`)}
             >
-              {hoveredSafetyId === p.id && safetyCertLines.length > 0 && (
-                <div className="absolute inset-x-0 bottom-0 top-0 bg-slate-900/95 backdrop-blur-md z-[60] p-8 animate-fade-in flex flex-col pointer-events-none">
-                  <div className="flex items-center justify-between mb-6 border-b border-white/10 pb-4">
-                    <div className="flex items-center gap-3">
-                      <ShieldCheck size={24} className="text-blue-400" />
-                      <h4 className="text-lg font-black text-white uppercase tracking-wider">{t({ en: 'Certification Details', zh: '安規認證詳情' })}</h4>
-                    </div>
-                    <div className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Intenza Verified</div>
-                  </div>
-                  <ul className="space-y-4 overflow-y-auto custom-scrollbar flex-1 pr-2">
-                    {safetyCertLines.map((line, idx) => (
-                      <li key={idx} className="flex items-start gap-4 p-3 bg-white/5 rounded-xl border border-white/5 group/item">
-                        <div className="mt-1 w-5 h-5 rounded-full bg-emerald-500/20 flex items-center justify-center border border-emerald-500/30">
-                          <Check size={12} className="text-emerald-500" strokeWidth={4} />
-                        </div>
-                        <span className="text-sm font-bold text-slate-100 leading-relaxed">{line}</span>
-                      </li>
-                    ))}
-                  </ul>
-                  <div className="mt-6 pt-4 border-t border-white/5 text-center">
-                    <p className="text-[10px] font-bold text-slate-500 uppercase tracking-[0.2em]">Move cursor away to close</p>
-                  </div>
-                </div>
-              )}
-
               <div className={`relative ${aspectClassMap[cardAspectRatio] || 'aspect-[3/4]'} bg-slate-50 p-6 flex items-center justify-center overflow-hidden border-b border-slate-50`}>
                 {p.imageUrl ? (
                   <img src={p.imageUrl} alt={t(p.modelName)} className="w-full h-full object-contain transition-transform duration-500 group-hover:scale-105" />
@@ -418,7 +385,9 @@ export const Dashboard: React.FC<DashboardProps> = ({
                     <div className="flex items-center gap-1.5">
                       <span className="text-[11px] font-black bg-slate-900 text-white px-2.5 py-1 rounded-lg shadow-sm">{displayVersion}</span>
                       {productionInfo && productionInfo.implementationDate && (
-                        <span className="text-[10px] font-bold text-slate-400 flex items-center gap-1 bg-slate-50 px-2 py-1 rounded-lg border border-slate-100"><Calendar size={10} /> {productionInfo.implementationDate}</span>
+                        <span className="text-[10px] font-bold text-slate-900 flex items-center gap-1 bg-rose-50 px-2 py-1 rounded-lg border border-rose-100 shadow-sm animate-pulse-slow">
+                           <Calendar size={10} className="text-rose-500" /> {productionInfo.implementationDate}
+                        </span>
                       )}
                     </div>
                   </div>
@@ -472,71 +441,6 @@ export const Dashboard: React.FC<DashboardProps> = ({
                           'bg-emerald-500 shadow-emerald-500/50'
                         }`} />
                       </button>
-
-                      {selectorProductId === p.id && (
-                          <div className="absolute bottom-full right-0 mb-4 bg-white border border-slate-200 shadow-2xl rounded-2xl p-2 z-[70] min-w-[140px] animate-slide-up flex flex-col gap-1">
-                              <div className="text-[9px] font-black text-slate-400 uppercase tracking-widest px-3 py-1 border-b border-slate-50 mb-1">Change Status</div>
-                              {(['AUTO', 'RED', 'BLUE', 'GREEN'] as const).map(mode => (
-                                  <button 
-                                      key={mode}
-                                      onClick={(e) => { e.stopPropagation(); updateProductStatusDirectly(p, mode); }}
-                                      className={`flex items-center justify-between px-3 py-2 rounded-lg text-xs font-bold transition-all text-left group/btn ${
-                                          (p.statusOverride === mode || (mode === 'AUTO' && !p.statusOverride)) 
-                                          ? 'bg-slate-900 text-white' 
-                                          : 'bg-white text-slate-600 hover:bg-slate-50'
-                                      }`}
-                                  >
-                                      <span className="flex items-center gap-2">
-                                          <div className={`w-2 h-2 rounded-full ${
-                                              mode === 'RED' ? 'bg-rose-500' : 
-                                              mode === 'BLUE' ? 'bg-blue-500' : 
-                                              mode === 'GREEN' ? 'bg-emerald-500' : 'bg-slate-400'
-                                          }`} />
-                                          {mode === 'AUTO' ? t({ en: 'Auto', zh: '系統自動' }) : mode}
-                                      </span>
-                                      {(p.statusOverride === mode || (mode === 'AUTO' && !p.statusOverride)) && <Check size={12} />}
-                                  </button>
-                              ))}
-                              <button 
-                                  onClick={(e) => { e.stopPropagation(); setSelectorProductId(null); }}
-                                  className="mt-1 px-3 py-1.5 text-[10px] font-bold text-slate-400 hover:text-slate-600 text-center"
-                              >
-                                  {t({ en: 'Cancel', zh: '取消' })}
-                              </button>
-                          </div>
-                      )}
-
-                      {hoveredLightId === p.id && selectorProductId !== p.id && (
-                          <div className="absolute bottom-full right-0 mb-4 w-64 p-4 bg-slate-900 text-white rounded-2xl shadow-2xl z-[60] animate-fade-in border border-slate-700/50 backdrop-blur-md">
-                          <div className="flex items-center gap-2 mb-3 border-b border-white/10 pb-2">
-                              <Info size={14} className="text-slate-400" />
-                              <span className="text-[10px] font-black uppercase tracking-widest text-slate-300">{t({ en: 'Status Guide', zh: '燈號狀態說明' })}</span>
-                          </div>
-                          <div className="space-y-3">
-                              <div className="flex items-start gap-3">
-                              <div className="w-2.5 h-2.5 rounded-full bg-blue-500 mt-1 shadow-lg shadow-blue-500/40" />
-                              <div className="flex-1">
-                                  <div className="text-[11px] font-bold text-white leading-none">{t({ en: 'General ECO', zh: '一般設變中' })}</div>
-                                  <div className="text-[10px] text-slate-400 mt-1">{t({ en: 'ECO in progress', zh: '設計變更進行中' })}</div>
-                              </div>
-                              </div>
-                              <div className="flex items-start gap-3">
-                              <div className="w-2.5 h-2.5 rounded-full bg-rose-500 mt-1 shadow-lg shadow-rose-500/40" />
-                              <div className="flex-1">
-                                  <div className="text-[11px] font-bold text-white leading-none">{t({ en: 'Major ECO', zh: '重大設變中' })}</div>
-                                  <div className="text-[10px] text-slate-400 mt-1">{t({ en: 'Safety or Ergonomic changes', zh: '安全、人因重大設變中' })}</div>
-                              </div>
-                              </div>
-                              <div className="flex items-start gap-3">
-                              <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 mt-1 shadow-lg shadow-emerald-500/40" />
-                              <div className="flex-1">
-                                  <div className="text-[11px] font-bold text-white leading-none">{t({ en: 'Ready for Production', zh: '可量產' })}</div>
-                                  <div className="text-[10px] text-slate-400 mt-1">{t({ en: 'No pending critical changes', zh: '目前無待處理重大設變' })}</div>
-                              </div>
-                              </div>
-                          </div>
-                          </div>
-                      )}
                     </div>
                   </div>
                 </div>
@@ -572,47 +476,6 @@ export const Dashboard: React.FC<DashboardProps> = ({
                 <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleImageUpload} />
               </div>
 
-              <div className="bg-slate-50 p-6 rounded-3xl border-2 border-slate-100">
-                   <div className="flex items-center gap-2 mb-4 text-slate-900">
-                      <Settings2 size={18} />
-                      <h3 className="text-sm font-black uppercase tracking-widest">{t({ en: 'Product Attributes', zh: '產品屬性設定' })}</h3>
-                   </div>
-                   <div className="space-y-6">
-                      <div>
-                        <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">{t({ en: 'Safety Cert (Supports Multi-line)', zh: '安規認證詳情 (可換行輸入條列)' })}</label>
-                        <textarea 
-                          rows={3}
-                          placeholder={t({ en: 'e.g. CE / ISO 9001\nPassed Oct 2023', zh: '例如：CE / ISO 9001\n通過日期：2023年10月' })}
-                          value={formData.safetyCert} 
-                          onChange={(e) => setFormData({...formData, safetyCert: e.target.value})} 
-                          className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl focus:border-intenza-600 outline-none text-xs font-bold resize-none"
-                        />
-                      </div>
-
-                      {canEditLight && (
-                        <div>
-                          <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">{t({ en: 'Light Override', zh: '指示燈狀態手動覆蓋' })}</label>
-                          <div className="grid grid-cols-4 gap-2">
-                              {['AUTO', 'RED', 'BLUE', 'GREEN'].map(mode => (
-                                <button 
-                                  key={mode}
-                                  type="button"
-                                  onClick={() => setFormData({...formData, statusOverride: mode as any})}
-                                  className={`py-2 px-1 rounded-xl text-[10px] font-bold border-2 transition-all ${
-                                      formData.statusOverride === mode 
-                                      ? 'bg-slate-900 text-white border-slate-900' 
-                                      : 'bg-white text-slate-500 border-slate-100 hover:border-slate-300'
-                                  }`}
-                                >
-                                    {mode === 'AUTO' ? t({ en: 'Auto', zh: '自動' }) : mode}
-                                </button>
-                              ))}
-                          </div>
-                        </div>
-                      )}
-                   </div>
-              </div>
-
               <div className="grid grid-cols-2 gap-8">
                 <div className="col-span-2">
                   <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-3">Model Name</label>
@@ -630,13 +493,8 @@ export const Dashboard: React.FC<DashboardProps> = ({
                 </div>
               </div>
 
-              <div>
-                <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-3">Product Description</label>
-                <textarea rows={6} value={formData.description} onChange={(e) => setFormData({...formData, description: e.target.value})} className="w-full px-5 py-3.5 bg-slate-50 border-2 border-slate-100 rounded-2xl focus:border-slate-900 focus:bg-white outline-none transition-all resize-none font-medium" placeholder="Describe main features..." />
-              </div>
-
               <div className="flex gap-4 pt-6 sticky bottom-0 bg-white/80 backdrop-blur-md">
-                <button type="button" onClick={handleCloseModal} className="flex-1 py-4 text-slate-600 font-black uppercase tracking-widest hover:bg-slate-50 rounded-2xl transition-all">Cancel</button>
+                <button type="button" onClick={handleCloseModal} className="flex-1 py-4 text-slate-400 font-black uppercase tracking-widest hover:bg-slate-50 rounded-2xl transition-all">Cancel</button>
                 <button type="submit" disabled={isSubmitting} className="flex-1 py-4 bg-slate-900 text-white font-black uppercase tracking-widest rounded-2xl hover:bg-slate-800 transition-all shadow-2xl shadow-slate-900/30 flex items-center justify-center gap-2 disabled:opacity-50">
                   {isSubmitting ? <Loader2 size={20} className="animate-spin" /> : <Save size={20} strokeWidth={3} />}
                   {editingProduct ? 'Update Product' : 'Create Product'}
