@@ -33,7 +33,7 @@ export default async function handler(request: VercelRequest, response: VercelRe
     if (request.method === 'POST') {
       const partialState = request.body;
       
-      if (!partialState || typeof partialState !== 'object') {
+      if (!partialState || typeof partialState !== 'object' || Array.isArray(partialState)) {
         return response.status(400).json({ error: 'Payload must be a JSON object' });
       }
 
@@ -45,16 +45,16 @@ export default async function handler(request: VercelRequest, response: VercelRe
       }
 
       /**
-       * 使用 jsonb_merge_patch 實現「合併更新」。
-       * 此方法只會更新傳入的 top-level 鍵值，保留資料庫中其餘未傳入的資料。
+       * 使用 JSONB 合併運算符 (||) 實現合併更新。
+       * 此方法比 jsonb_merge_patch 更具相容性，且能正確處理 null 值。
        */
       await client.sql`
         INSERT INTO workspace_storage (id, content, updated_at)
         VALUES ('global_state', ${jsonString}::jsonb, NOW())
         ON CONFLICT (id) 
         DO UPDATE SET 
-          content = jsonb_merge_patch(COALESCE(workspace_storage.content, '{}'::jsonb), ${jsonString}::jsonb), 
-          updated_at = NOW()
+          content = COALESCE(workspace_storage.content, '{}'::jsonb) || ${jsonString}::jsonb, 
+          updated_at = NOW();
       `;
       
       return response.status(200).json({ success: true });
