@@ -1519,33 +1519,46 @@ const TestModal = ({ isOpen, onClose, onSave, test, productVersions }: any) => {
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Test Name</label>
+              <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Test Status (測試狀態)</label>
               <select 
                   required 
-                  value={testType} 
-                  onChange={e => handleTestTypeChange(e.target.value)}
-                  className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl outline-none font-bold mb-2"
+                  value={formData.status} 
+                  onChange={e => setFormData({...formData, status: e.target.value as TestStatus})} 
+                  className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl outline-none font-bold"
               >
-                  <option value="Durable Test">耐久測試 (Durable Test)</option>
-                  <option value="Salt Spray Test">鹽霧測試 (Salt Spray Test)</option>
-                  <option value="Packaging Test">包裝測試 (Packaging Test)</option>
-                  <option value="CUSTOM">自訂測試 (Custom Test)</option>
+                  <option value={TestStatus.PENDING}>Pending (待處理)</option>
+                  <option value={TestStatus.PASS}>PASS (通過)</option>
+                  <option value={TestStatus.FAIL}>NG (未通過)</option>
               </select>
-              {testType === 'CUSTOM' && (
-                  <input 
-                      type="text" 
-                      required 
-                      value={formData.testName.en} 
-                      placeholder="手寫自訂名稱 / Custom Name"
-                      onChange={e => setFormData({...formData, testName: {en: e.target.value, zh: e.target.value}})} 
-                      className="w-full px-4 py-2 bg-white border border-slate-200 rounded-xl outline-none font-bold animate-fade-in" 
-                  />
-              )}
             </div>
             <div>
               <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Test Version</label>
               <input type="text" required value={formData.version} onChange={e => setFormData({...formData, version: e.target.value})} className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl outline-none font-bold" placeholder="e.g. v2.4" />
             </div>
+          </div>
+          <div>
+            <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Test Name</label>
+            <select 
+                required 
+                value={testType} 
+                onChange={e => handleTestTypeChange(e.target.value)}
+                className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl outline-none font-bold mb-2"
+            >
+                <option value="Durable Test">耐久測試 (Durable Test)</option>
+                <option value="Salt Spray Test">鹽霧測試 (Salt Spray Test)</option>
+                <option value="Packaging Test">包裝測試 (Packaging Test)</option>
+                <option value="CUSTOM">自訂測試 (Custom Test)</option>
+            </select>
+            {testType === 'CUSTOM' && (
+                <input 
+                    type="text" 
+                    required 
+                    value={formData.testName.en} 
+                    placeholder="手寫自訂名稱 / Custom Name"
+                    onChange={e => setFormData({...formData, testName: {en: e.target.value, zh: e.target.value}})} 
+                    className="w-full px-4 py-2 bg-white border border-slate-200 rounded-xl outline-none font-bold animate-fade-in" 
+                />
+            )}
           </div>
           <div>
             <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Details</label>
