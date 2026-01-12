@@ -61,8 +61,13 @@ const MultiUserWarningModal = ({ users, onConfirm }: { users: string[], onConfir
 
 const App = () => {
   const [language, setLanguage] = useState<Language>('en');
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [currentUser, setCurrentUser] = useState<UserAccount | null>(null);
+  
+  // Try to restore session from sessionStorage on initial load
+  const [currentUser, setCurrentUser] = useState<UserAccount | null>(() => {
+    const saved = sessionStorage.getItem('intenza_user');
+    return saved ? JSON.parse(saved) : null;
+  });
+  const [isLoggedIn, setIsLoggedIn] = useState(() => !!sessionStorage.getItem('intenza_user'));
   
   const [products, setProducts] = useState<ProductModel[]>(MOCK_PRODUCTS);
   const [seriesList, setSeriesList] = useState<LocalizedString[]>(DEFAULT_SERIES);
@@ -181,11 +186,13 @@ const App = () => {
       handleSyncToCloud(true, { auditLogs: updatedLogs });
 
       setTimeout(() => {
+        sessionStorage.removeItem('intenza_user');
         setIsLoggedIn(false);
         setCurrentUser(null);
         setActiveUsersAtLogin([]);
       }, 500);
     } else {
+      sessionStorage.removeItem('intenza_user');
       setIsLoggedIn(false);
       setCurrentUser(null);
       setActiveUsersAtLogin([]);
@@ -229,6 +236,9 @@ const App = () => {
   }, [isLoggedIn, currentUser]);
 
   const handleLoginSuccess = useCallback((user: UserAccount) => {
+    // Persistent session for refresh
+    sessionStorage.setItem('intenza_user', JSON.stringify(user));
+    
     // Before adding our new log, check if others are active
     const currentlyActive = auditLogs
       .filter(log => !log.logoutTime && log.username !== user.username)
