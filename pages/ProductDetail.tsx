@@ -860,7 +860,11 @@ const DesignSection = ({ product, shipments, userRole, canEdit, onAddEco, onEdit
                                     {ecoStatusTranslations[change.status as EcoStatus]}
                                 </div>
                                 <div className="flex flex-col gap-2 text-slate-400 text-[10px] font-bold uppercase tracking-widest mt-4">
-                                    <div className="flex items-center gap-2"><Calendar size={12} className="text-slate-300" />Issue: {change.date}</div>
+                                    {change.status === EcoStatus.IN_PRODUCTION ? (
+                                        <div className="flex items-center gap-2 text-slate-900 bg-slate-100 px-2 py-0.5 rounded w-fit"><Calendar size={12} className="text-slate-500" />Production: {change.implementationDate || change.date}</div>
+                                    ) : (
+                                        <div className="flex items-center gap-2"><Calendar size={12} className="text-slate-300" />Issue: {change.date}</div>
+                                    )}
                                     {change.updatedAt && (
                                         <div className="flex items-center gap-2 text-intenza-500 bg-intenza-50/50 px-1.5 py-0.5 rounded w-fit"><RefreshCw size={10} />Updated: {change.updatedAt}</div>
                                     )}
@@ -1360,24 +1364,28 @@ const EcoModal = ({ isOpen, onClose, onSave, eco, productVersions }: any) => {
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div>
+                <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Issue Date (發行日期)</label>
+                <input type="date" required value={formData.date} onChange={e => setFormData({...formData, date: e.target.value})} className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl outline-none font-bold" />
+            </div>
+            <div>
               <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Status</label>
               <select value={formData.status} onChange={e => setFormData({...formData, status: e.target.value as EcoStatus})} className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl outline-none font-bold">
                 {Object.values(EcoStatus).map(s => <option key={s} value={s}>{s}</option>)}
               </select>
             </div>
-            {formData.status === EcoStatus.IN_PRODUCTION && (
-              <div className="animate-fade-in">
-                <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Implementation Date (導入量產日期)</label>
-                <input 
-                  type="date" 
-                  required 
-                  value={formData.implementationDate} 
-                  onChange={e => setFormData({...formData, implementationDate: e.target.value})} 
-                  className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl outline-none font-bold" 
-                />
-              </div>
-            )}
           </div>
+          {formData.status === EcoStatus.IN_PRODUCTION && (
+            <div className="animate-fade-in">
+              <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Implementation Date (導入量產日期)</label>
+              <input 
+                type="date" 
+                required 
+                value={formData.implementationDate} 
+                onChange={e => setFormData({...formData, implementationDate: e.target.value})} 
+                className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl outline-none font-bold" 
+              />
+            </div>
+          )}
           <div>
             <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Description (EN)</label>
             <textarea required value={formData.description.en} onChange={e => setFormData({...formData, description: {en: e.target.value, zh: e.target.value}})} className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl outline-none font-medium resize-none" rows={3} />
