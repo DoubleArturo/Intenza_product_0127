@@ -1,6 +1,6 @@
 
 import React, { useState, useRef, useContext, useEffect, useMemo } from 'react';
-import { Plus, X, Save, Download, Upload, AlertTriangle, CheckCircle, Pencil, History, Sparkles, Shield, User, Trash2, Eye, EyeOff, Key, Database, HardDrive, Info, Cloud, LogOut, Loader2, Link as LinkIcon, Activity, Layers, ImageIcon, RotateCcw, Settings2, LayoutGrid, Maximize, Palette, MousePointer2, ClipboardList, Clock, Search, ChevronRight, Filter, UserRound, ArrowDown, GitCommit, UserCheck } from 'lucide-react';
+import { Plus, X, Save, Download, Upload, AlertTriangle, CheckCircle, Pencil, History, Sparkles, Shield, User, Trash2, Eye, EyeOff, Key, Database, HardDrive, Info, Cloud, LogOut, Loader2, Link as LinkIcon, Activity, Layers, ImageIcon, RotateCcw, Settings2, LayoutGrid, Maximize, Palette, MousePointer2, ClipboardList, Clock, Search, ChevronRight, Filter, UserRound, ArrowDown, GitCommit, UserCheck, CheckSquare, Square } from 'lucide-react';
 import { AppState, LocalizedString, UserAccount, AuditLog, UserPermissions, ProductModel } from '../types';
 import { LanguageContext } from '../App';
 import { api } from '../services/api';
@@ -197,6 +197,33 @@ const Settings: React.FC<SettingsProps> = ({
   const logsCount = currentAppState.auditLogs?.length || 0;
   const lastLog = logsCount > 0 ? (currentAppState.auditLogs || [])[(currentAppState.auditLogs || []).length - 1] : null;
   const activeSessions = (currentAppState.auditLogs || []).filter(l => !l.logoutTime).length;
+
+  const products = currentAppState.products || [];
+
+  // Grouped products based on series
+  const groupedProducts = useMemo(() => {
+    const groups: Record<string, ProductModel[]> = {};
+    products.forEach(p => {
+      const sName = t(p.series);
+      if (!groups[sName]) groups[sName] = [];
+      groups[sName].push(p);
+    });
+    return groups;
+  }, [products, t]);
+
+  // Fix: Explicitly cast Object.entries to fix 'unknown' type errors when filtering
+  const filteredGroups = useMemo(() => {
+    const filtered: Record<string, ProductModel[]> = {};
+    (Object.entries(groupedProducts) as [string, ProductModel[]][]).forEach(([sName, items]) => {
+      const matches = items.filter(p => 
+        t(p.modelName).toLowerCase().includes(searchTerm.toLowerCase()) || 
+        p.sku.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        sName.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+      if (matches.length > 0) filtered[sName] = matches;
+    });
+    return filtered;
+  }, [groupedProducts, searchTerm, t]);
 
   return (
     <div className="p-8 max-w-5xl mx-auto animate-fade-in space-y-8">
@@ -460,7 +487,7 @@ const Settings: React.FC<SettingsProps> = ({
           isOpen={isPermissionsModalOpen}
           onClose={() => setIsPermissionsModalOpen(false)}
           user={editingUser}
-          products={currentAppState.products}
+          products={currentAppState.products || []}
           seriesList={seriesList}
           onSave={(perms) => {
             onUpdateUser({ ...editingUser, granularPermissions: perms });
@@ -514,8 +541,8 @@ const UserAccountModal: React.FC<{
 };
 
 /**
- * NEW: Granular Permissions Modal
- * Allows administrators to set permissions by Series, SKU, and Module.
+ * Granular Permissions Modal
+ * Updated: Organizes SKUs by series and provides bulk toggles for each series group.
  */
 const PermissionsModal: React.FC<{
   isOpen: boolean;
@@ -530,7 +557,7 @@ const PermissionsModal: React.FC<{
   const [skuPermissions, setSkuPermissions] = useState<UserPermissions['skuPermissions']>(user.granularPermissions?.skuPermissions || {});
   const [searchTerm, setSearchTerm] = useState('');
 
-  const handleToggleSeries = (seriesName: string) => {
+  const handleToggleSeriesBase = (seriesName: string) => {
     setAllowedSeries(prev => prev.includes(seriesName) ? prev.filter(s => s !== seriesName) : [...prev, seriesName]);
   };
 
@@ -544,11 +571,52 @@ const PermissionsModal: React.FC<{
     });
   };
 
-  const filteredProducts = products.filter(p => 
-    t(p.modelName).toLowerCase().includes(searchTerm.toLowerCase()) || 
-    p.sku.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    t(p.series).toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  // Grouped products based on series
+  const groupedProducts = useMemo(() => {
+    const groups: Record<string, ProductModel[]> = {};
+    products.forEach(p => {
+      const sName = t(p.series);
+      if (!groups[sName]) groups[sName] = [];
+      groups[sName].push(p);
+    });
+    return groups;
+  }, [products, t]);
+
+  // Fix: Explicitly cast Object.entries to fix 'unknown' type errors when filtering
+  const filteredGroups = useMemo(() => {
+    const filtered: Record<string, ProductModel[]> = {};
+    (Object.entries(groupedProducts) as [string, ProductModel[]][]).forEach(([sName, items]) => {
+      const matches = items.filter(p => 
+        t(p.modelName).toLowerCase().includes(searchTerm.toLowerCase()) || 
+        p.sku.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        sName.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+      if (matches.length > 0) filtered[sName] = matches;
+    });
+    return filtered;
+  }, [groupedProducts, searchTerm, t]);
+
+  /**
+   * Bulk toggle for all SKUs in a specific series
+   */
+  const handleBulkToggleSeriesModule = (sName: string, module: 'design' | 'ergo' | 'durability') => {
+    const targetSkus = groupedProducts[sName] || [];
+    if (targetSkus.length === 0) return;
+
+    // Determine if we should select all or deselect all
+    // If ANY sku in this series is false for this module, we select all. Otherwise, deselect all.
+    const isModuleAllEnabled = targetSkus.every(p => skuPermissions[p.sku]?.[module]);
+    const newStateValue = !isModuleAllEnabled;
+
+    setSkuPermissions(prev => {
+      const next = { ...prev };
+      targetSkus.forEach(p => {
+        const current = next[p.sku] || { design: false, ergo: false, durability: false };
+        next[p.sku] = { ...current, [module]: newStateValue };
+      });
+      return next;
+    });
+  };
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md animate-fade-in">
@@ -565,11 +633,11 @@ const PermissionsModal: React.FC<{
         </header>
 
         <div className="flex-1 overflow-y-auto p-8 space-y-12 custom-scrollbar">
-          {/* Series Access */}
+          {/* Series Access (Master Level) */}
           <section>
             <div className="flex items-center gap-2 mb-4">
               <Layers className="text-indigo-500" size={18} />
-              <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest">Series Level Authorization</h3>
+              <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest">Series Level Authorization (Full Access)</h3>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {seriesList.map(s => {
@@ -578,7 +646,7 @@ const PermissionsModal: React.FC<{
                 return (
                   <button 
                     key={sName}
-                    onClick={() => handleToggleSeries(sName)}
+                    onClick={() => handleToggleSeriesBase(sName)}
                     className={`flex items-center justify-between p-4 rounded-2xl border-2 transition-all ${
                       isSelected ? 'bg-indigo-50 border-indigo-500 text-indigo-700 shadow-md' : 'bg-slate-50 border-slate-50 text-slate-500 hover:border-slate-200'
                     }`}
@@ -623,33 +691,81 @@ const PermissionsModal: React.FC<{
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
-                  {filteredProducts.map(p => {
-                    const perms = skuPermissions[p.sku] || { design: false, ergo: false, durability: false };
+                  {/* Fix: Explicitly cast Object.entries results to avoid 'unknown' type errors */}
+                  {(Object.entries(filteredGroups) as [string, ProductModel[]][]).map(([sName, groupItems]) => {
+                    const allDesign = groupItems.every(p => skuPermissions[p.sku]?.design);
+                    const allErgo = groupItems.every(p => skuPermissions[p.sku]?.ergo);
+                    const allDura = groupItems.every(p => skuPermissions[p.sku]?.durability);
+
                     return (
-                      <tr key={p.id} className="hover:bg-white transition-colors">
-                        <td className="px-6 py-4">
-                          <div className="flex items-center gap-3">
-                            <div className="w-8 h-8 rounded-lg bg-white border border-slate-100 flex items-center justify-center overflow-hidden">
-                              {p.imageUrl ? <img src={p.imageUrl} className="w-full h-full object-contain" /> : <ImageIcon size={14} className="text-slate-200" />}
+                      <React.Fragment key={sName}>
+                        {/* SERIES HEADER ROW (BULK TOGGLE) */}
+                        <tr className="bg-slate-100/80 border-y border-slate-200">
+                          <td className="px-6 py-3">
+                            <div className="flex items-center gap-2">
+                              <CheckSquare size={14} className="text-slate-900" />
+                              <span className="text-[11px] font-black text-slate-900 uppercase tracking-widest">{sName}</span>
                             </div>
-                            <div>
-                              <div className="text-xs font-black text-slate-900 leading-none">{t(p.modelName)}</div>
-                              <div className="text-[10px] font-bold text-slate-400 mt-1 uppercase tracking-tighter">{p.sku}</div>
-                            </div>
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 text-center">
-                          <ModuleToggle active={perms.design} onClick={() => handleToggleModule(p.sku, 'design')} icon={<GitCommit size={14} />} color="indigo" />
-                        </td>
-                        <td className="px-6 py-4 text-center">
-                          <ModuleToggle active={perms.ergo} onClick={() => handleToggleModule(p.sku, 'ergo')} icon={<UserCheck size={14} />} color="emerald" />
-                        </td>
-                        <td className="px-6 py-4 text-center">
-                          <ModuleToggle active={perms.durability} onClick={() => handleToggleModule(p.sku, 'durability')} icon={<Activity size={14} />} color="rose" />
-                        </td>
-                      </tr>
+                          </td>
+                          <td className="px-6 py-3 text-center">
+                            <BulkSeriesToggle 
+                              active={allDesign} 
+                              onClick={() => handleBulkToggleSeriesModule(sName, 'design')} 
+                              color="indigo" 
+                            />
+                          </td>
+                          <td className="px-6 py-3 text-center">
+                            <BulkSeriesToggle 
+                              active={allErgo} 
+                              onClick={() => handleBulkToggleSeriesModule(sName, 'ergo')} 
+                              color="emerald" 
+                            />
+                          </td>
+                          <td className="px-6 py-3 text-center">
+                            <BulkSeriesToggle 
+                              active={allDura} 
+                              onClick={() => handleBulkToggleSeriesModule(sName, 'durability')} 
+                              color="rose" 
+                            />
+                          </td>
+                        </tr>
+
+                        {/* PRODUCT ROWS */}
+                        {groupItems.map(p => {
+                          const perms = skuPermissions[p.sku] || { design: false, ergo: false, durability: false };
+                          return (
+                            <tr key={p.id} className="hover:bg-white transition-colors">
+                              <td className="px-6 py-4 pl-10">
+                                <div className="flex items-center gap-3">
+                                  <div className="w-8 h-8 rounded-lg bg-white border border-slate-100 flex items-center justify-center overflow-hidden">
+                                    {p.imageUrl ? <img src={p.imageUrl} className="w-full h-full object-contain" /> : <ImageIcon size={14} className="text-slate-200" />}
+                                  </div>
+                                  <div>
+                                    <div className="text-xs font-black text-slate-900 leading-none">{t(p.modelName)}</div>
+                                    <div className="text-[10px] font-bold text-slate-400 mt-1 uppercase tracking-tighter">{p.sku}</div>
+                                  </div>
+                                </div>
+                              </td>
+                              <td className="px-6 py-4 text-center">
+                                <ModuleToggle active={perms.design} onClick={() => handleToggleModule(p.sku, 'design')} icon={<GitCommit size={14} />} color="indigo" />
+                              </td>
+                              <td className="px-6 py-4 text-center">
+                                <ModuleToggle active={perms.ergo} onClick={() => handleToggleModule(p.sku, 'ergo')} icon={<UserCheck size={14} />} color="emerald" />
+                              </td>
+                              <td className="px-6 py-4 text-center">
+                                <ModuleToggle active={perms.durability} onClick={() => handleToggleModule(p.sku, 'durability')} icon={<Activity size={14} />} color="rose" />
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </React.Fragment>
                     );
                   })}
+                  {Object.keys(filteredGroups).length === 0 && (
+                    <tr>
+                      <td colSpan={4} className="px-6 py-12 text-center text-slate-400 font-bold uppercase tracking-widest">No SKUs Match Filter</td>
+                    </tr>
+                  )}
                 </tbody>
               </table>
             </div>
@@ -683,6 +799,24 @@ const ModuleToggle = ({ active, onClick, icon, color }: { active: boolean, onCli
       className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all shadow-sm border ${colors[color]} hover:scale-110 active:scale-95 mx-auto`}
     >
       {icon}
+    </button>
+  );
+};
+
+const BulkSeriesToggle = ({ active, onClick, color }: { active: boolean, onClick: () => void, color: string }) => {
+  const colors: Record<string, string> = {
+    indigo: active ? 'bg-indigo-600 text-white' : 'bg-white text-slate-400 border-slate-300 hover:border-indigo-400',
+    emerald: active ? 'bg-emerald-600 text-white' : 'bg-white text-slate-400 border-slate-300 hover:border-emerald-400',
+    rose: active ? 'bg-rose-600 text-white' : 'bg-white text-slate-400 border-slate-300 hover:border-rose-400',
+  };
+
+  return (
+    <button 
+      onClick={onClick}
+      className={`px-3 py-1.5 rounded-lg border text-[9px] font-black uppercase tracking-tighter transition-all flex items-center gap-1.5 mx-auto ${colors[color]}`}
+    >
+      {active ? <CheckSquare size={12} /> : <Square size={12} />}
+      {active ? 'Deselect All' : 'Select All'}
     </button>
   );
 };
