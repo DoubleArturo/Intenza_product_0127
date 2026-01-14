@@ -1,5 +1,6 @@
+
 import React, { useState, useRef, useContext, useEffect, useMemo } from 'react';
-import { Plus, X, Save, Download, Upload, AlertTriangle, CheckCircle, Pencil, History, Sparkles, Shield, User, Trash2, Eye, EyeOff, Key, Database, HardDrive, Info, Cloud, LogOut, Loader2, Link as LinkIcon, Activity, Layers, ImageIcon, RotateCcw, Settings2, LayoutGrid, Maximize, Palette, MousePointer2, ClipboardList, Clock, Search, ChevronRight, Filter, UserRound, ArrowDown, GitCommit, UserCheck, CheckSquare, Square } from 'lucide-react';
+import { Plus, X, Save, Download, Upload, AlertTriangle, CheckCircle, Pencil, History, Sparkles, Shield, User, Trash2, Eye, EyeOff, Key, Database, HardDrive, Info, Cloud, LogOut, Loader2, Link as LinkIcon, Activity, Layers, ImageIcon, RotateCcw, Settings2, LayoutGrid, Maximize, Palette, MousePointer2, ClipboardList, Clock, Search, ChevronRight, Filter, UserRound, ArrowDown, GitCommit, UserCheck, CheckSquare, Square, ChevronDown } from 'lucide-react';
 import { AppState, LocalizedString, UserAccount, AuditLog, UserPermissions, ProductModel } from '../types';
 import { LanguageContext } from '../App';
 import { api } from '../services/api';
@@ -52,7 +53,6 @@ const Settings: React.FC<SettingsProps> = ({
   const [isLogBrowserOpen, setIsLogBrowserOpen] = useState(false);
   const [isPermissionsModalOpen, setIsPermissionsModalOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<UserAccount | null>(null);
-  const [showPasswordMap, setShowPasswordMap] = useState<Record<string, boolean>>({});
 
   const storageStats = useMemo(() => {
     const rowCount = 
@@ -185,7 +185,6 @@ const Settings: React.FC<SettingsProps> = ({
     { label: t({ en: 'Cinematic (16:9)', zh: '寬螢幕 (16:9)' }), value: '16/9' },
   ];
 
-  // Logs derived stats - Improved to show unique users in session
   const logsCount = currentAppState.auditLogs?.length || 0;
   const lastLog = logsCount > 0 ? (currentAppState.auditLogs || [])[(currentAppState.auditLogs || []).length - 1] : null;
   const activeSessions = Array.from(new Set((currentAppState.auditLogs || []).filter(l => !l.logoutTime).map(l => l.username))).length;
@@ -288,7 +287,7 @@ const Settings: React.FC<SettingsProps> = ({
                              : 'bg-white text-slate-500 border-slate-100 hover:border-slate-300'
                            }`}
                          >
-                           {style === 'COLORFUL' ? t({en: 'Colorful', zh: '多彩(可自訂多主色)'}) : style === 'MONOCHROME' ? t({en: 'Monochrome', zh: '同色系(可自訂主色系)'}) : t({en: 'Slate', zh: '多主色系(可自訂多主色)'})}
+                           {style === 'COLORFUL' ? t({en: 'Colorful', zh: '多彩'}) : style === 'MONOCHROME' ? t({en: 'Monochrome', zh: '單色系'}) : t({en: 'Slate', zh: '灰藍色系'})}
                          </button>
                       ))}
                    </div>
@@ -655,102 +654,250 @@ const BulkSeriesToggle = ({ active, onClick, color }: any) => {
   return <button type="button" onClick={onClick} className={`px-3 py-1.5 rounded-lg border text-[9px] font-black uppercase tracking-tighter transition-all flex items-center gap-1.5 mx-auto ${colors[color]}`}>{active ? <CheckSquare size={12} /> : <Square size={12} />} {active ? 'Deselect All' : 'Select All'}</button>;
 };
 
-const AuditLogBrowserModal: React.FC<{ isOpen: boolean; onClose: () => void; logs: AuditLog[]; onDeleteAll: () => void; onDeleteLog: (id: string) => void; onExport: () => void; }> = ({ isOpen, onClose, logs, onDeleteAll, onDeleteLog, onExport }) => {
+/**
+ * 升級版 操作日誌管理系統 (Audit Log Browser)
+ * 佈局變更為「高密度條列式」，新增「用戶行為觀測」功能。
+ */
+const AuditLogBrowserModal: React.FC<{ 
+  isOpen: boolean; 
+  onClose: () => void; 
+  logs: AuditLog[]; 
+  onDeleteAll: () => void; 
+  onDeleteLog: (id: string) => void; 
+  onExport: () => void; 
+}> = ({ isOpen, onClose, logs, onDeleteAll, onDeleteLog, onExport }) => {
     const [searchTerm, setSearchTerm] = useState('');
     const [filterStatus, setFilterStatus] = useState<'ALL' | 'ACTIVE' | 'COMPLETED'>('ALL');
+    const [selectedUser, setSelectedUser] = useState<string | null>(null);
+    const [expandedLogId, setExpandedLogId] = useState<string | null>(null);
     
-    // Logic to identify only the absolute newest session as 'Live' per user to prevent duplicates
+    // 獲取所有出現過的用戶名
+    const uniqueUsers = useMemo(() => {
+        return Array.from(new Set(logs.map(l => l.username))).sort();
+    }, [logs]);
+
+    // Live 狀態去重邏輯：同一用戶僅顯示最新一筆為 Live
     const latestActiveSessionMap = useMemo(() => {
-        const map = new Map<string, string>(); // username -> latest active session ID
+        const map = new Map<string, string>();
         [...logs].forEach(l => {
             if (!l.logoutTime) {
-                // Since logs are processed chronologically, later entries with same username overwrite
                 map.set(l.username, l.id);
             }
         });
         return map;
     }, [logs]);
 
+    // Calculate active sessions count for the status bar
+    const activeSessions = useMemo(() => latestActiveSessionMap.size, [latestActiveSessionMap]);
+
     const filteredLogs = useMemo(() => {
         return [...logs].reverse().filter(log => {
                 const matchesSearch = log.username.toLowerCase().includes(searchTerm.toLowerCase());
+                const matchesUser = !selectedUser || log.username === selectedUser;
                 const isActuallyLive = !log.logoutTime && latestActiveSessionMap.get(log.username) === log.id;
                 const matchesFilter = filterStatus === 'ALL' || 
                                      (filterStatus === 'ACTIVE' && isActuallyLive) || 
                                      (filterStatus === 'COMPLETED' && (log.logoutTime || !isActuallyLive));
-                return matchesSearch && matchesFilter;
+                return matchesSearch && matchesUser && matchesFilter;
         });
-    }, [logs, searchTerm, filterStatus, latestActiveSessionMap]);
-
-    // Active sessions should reflect unique online users
-    const uniqueActiveUsersCount = useMemo(() => latestActiveSessionMap.size, [latestActiveSessionMap]);
+    }, [logs, searchTerm, filterStatus, selectedUser, latestActiveSessionMap]);
 
     if (!isOpen) return null;
-    return (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-0 md:p-8 bg-slate-900/60 backdrop-blur-md animate-fade-in">
-            <div className="bg-white md:rounded-[2.5rem] shadow-2xl w-full h-full max-w-6xl overflow-hidden flex flex-col animate-slide-up">
-                <header className="p-8 border-b border-slate-100 flex flex-col md:flex-row md:items-center justify-between gap-6 bg-white sticky top-0 z-10">
-                    <div><div className="flex items-center gap-3 mb-1"><div className="p-2 bg-indigo-600 text-white rounded-xl shadow-lg shadow-indigo-600/20"><History size={24} /></div><h2 className="text-3xl font-black text-slate-900 tracking-tight uppercase">操作日誌管理系統</h2></div><p className="text-slate-400 font-bold text-xs uppercase tracking-[0.2em]">{logs.length} Total Sessions Recorded</p></div>
-                    <div className="flex items-center gap-4"><div className="flex gap-2"><button onClick={onExport} className="p-3 bg-slate-50 hover:bg-slate-100 text-slate-600 rounded-2xl transition-all border border-slate-100"><Download size={20}/></button><button onClick={onDeleteAll} className="p-3 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded-2xl transition-all border border-rose-100"><Trash2 size={20}/></button></div><div className="h-10 w-px bg-slate-100 hidden md:block mx-2" /><button onClick={onClose} className="p-3 bg-slate-900 text-white rounded-2xl hover:bg-slate-800 transition-all shadow-xl shadow-slate-900/20"><X size={24} strokeWidth={3} /></button></div>
-                </header>
-                <div className="px-8 py-6 bg-slate-50/50 border-b border-slate-100 flex flex-col md:flex-row items-center gap-6">
-                    <div className="relative flex-1 w-full"><Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" /><input type="text" placeholder="搜尋帳號名稱..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="w-full pl-12 pr-4 py-3 bg-white border-2 border-slate-100 rounded-2xl text-sm font-bold focus:border-indigo-500 outline-none shadow-sm" /></div>
-                    <div className="flex bg-white p-1.5 rounded-2xl shadow-sm border border-slate-100 shrink-0">{['ALL', 'ACTIVE', 'COMPLETED'].map((status) => (<button key={status} onClick={() => setFilterStatus(status as any)} className={`px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${filterStatus === status ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-400 hover:text-slate-600'}`}>{status}</button>))}</div>
-                </div>
-                <div className="flex-1 overflow-y-auto custom-scrollbar p-8 bg-slate-50/30">
-                    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-                        {filteredLogs.map((log) => {
-                            const isActuallyLive = !log.logoutTime && latestActiveSessionMap.get(log.username) === log.id;
-                            const isStaleSession = !log.logoutTime && !isActuallyLive;
-                            
-                            return (
-                                <div key={log.id} className="bg-white rounded-3xl border-2 border-slate-50 p-6 hover:border-indigo-100 hover:shadow-xl transition-all group relative overflow-hidden flex flex-col">
-                                    <button 
-                                        onClick={() => onDeleteLog(log.id)}
-                                        className="absolute top-4 right-4 p-2 text-slate-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all z-10"
-                                    >
-                                        <Trash2 size={16} />
-                                    </button>
-                                    <div className={`absolute top-0 left-0 w-1 h-full bg-gradient-to-b ${isActuallyLive ? 'from-emerald-500 to-emerald-300' : 'from-slate-200 to-slate-100'}`} />
-                                    <div className="flex items-center gap-4 mb-6"><div className={`w-12 h-12 rounded-2xl flex items-center justify-center shadow-sm ${isActuallyLive ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-100 text-slate-400'}`}><UserRound size={24} /></div><div><h3 className="font-black text-slate-900 uppercase tracking-tight text-lg">{log.username}</h3><div className="flex items-center gap-1.5 mt-0.5">
-                                        {isActuallyLive ? (
-                                            <span className="flex items-center gap-1 text-[10px] font-black text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-md uppercase"><div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />Currently Active</span>
-                                        ) : isStaleSession ? (
-                                            <span className="text-[10px] font-black text-amber-600 bg-amber-50 px-2 py-0.5 rounded-md uppercase flex items-center gap-1"><AlertTriangle size={10} />Session Terminated (Stale)</span>
-                                        ) : (
-                                            <span className="text-[10px] font-black text-slate-400 bg-slate-50 px-2 py-0.5 rounded-md uppercase">Session Ended</span>
-                                        )}
-                                    </div></div></div>
-                                    
-                                    <div className="space-y-4 mb-6">
-                                        <div className="grid grid-cols-2 gap-4 border-t border-slate-50 pt-4"><div><span className="block text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">Login Time</span><span className="text-[11px] font-bold text-slate-700">{log.loginTime}</span></div><div><span className="block text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">Logout Time</span><span className="text-[11px] font-bold text-slate-700">{log.logoutTime || '-'}</span></div></div>
-                                        <div className="bg-slate-50 rounded-2xl p-4 flex items-center justify-between border border-slate-100 shadow-inner"><div className="flex items-center gap-2"><Clock size={16} className="text-indigo-400" /><span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Duration</span></div><span className="text-sm font-black text-indigo-600 font-mono">{log.durationMinutes ? `${log.durationMinutes}m` : (isActuallyLive ? 'Live' : '< 1m')}</span></div>
-                                    </div>
 
-                                    <div className="flex-1 space-y-3">
-                                        <div className="flex items-center gap-2 mb-2 border-b border-slate-50 pb-2">
-                                            <Activity size={12} className="text-slate-400" />
-                                            <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">操作詳細內容 (Activities)</span>
-                                        </div>
-                                        <div className="space-y-2 max-h-40 overflow-y-auto custom-scrollbar pr-2">
-                                            {log.activities && log.activities.length > 0 ? (
-                                                log.activities.map((act, i) => (
-                                                    <div key={i} className="bg-slate-50/50 p-2.5 rounded-xl border border-slate-100">
-                                                        <div className="text-[8px] font-bold text-slate-300 mb-1">{act.timestamp}</div>
-                                                        <div className="text-[10px] font-bold text-slate-600 leading-relaxed">{act.action}</div>
-                                                    </div>
-                                                ))
-                                            ) : (
-                                                <div className="text-center py-4 opacity-30 italic text-[10px]">No activities recorded.</div>
-                                            )}
-                                        </div>
-                                    </div>
-                                </div>
-                            );
-                        })}
+    return (
+        <div className="fixed inset-0 z-[150] flex items-center justify-center p-0 md:p-8 bg-slate-950/80 backdrop-blur-xl animate-fade-in">
+            <div className="bg-white md:rounded-[3rem] shadow-2xl w-full h-full max-w-6xl overflow-hidden flex flex-col animate-slide-up border border-white/20">
+                
+                {/* 頂部標題列 */}
+                <header className="p-8 border-b border-slate-100 flex flex-col md:flex-row md:items-center justify-between gap-6 bg-white sticky top-0 z-20">
+                    <div>
+                        <div className="flex items-center gap-4 mb-1">
+                            <div className="p-3 bg-indigo-600 text-white rounded-2xl shadow-xl shadow-indigo-600/20"><History size={24} strokeWidth={2.5} /></div>
+                            <h2 className="text-3xl font-black text-slate-900 tracking-tight uppercase">操作日誌管理系統</h2>
+                        </div>
+                        <p className="text-slate-400 font-bold text-[10px] uppercase tracking-[0.3em] ml-1">Behavior Analytics & Audit Trail</p>
+                    </div>
+                    <div className="flex items-center gap-4">
+                        <div className="flex gap-2">
+                            <button onClick={onExport} className="p-3 bg-slate-50 hover:bg-slate-100 text-slate-600 rounded-2xl transition-all border border-slate-100" title="導出日誌數據"><Download size={20}/></button>
+                            <button onClick={onDeleteAll} className="p-3 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded-2xl transition-all border border-rose-100" title="清空所有歷史"><Trash2 size={20}/></button>
+                        </div>
+                        <div className="h-10 w-px bg-slate-100 hidden md:block mx-2" />
+                        <button onClick={onClose} className="p-3 bg-slate-900 text-white rounded-2xl hover:bg-slate-800 transition-all shadow-xl shadow-slate-900/20"><X size={24} strokeWidth={3} /></button>
+                    </div>
+                </header>
+
+                {/* 行為篩選器面板 */}
+                <div className="px-8 py-6 bg-slate-50/50 border-b border-slate-100 space-y-4">
+                    <div className="flex flex-col md:flex-row items-center gap-4">
+                        <div className="relative flex-1 w-full">
+                            <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
+                            <input 
+                                type="text" 
+                                placeholder="搜尋帳號關鍵字..." 
+                                value={searchTerm} 
+                                onChange={(e) => setSearchTerm(e.target.value)} 
+                                className="w-full pl-12 pr-4 py-3.5 bg-white border-2 border-slate-100 rounded-2xl text-sm font-bold focus:border-indigo-500 outline-none shadow-sm transition-all" 
+                            />
+                        </div>
+                        <div className="flex bg-white p-1.5 rounded-2xl shadow-sm border border-slate-100 shrink-0">
+                            {['ALL', 'ACTIVE', 'COMPLETED'].map((status) => (
+                                <button 
+                                    key={status} 
+                                    onClick={() => setFilterStatus(status as any)} 
+                                    className={`px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${filterStatus === status ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-400 hover:text-slate-600'}`}
+                                >
+                                    {status}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+
+                    {/* 用戶行為觀測快速切換列 */}
+                    <div className="flex items-center gap-3 overflow-x-auto no-scrollbar pb-1">
+                        <button 
+                            onClick={() => setSelectedUser(null)}
+                            className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest border transition-all whitespace-nowrap ${!selectedUser ? 'bg-slate-900 text-white border-slate-900' : 'bg-white text-slate-400 border-slate-200'}`}
+                        >
+                            All Users
+                        </button>
+                        {uniqueUsers.map(user => (
+                            <button 
+                                key={user}
+                                onClick={() => setSelectedUser(user === selectedUser ? null : user)}
+                                className={`flex items-center gap-2 px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest border transition-all whitespace-nowrap ${selectedUser === user ? 'bg-indigo-600 text-white border-indigo-600 shadow-lg shadow-indigo-600/20' : 'bg-white text-slate-400 border-slate-200 hover:border-slate-400'}`}
+                            >
+                                <div className={`w-1.5 h-1.5 rounded-full ${latestActiveSessionMap.has(user) ? 'bg-emerald-500 animate-pulse' : 'bg-slate-300'}`} />
+                                {user}
+                            </button>
+                        ))}
                     </div>
                 </div>
-                <footer className="p-6 bg-slate-900 text-white flex items-center justify-between"><div className="flex items-center gap-4"><div className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Operation Audit Database</div><div className="flex gap-4"><div className="flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]" /><span className="text-xs font-bold">{uniqueActiveUsersCount} Unique Active Users</span></div><div className="flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-indigo-500" /><span className="text-xs font-bold">{logs.length} Total Sessions</span></div></div></div><div className="text-[10px] font-bold text-slate-500 uppercase italic tracking-widest">Secured Audit Trail</div></footer>
+
+                {/* 高密度條列式瀏覽清單 */}
+                <div className="flex-1 overflow-y-auto custom-scrollbar bg-slate-50/30">
+                    <div className="min-w-full divide-y divide-slate-100">
+                        {/* 表頭區 */}
+                        <div className="grid grid-cols-12 px-8 py-4 bg-white sticky top-0 z-10 text-[10px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-100 shadow-sm">
+                            <div className="col-span-3">User & Status</div>
+                            <div className="col-span-3">Login Time</div>
+                            <div className="col-span-3">Logout Time</div>
+                            <div className="col-span-1 text-center">Duration</div>
+                            <div className="col-span-1 text-center">Actions</div>
+                            <div className="col-span-1"></div>
+                        </div>
+
+                        {filteredLogs.length > 0 ? (
+                            filteredLogs.map((log) => {
+                                const isActuallyLive = !log.logoutTime && latestActiveSessionMap.get(log.username) === log.id;
+                                const isExpanded = expandedLogId === log.id;
+                                const actionCount = log.activities?.length || 0;
+                                
+                                return (
+                                    <div key={log.id} className={`group border-l-4 transition-all ${isActuallyLive ? 'border-emerald-500 bg-emerald-50/20' : isExpanded ? 'border-indigo-600 bg-white' : 'border-transparent bg-white hover:bg-slate-50'}`}>
+                                        <div 
+                                            onClick={() => setExpandedLogId(isExpanded ? null : log.id)}
+                                            className="grid grid-cols-12 px-8 py-5 items-center cursor-pointer"
+                                        >
+                                            <div className="col-span-3 flex items-center gap-4">
+                                                <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-black ${isActuallyLive ? 'bg-emerald-500 text-white' : 'bg-slate-100 text-slate-400'}`}>
+                                                    {log.username.charAt(0).toUpperCase()}
+                                                </div>
+                                                <div>
+                                                    <div className="text-sm font-black text-slate-900 uppercase tracking-tight">{log.username}</div>
+                                                    <div className="flex items-center gap-1.5 mt-0.5">
+                                                        {isActuallyLive ? (
+                                                            <span className="text-[8px] font-black text-emerald-600 uppercase">Live Now</span>
+                                                        ) : !log.logoutTime ? (
+                                                            <span className="text-[8px] font-black text-amber-500 uppercase">Stale Session</span>
+                                                        ) : (
+                                                            <span className="text-[8px] font-black text-slate-300 uppercase">Session Closed</span>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            
+                                            <div className="col-span-3 text-xs font-bold text-slate-500 font-mono">{log.loginTime}</div>
+                                            <div className="col-span-3 text-xs font-bold text-slate-400 font-mono">{log.logoutTime || '--'}</div>
+                                            
+                                            <div className="col-span-1 text-center">
+                                                <span className={`text-[11px] font-black font-mono ${isActuallyLive ? 'text-emerald-600' : 'text-slate-400'}`}>
+                                                    {log.durationMinutes ? `${log.durationMinutes}m` : (isActuallyLive ? 'Live' : '1m')}
+                                                </span>
+                                            </div>
+
+                                            <div className="col-span-1 text-center">
+                                                <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-slate-100 text-slate-500 text-[9px] font-black">
+                                                    <Activity size={10} />
+                                                    {actionCount}
+                                                </div>
+                                            </div>
+
+                                            <div className="col-span-1 flex justify-end gap-2">
+                                                <button 
+                                                    onClick={(e) => { e.stopPropagation(); onDeleteLog(log.id); }}
+                                                    className="p-2 text-slate-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all"
+                                                >
+                                                    <Trash2 size={16} />
+                                                </button>
+                                                <ChevronDown size={18} className={`text-slate-300 transition-transform ${isExpanded ? 'rotate-180 text-indigo-600' : ''}`} />
+                                            </div>
+                                        </div>
+
+                                        {/* 展開的操作清單：用戶行為觀察視窗 */}
+                                        {isExpanded && (
+                                            <div className="px-12 py-6 bg-slate-50 border-t border-slate-100 animate-fade-in">
+                                                <div className="max-w-4xl mx-auto space-y-3">
+                                                    <div className="flex items-center gap-2 mb-4 text-slate-400">
+                                                        <ClipboardList size={14} />
+                                                        <h4 className="text-[10px] font-black uppercase tracking-widest">操作行為細節 (Detailed Behavior Log)</h4>
+                                                    </div>
+                                                    {log.activities && log.activities.length > 0 ? (
+                                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                                            {log.activities.map((act, i) => (
+                                                                <div key={i} className="flex gap-4 p-4 bg-white rounded-2xl border border-slate-200 shadow-sm group/act hover:border-indigo-200 transition-all">
+                                                                    <div className="text-[10px] font-black font-mono text-indigo-300 mt-1 whitespace-nowrap">
+                                                                        {act.timestamp.split(' ')[1]}
+                                                                    </div>
+                                                                    <div className="text-xs font-bold text-slate-700 leading-relaxed">
+                                                                        {act.action}
+                                                                    </div>
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    ) : (
+                                                        <div className="text-center py-10 opacity-30 italic text-xs">該會話尚無詳細操作紀錄。</div>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+                                );
+                            })
+                        ) : (
+                            <div className="flex flex-col items-center justify-center py-32 text-slate-300">
+                                <Search size={48} strokeWidth={1} className="mb-4 opacity-20" />
+                                <p className="text-sm font-bold uppercase tracking-widest">No matching logs found.</p>
+                            </div>
+                        )}
+                    </div>
+                </div>
+
+                {/* 狀態列底欄 */}
+                <footer className="p-6 bg-slate-900 text-white flex items-center justify-between">
+                    <div className="flex items-center gap-6">
+                        <div className="flex items-center gap-2">
+                            <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.5)] animate-pulse" />
+                            <span className="text-[11px] font-black uppercase tracking-widest">{activeSessions} Users Currently Online</span>
+                        </div>
+                        <div className="text-slate-500 text-[10px] font-bold uppercase tracking-widest border-l border-slate-800 pl-6">
+                            Total {logs.length} Sessions Captured
+                        </div>
+                    </div>
+                    <div className="text-[10px] font-black text-slate-500 uppercase italic tracking-widest">
+                        Intenza QA Security Hub v2.5
+                    </div>
+                </footer>
             </div>
         </div>
     );
