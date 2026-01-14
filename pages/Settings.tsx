@@ -185,10 +185,10 @@ const Settings: React.FC<SettingsProps> = ({
     { label: t({ en: 'Cinematic (16:9)', zh: '寬螢幕 (16:9)' }), value: '16/9' },
   ];
 
-  // Logs derived stats
+  // Logs derived stats - Improved to show unique users in session
   const logsCount = currentAppState.auditLogs?.length || 0;
   const lastLog = logsCount > 0 ? (currentAppState.auditLogs || [])[(currentAppState.auditLogs || []).length - 1] : null;
-  const activeSessions = (currentAppState.auditLogs || []).filter(l => !l.logoutTime).length;
+  const activeSessions = Array.from(new Set((currentAppState.auditLogs || []).filter(l => !l.logoutTime).map(l => l.username))).length;
 
   return (
     <div className="p-8 max-w-5xl mx-auto animate-fade-in space-y-8">
@@ -363,7 +363,7 @@ const Settings: React.FC<SettingsProps> = ({
                     <span className="text-2xl font-black text-slate-900">{logsCount.toLocaleString()}</span>
                 </div>
                 <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
-                    <span className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Active Sessions</span>
+                    <span className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Unique Online Users</span>
                     <div className="flex items-center gap-2">
                         <div className={`w-2.5 h-2.5 rounded-full ${activeSessions > 0 ? 'bg-emerald-500 animate-pulse' : 'bg-slate-300'}`} />
                         <span className="text-2xl font-black text-slate-900">{activeSessions}</span>
@@ -658,14 +658,33 @@ const BulkSeriesToggle = ({ active, onClick, color }: any) => {
 const AuditLogBrowserModal: React.FC<{ isOpen: boolean; onClose: () => void; logs: AuditLog[]; onDeleteAll: () => void; onDeleteLog: (id: string) => void; onExport: () => void; }> = ({ isOpen, onClose, logs, onDeleteAll, onDeleteLog, onExport }) => {
     const [searchTerm, setSearchTerm] = useState('');
     const [filterStatus, setFilterStatus] = useState<'ALL' | 'ACTIVE' | 'COMPLETED'>('ALL');
+    
+    // Logic to identify only the absolute newest session as 'Live' per user to prevent duplicates
+    const latestActiveSessionMap = useMemo(() => {
+        const map = new Map<string, string>(); // username -> latest active session ID
+        [...logs].forEach(l => {
+            if (!l.logoutTime) {
+                // Since logs are processed chronologically, later entries with same username overwrite
+                map.set(l.username, l.id);
+            }
+        });
+        return map;
+    }, [logs]);
+
     const filteredLogs = useMemo(() => {
         return [...logs].reverse().filter(log => {
                 const matchesSearch = log.username.toLowerCase().includes(searchTerm.toLowerCase());
-                const matchesFilter = filterStatus === 'ALL' || (filterStatus === 'ACTIVE' && !log.logoutTime) || (filterStatus === 'COMPLETED' && log.logoutTime);
+                const isActuallyLive = !log.logoutTime && latestActiveSessionMap.get(log.username) === log.id;
+                const matchesFilter = filterStatus === 'ALL' || 
+                                     (filterStatus === 'ACTIVE' && isActuallyLive) || 
+                                     (filterStatus === 'COMPLETED' && (log.logoutTime || !isActuallyLive));
                 return matchesSearch && matchesFilter;
         });
-    }, [logs, searchTerm, filterStatus]);
-    const activeSessions = useMemo(() => logs.filter(l => !l.logoutTime).length, [logs]);
+    }, [logs, searchTerm, filterStatus, latestActiveSessionMap]);
+
+    // Active sessions should reflect unique online users
+    const uniqueActiveUsersCount = useMemo(() => latestActiveSessionMap.size, [latestActiveSessionMap]);
+
     if (!isOpen) return null;
     return (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-0 md:p-8 bg-slate-900/60 backdrop-blur-md animate-fade-in">
@@ -680,45 +699,58 @@ const AuditLogBrowserModal: React.FC<{ isOpen: boolean; onClose: () => void; log
                 </div>
                 <div className="flex-1 overflow-y-auto custom-scrollbar p-8 bg-slate-50/30">
                     <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-                        {filteredLogs.map((log) => (
-                            <div key={log.id} className="bg-white rounded-3xl border-2 border-slate-50 p-6 hover:border-indigo-100 hover:shadow-xl transition-all group relative overflow-hidden flex flex-col">
-                                <button 
-                                    onClick={() => onDeleteLog(log.id)}
-                                    className="absolute top-4 right-4 p-2 text-slate-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all z-10"
-                                >
-                                    <Trash2 size={16} />
-                                </button>
-                                <div className={`absolute top-0 left-0 w-1 h-full bg-gradient-to-b ${!log.logoutTime ? 'from-emerald-500 to-emerald-300' : 'from-slate-200 to-slate-100'}`} />
-                                <div className="flex items-center gap-4 mb-6"><div className={`w-12 h-12 rounded-2xl flex items-center justify-center shadow-sm ${!log.logoutTime ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-100 text-slate-400'}`}><UserRound size={24} /></div><div><h3 className="font-black text-slate-900 uppercase tracking-tight text-lg">{log.username}</h3><div className="flex items-center gap-1.5 mt-0.5">{!log.logoutTime ? <span className="flex items-center gap-1 text-[10px] font-black text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-md uppercase"><div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />Currently Active</span> : <span className="text-[10px] font-black text-slate-400 bg-slate-50 px-2 py-0.5 rounded-md uppercase">Session Ended</span>}</div></div></div>
-                                
-                                <div className="space-y-4 mb-6">
-                                    <div className="grid grid-cols-2 gap-4 border-t border-slate-50 pt-4"><div><span className="block text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">Login Time</span><span className="text-[11px] font-bold text-slate-700">{log.loginTime}</span></div><div><span className="block text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">Logout Time</span><span className="text-[11px] font-bold text-slate-700">{log.logoutTime || '-'}</span></div></div>
-                                    <div className="bg-slate-50 rounded-2xl p-4 flex items-center justify-between border border-slate-100 shadow-inner"><div className="flex items-center gap-2"><Clock size={16} className="text-indigo-400" /><span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Duration</span></div><span className="text-sm font-black text-indigo-600 font-mono">{log.durationMinutes ? `${log.durationMinutes}m` : (log.logoutTime ? '< 1m' : 'Live')}</span></div>
-                                </div>
-
-                                <div className="flex-1 space-y-3">
-                                    <div className="flex items-center gap-2 mb-2 border-b border-slate-50 pb-2">
-                                        <Activity size={12} className="text-slate-400" />
-                                        <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">操作詳細內容 (Activities)</span>
-                                    </div>
-                                    <div className="space-y-2 max-h-40 overflow-y-auto custom-scrollbar pr-2">
-                                        {log.activities && log.activities.length > 0 ? (
-                                            log.activities.map((act, i) => (
-                                                <div key={i} className="bg-slate-50/50 p-2.5 rounded-xl border border-slate-100">
-                                                    <div className="text-[8px] font-bold text-slate-300 mb-1">{act.timestamp}</div>
-                                                    <div className="text-[10px] font-bold text-slate-600 leading-relaxed">{act.action}</div>
-                                                </div>
-                                            ))
+                        {filteredLogs.map((log) => {
+                            const isActuallyLive = !log.logoutTime && latestActiveSessionMap.get(log.username) === log.id;
+                            const isStaleSession = !log.logoutTime && !isActuallyLive;
+                            
+                            return (
+                                <div key={log.id} className="bg-white rounded-3xl border-2 border-slate-50 p-6 hover:border-indigo-100 hover:shadow-xl transition-all group relative overflow-hidden flex flex-col">
+                                    <button 
+                                        onClick={() => onDeleteLog(log.id)}
+                                        className="absolute top-4 right-4 p-2 text-slate-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all z-10"
+                                    >
+                                        <Trash2 size={16} />
+                                    </button>
+                                    <div className={`absolute top-0 left-0 w-1 h-full bg-gradient-to-b ${isActuallyLive ? 'from-emerald-500 to-emerald-300' : 'from-slate-200 to-slate-100'}`} />
+                                    <div className="flex items-center gap-4 mb-6"><div className={`w-12 h-12 rounded-2xl flex items-center justify-center shadow-sm ${isActuallyLive ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-100 text-slate-400'}`}><UserRound size={24} /></div><div><h3 className="font-black text-slate-900 uppercase tracking-tight text-lg">{log.username}</h3><div className="flex items-center gap-1.5 mt-0.5">
+                                        {isActuallyLive ? (
+                                            <span className="flex items-center gap-1 text-[10px] font-black text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-md uppercase"><div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />Currently Active</span>
+                                        ) : isStaleSession ? (
+                                            <span className="text-[10px] font-black text-amber-600 bg-amber-50 px-2 py-0.5 rounded-md uppercase flex items-center gap-1"><AlertTriangle size={10} />Session Terminated (Stale)</span>
                                         ) : (
-                                            <div className="text-center py-4 opacity-30 italic text-[10px]">No activities recorded.</div>
+                                            <span className="text-[10px] font-black text-slate-400 bg-slate-50 px-2 py-0.5 rounded-md uppercase">Session Ended</span>
                                         )}
+                                    </div></div></div>
+                                    
+                                    <div className="space-y-4 mb-6">
+                                        <div className="grid grid-cols-2 gap-4 border-t border-slate-50 pt-4"><div><span className="block text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">Login Time</span><span className="text-[11px] font-bold text-slate-700">{log.loginTime}</span></div><div><span className="block text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">Logout Time</span><span className="text-[11px] font-bold text-slate-700">{log.logoutTime || '-'}</span></div></div>
+                                        <div className="bg-slate-50 rounded-2xl p-4 flex items-center justify-between border border-slate-100 shadow-inner"><div className="flex items-center gap-2"><Clock size={16} className="text-indigo-400" /><span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Duration</span></div><span className="text-sm font-black text-indigo-600 font-mono">{log.durationMinutes ? `${log.durationMinutes}m` : (isActuallyLive ? 'Live' : '< 1m')}</span></div>
+                                    </div>
+
+                                    <div className="flex-1 space-y-3">
+                                        <div className="flex items-center gap-2 mb-2 border-b border-slate-50 pb-2">
+                                            <Activity size={12} className="text-slate-400" />
+                                            <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">操作詳細內容 (Activities)</span>
+                                        </div>
+                                        <div className="space-y-2 max-h-40 overflow-y-auto custom-scrollbar pr-2">
+                                            {log.activities && log.activities.length > 0 ? (
+                                                log.activities.map((act, i) => (
+                                                    <div key={i} className="bg-slate-50/50 p-2.5 rounded-xl border border-slate-100">
+                                                        <div className="text-[8px] font-bold text-slate-300 mb-1">{act.timestamp}</div>
+                                                        <div className="text-[10px] font-bold text-slate-600 leading-relaxed">{act.action}</div>
+                                                    </div>
+                                                ))
+                                            ) : (
+                                                <div className="text-center py-4 opacity-30 italic text-[10px]">No activities recorded.</div>
+                                            )}
+                                        </div>
                                     </div>
                                 </div>
-                            </div>
-                        ))}
+                            );
+                        })}
                     </div>
                 </div>
-                <footer className="p-6 bg-slate-900 text-white flex items-center justify-between"><div className="flex items-center gap-4"><div className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Operation Audit Database</div><div className="flex gap-4"><div className="flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]" /><span className="text-xs font-bold">{activeSessions} Active</span></div><div className="flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-indigo-500" /><span className="text-xs font-bold">{logs.length} Total Logs</span></div></div></div><div className="text-[10px] font-bold text-slate-500 uppercase italic tracking-widest">Secured Audit Trail</div></footer>
+                <footer className="p-6 bg-slate-900 text-white flex items-center justify-between"><div className="flex items-center gap-4"><div className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Operation Audit Database</div><div className="flex gap-4"><div className="flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]" /><span className="text-xs font-bold">{uniqueActiveUsersCount} Unique Active Users</span></div><div className="flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-indigo-500" /><span className="text-xs font-bold">{logs.length} Total Sessions</span></div></div></div><div className="text-[10px] font-bold text-slate-500 uppercase italic tracking-widest">Secured Audit Trail</div></footer>
             </div>
         </div>
     );
