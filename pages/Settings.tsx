@@ -1,5 +1,5 @@
 import React, { useState, useRef, useContext, useEffect, useMemo } from 'react';
-import { Plus, X, Save, Download, Upload, AlertTriangle, CheckCircle, Pencil, History, Sparkles, Shield, User, Trash2, Eye, EyeOff, Key, Database, HardDrive, Info, Cloud, LogOut, Loader2, Link as LinkIcon, Activity, Layers, ImageIcon, RotateCcw, Settings2, LayoutGrid, Maximize, Palette, MousePointer2, ClipboardList, Clock, Search, ChevronRight, Filter, UserRound, ArrowDown, GitCommit, UserCheck, CheckSquare, Square, List, UserSearch } from 'lucide-react';
+import { Plus, X, Save, Download, Upload, AlertTriangle, CheckCircle, Pencil, History, Sparkles, Shield, User, Trash2, Eye, EyeOff, Key, Database, HardDrive, Info, Cloud, LogOut, Loader2, Link as LinkIcon, Activity, Layers, ImageIcon, RotateCcw, Settings2, LayoutGrid, Maximize, Palette, MousePointer2, ClipboardList, Clock, Search, ChevronRight, Filter, UserRound, ArrowDown, GitCommit, UserCheck, CheckSquare, Square } from 'lucide-react';
 import { AppState, LocalizedString, UserAccount, AuditLog, UserPermissions, ProductModel } from '../types';
 import { LanguageContext } from '../App';
 import { api } from '../services/api';
@@ -52,6 +52,7 @@ const Settings: React.FC<SettingsProps> = ({
   const [isLogBrowserOpen, setIsLogBrowserOpen] = useState(false);
   const [isPermissionsModalOpen, setIsPermissionsModalOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<UserAccount | null>(null);
+  const [showPasswordMap, setShowPasswordMap] = useState<Record<string, boolean>>({});
 
   const storageStats = useMemo(() => {
     const rowCount = 
@@ -184,6 +185,7 @@ const Settings: React.FC<SettingsProps> = ({
     { label: t({ en: 'Cinematic (16:9)', zh: '寬螢幕 (16:9)' }), value: '16/9' },
   ];
 
+  // Logs derived stats - Improved to show unique users in session
   const logsCount = currentAppState.auditLogs?.length || 0;
   const lastLog = logsCount > 0 ? (currentAppState.auditLogs || [])[(currentAppState.auditLogs || []).length - 1] : null;
   const activeSessions = Array.from(new Set((currentAppState.auditLogs || []).filter(l => !l.logoutTime).map(l => l.username))).length;
@@ -214,7 +216,6 @@ const Settings: React.FC<SettingsProps> = ({
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <div className="lg:col-span-2 space-y-8">
-          {/* Logo Section */}
           <section className="bg-white rounded-2xl border border-slate-200 p-8 shadow-sm">
              <div className="flex items-center gap-2 mb-6">
                  <Settings2 className="text-intenza-600" size={20} />
@@ -240,7 +241,6 @@ const Settings: React.FC<SettingsProps> = ({
              </div>
           </section>
 
-          {/* Global UI Section */}
           <section className="bg-white rounded-2xl border border-slate-200 p-8 shadow-sm">
              <div className="flex items-center gap-2 mb-6 text-slate-900">
                 <Settings2 className="text-intenza-600" size={20} />
@@ -288,48 +288,37 @@ const Settings: React.FC<SettingsProps> = ({
                              : 'bg-white text-slate-500 border-slate-100 hover:border-slate-300'
                            }`}
                          >
-                           {style === 'COLORFUL' ? t({en: 'Colorful', zh: '多彩'}) : style === 'MONOCHROME' ? t({en: 'Monochrome', zh: '同色系'}) : t({en: 'Slate', zh: '多主色系'})}
+                           {style === 'COLORFUL' ? t({en: 'Colorful', zh: '多彩(可自訂多主色)'}) : style === 'MONOCHROME' ? t({en: 'Monochrome', zh: '同色系(可自訂主色系)'}) : t({en: 'Slate', zh: '多主色系(可自訂多主色)'})}
                          </button>
                       ))}
+                   </div>
+                </div>
+
+                <div className="pt-6 border-t border-slate-100 space-y-6">
+                   <div className="flex items-center gap-2 text-slate-900">
+                      <Settings2 className="text-intenza-600" size={18} />
+                      <h3 className="text-sm font-black uppercase tracking-widest">Global Layout & Precision</h3>
+                   </div>
+                   <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                      <div>
+                         <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 flex items-center gap-2"><ArrowDown size={14} /> Evaluation Dialog Y-Offset (px)</label>
+                         <div className="flex items-center gap-4">
+                            <input type="range" min="0" max="600" step="10" value={currentAppState.evaluationModalYOffset || 100} onChange={(e) => onUpdateEvaluationModalYOffset?.(Number(e.target.value))} className="flex-1 accent-intenza-600" />
+                            <span className="text-xs font-black font-mono bg-slate-100 px-3 py-1 rounded-lg">{(currentAppState.evaluationModalYOffset || 100)}px</span>
+                         </div>
+                      </div>
+                      <div>
+                         <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 flex items-center gap-2"><MousePointer2 size={14} /> Analytics Tooltip Scale</label>
+                         <div className="flex items-center gap-4">
+                            <input type="range" min="1" max="4" step="0.5" value={currentAppState.analyticsTooltipScale || 2} onChange={(e) => onUpdateAnalyticsTooltipScale?.(Number(e.target.value))} className="flex-1 accent-slate-900" />
+                            <span className="text-xs font-black font-mono bg-slate-100 px-3 py-1 rounded-lg">{(currentAppState.analyticsTooltipScale || 2).toFixed(1)}x</span>
+                         </div>
+                      </div>
                    </div>
                 </div>
              </div>
           </section>
 
-          {/* Audit Log Section - PRINCIPLE 3 COMPLIANT */}
-          <section className="bg-white rounded-2xl border border-slate-200 p-8 shadow-sm group">
-             <div className="flex items-center justify-between mb-8 pb-4 border-b border-slate-100">
-                <div className="flex items-center gap-2">
-                    <ClipboardList className="text-indigo-600" size={22} />
-                    <h2 className="text-xl font-black text-slate-900 tracking-tight uppercase">操作紀錄 (Audit Log)</h2>
-                </div>
-                <button onClick={handleExportLogs} className="p-2 text-slate-400 hover:text-slate-900 transition-colors" title="Export CSV/JSON"><Download size={18} /></button>
-             </div>
-             <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 mb-8">
-                <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
-                    <span className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Total Sessions</span>
-                    <span className="text-2xl font-black text-slate-900">{logsCount.toLocaleString()}</span>
-                </div>
-                <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
-                    <span className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Unique Online Users</span>
-                    <div className="flex items-center gap-2">
-                        <div className={`w-2.5 h-2.5 rounded-full ${activeSessions > 0 ? 'bg-emerald-500 animate-pulse' : 'bg-slate-300'}`} />
-                        <span className="text-2xl font-black text-slate-900">{activeSessions}</span>
-                    </div>
-                </div>
-                <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
-                    <span className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Last Log Record</span>
-                    <span className="text-sm font-bold text-slate-700 block truncate">{lastLog ? `${lastLog.username} (${new Date(lastLog.loginTime).toLocaleDateString()})` : 'N/A'}</span>
-                </div>
-             </div>
-             <button onClick={() => setIsLogBrowserOpen(true)} className="w-full py-4 bg-indigo-50 hover:bg-indigo-100 border-2 border-dashed border-indigo-200 rounded-2xl flex items-center justify-center gap-3 transition-all text-indigo-600 font-black uppercase tracking-widest group/btn">
-                <Database size={20} className="group-hover/btn:scale-110 transition-transform" />
-                <span>點入管理完整操作歷史與用戶行為篩選</span>
-                <ChevronRight size={18} />
-             </button>
-          </section>
-
-          {/* User Management */}
           <section className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
              <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
                 <div className="flex items-center gap-2"><Shield className="text-intenza-600" size={20} /><h2 className="text-xl font-bold text-slate-900">帳號管理</h2></div>
@@ -357,6 +346,59 @@ const Settings: React.FC<SettingsProps> = ({
                 </table>
              </div>
           </section>
+
+          <section className="bg-white rounded-2xl border border-slate-200 p-8 shadow-sm group">
+             <div className="flex items-center justify-between mb-8 pb-4 border-b border-slate-100">
+                <div className="flex items-center gap-2">
+                    <ClipboardList className="text-indigo-600" size={22} />
+                    <h2 className="text-xl font-black text-slate-900 tracking-tight uppercase">操作紀錄 (Audit Log)</h2>
+                </div>
+                <div className="flex gap-2">
+                    <button onClick={handleExportLogs} className="p-2 text-slate-400 hover:text-slate-900 transition-colors" title="Export CSV/JSON"><Download size={18} /></button>
+                </div>
+             </div>
+             <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 mb-8">
+                <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
+                    <span className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Total Sessions</span>
+                    <span className="text-2xl font-black text-slate-900">{logsCount.toLocaleString()}</span>
+                </div>
+                <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
+                    <span className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Unique Online Users</span>
+                    <div className="flex items-center gap-2">
+                        <div className={`w-2.5 h-2.5 rounded-full ${activeSessions > 0 ? 'bg-emerald-500 animate-pulse' : 'bg-slate-300'}`} />
+                        <span className="text-2xl font-black text-slate-900">{activeSessions}</span>
+                    </div>
+                </div>
+                <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
+                    <span className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Last Log Record</span>
+                    <span className="text-sm font-bold text-slate-700 block truncate">{lastLog ? `${lastLog.username} (${new Date(lastLog.loginTime).toLocaleDateString()})` : 'N/A'}</span>
+                </div>
+             </div>
+             <button onClick={() => setIsLogBrowserOpen(true)} className="w-full py-4 bg-indigo-50 hover:bg-indigo-100 border-2 border-dashed border-indigo-200 rounded-2xl flex items-center justify-center gap-3 transition-all text-indigo-600 font-black uppercase tracking-widest group/btn">
+                <Database size={20} className="group-hover/btn:scale-110 transition-transform" />
+                <span>點入管理完整操作歷史</span>
+                <ChevronRight size={18} />
+             </button>
+          </section>
+
+          <section className="bg-white rounded-2xl border border-slate-200 p-8 shadow-sm">
+            <h2 className="text-xl font-bold text-slate-900 mb-2">產品系列配置</h2>
+            <div className="flex gap-3 mb-6">
+              <input type="text" value={newSeriesName} onChange={(e) => setNewSeriesName(e.target.value)} placeholder="輸入系列名稱..." className="flex-1 px-4 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-intenza-500/20 bg-slate-50 text-slate-900" onKeyPress={(e) => e.key === 'Enter' && handleAddSeries()}/>
+              <button onClick={handleAddSeries} disabled={isSubmitting} className="bg-slate-900 text-white px-4 py-2 rounded-lg hover:bg-slate-800 transition-colors flex items-center gap-2 disabled:bg-slate-400">{isSubmitting ? <Loader2 className="animate-spin" size={18} /> : <Plus size={18} />} 新增</button>
+            </div>
+            <div className="space-y-3">
+              {seriesList.map((series, index) => (
+                <div key={index} className="flex items-center justify-between p-3 rounded-lg border bg-slate-50 border-slate-100"><span className="font-medium text-slate-700">{t(series)}</span><div className="flex items-center gap-1"><button onClick={() => { if(window.confirm('確定刪除系列？')) { const nl = [...seriesList]; nl.splice(index,1); onUpdateSeriesList(nl); } }} className="text-slate-400 hover:text-red-600 p-2"><X size={18} /></button></div></div>
+              ))}
+            </div>
+          </section>
+
+          <section className="bg-white rounded-2xl border border-red-100 p-8 shadow-sm">
+             <div className="flex items-center gap-2 mb-4 text-red-600"><AlertTriangle size={20} /><h2 className="text-xl font-bold">危險區域 (Danger Zone)</h2></div>
+             <div className="p-4 bg-red-50 rounded-xl border border-red-100 mb-6"><p className="text-sm text-red-800 font-medium">數據維護操作：此區塊功能將永久刪除或更改核心數據，請謹謹執行。</p></div>
+             <div className="flex flex-col md:flex-row items-center justify-between gap-4 p-4 rounded-xl border border-slate-100 hover:bg-slate-50 transition-colors"><div className="flex-1"><h3 className="font-bold text-slate-900">重置產品儀表板數據</h3><p className="text-xs text-slate-500 mt-1">清空所有導入的出貨記錄 (Shipment Data)。</p></div><button onClick={handleResetShipments} className="flex items-center gap-2 px-6 py-2.5 bg-white border border-red-200 text-red-600 rounded-xl text-sm font-bold hover:bg-red-600 hover:text-white transition-all shadow-sm"><Trash2 size={16} /> 清空出貨數據</button></div>
+          </section>
         </div>
 
         <div className="space-y-8">
@@ -367,6 +409,28 @@ const Settings: React.FC<SettingsProps> = ({
                   <button onClick={async () => { try { const tf = new File(["test"], "test.txt"); await api.uploadImage(tf); showNotification('Vercel Blob 連線正常！', 'success'); } catch (e) { showNotification('Blob 連線失敗', 'error'); } }} className="w-full py-3 rounded-xl font-bold border border-slate-200 text-slate-700 hover:bg-slate-50 transition-all flex items-center justify-center gap-2"><Activity size={18} className="text-emerald-500" />測試 Blob 雲端連線</button>
               </div>
            </section>
+           <section className="bg-white rounded-2xl border border-slate-200 p-8 shadow-sm">
+              <div className="flex items-center justify-between mb-2"><h2 className="text-xl font-bold text-slate-900">容量使用率</h2><span className="text-[10px] bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full font-bold">LIVE</span></div>
+              <p className="text-sm text-slate-500 mb-6">監控 Vercel 與 Postgres 資源配額。</p>
+              <div className="space-y-8">
+                <div className="space-y-2">
+                  <div className="flex justify-between items-center text-[11px] font-bold uppercase tracking-wider"><div className="flex items-center gap-2 text-slate-600"><Database size={14} className="text-indigo-500" />專案數據體積</div><span className={storageStats.sizePercent > 90 ? 'text-red-600' : 'text-slate-400'}>{storageStats.sizeInMB.toFixed(2)} MB / {storageStats.sizeLimitMB} MB</span></div>
+                  <div className="w-full bg-slate-100 h-2.5 rounded-full overflow-hidden"><div className={`h-full transition-all duration-1000 ${getProgressColor(storageStats.sizePercent)}`} style={{ width: `${storageStats.sizePercent}%` }}></div></div>
+                </div>
+                <div className="space-y-2">
+                  <div className="flex justify-between items-center text-[11px] font-bold uppercase tracking-wider"><div className="flex items-center gap-2 text-slate-600"><Layers size={14} className="text-emerald-500" />資料庫記錄行數</div><span className="text-slate-400">{storageStats.rowCount.toLocaleString()} / {storageStats.rowLimit.toLocaleString()}</span></div>
+                  <div className="w-full bg-slate-100 h-2.5 rounded-full overflow-hidden"><div className={`h-full transition-all duration-1000 ${getProgressColor(storageStats.rowPercent)}`} style={{ width: `${storageStats.rowPercent}%` }}></div></div>
+                </div>
+              </div>
+           </section>
+           <section className="bg-white rounded-2xl border border-slate-200 p-8 shadow-sm">
+             <h2 className="text-xl font-bold text-slate-900 mb-4">專案本地備份</h2>
+             <div className="grid grid-cols-1 gap-4">
+               <button onClick={handleDownloadProject} className="flex items-center justify-center gap-2 w-full py-2.5 bg-white border border-slate-300 rounded-lg text-slate-700 font-bold hover:bg-slate-50 transition-all"><Download size={18} /> 導出 JSON 備份</button>
+               <button onClick={() => fileInputRef.current?.click()} className="flex items-center justify-center gap-2 w-full py-2.5 bg-slate-900 text-white rounded-lg font-bold hover:bg-slate-800 transition-all"><Upload size={18} /> 載入 JSON 備份</button>
+               <input ref={fileInputRef} type="file" accept=".json" className="hidden" onChange={handleImportProject} />
+             </div>
+           </section>
         </div>
       </div>
 
@@ -374,6 +438,20 @@ const Settings: React.FC<SettingsProps> = ({
         <UserAccountModal 
           isOpen={isUserModalOpen} onClose={() => setIsUserModalOpen(false)}
           onSave={(data) => { if (editingUser) onUpdateUser({ ...editingUser, ...data } as any); else onAddUser(data as any); setIsUserModalOpen(false); }} user={editingUser}
+        />
+      )}
+
+      {isPermissionsModalOpen && editingUser && (
+        <PermissionsModal 
+          isOpen={isPermissionsModalOpen}
+          onClose={() => setIsPermissionsModalOpen(false)}
+          user={editingUser}
+          products={currentAppState.products || []}
+          seriesList={seriesList}
+          onSave={(perms) => {
+            onUpdateUser({ ...editingUser, granularPermissions: perms });
+            setIsPermissionsModalOpen(false);
+          }}
         />
       )}
 
@@ -422,235 +500,257 @@ const UserAccountModal: React.FC<{
   );
 };
 
+const PermissionsModal: React.FC<{
+  isOpen: boolean;
+  onClose: () => void;
+  user: UserAccount;
+  products: ProductModel[];
+  seriesList: LocalizedString[];
+  onSave: (perms: UserPermissions) => void;
+}> = ({ isOpen, onClose, user, products, seriesList, onSave }) => {
+  const { t } = useContext(LanguageContext);
+  const [allowedSeries, setAllowedSeries] = useState<string[]>(user.granularPermissions?.allowedSeries || []);
+  const [skuPermissions, setSkuPermissions] = useState<UserPermissions['skuPermissions']>(user.granularPermissions?.skuPermissions || {});
+  const [searchTerm, setSearchTerm] = useState('');
+
+  const handleToggleSeriesBase = (seriesName: string) => {
+    setAllowedSeries(prev => prev.includes(seriesName) ? prev.filter(s => s !== seriesName) : [...prev, seriesName]);
+  };
+
+  const handleToggleModule = (sku: string, module: 'design' | 'ergo' | 'durability') => {
+    setSkuPermissions(prev => {
+      const current = prev[sku] || { design: false, ergo: false, durability: false };
+      return { ...prev, [sku]: { ...current, [module]: !current[module] } };
+    });
+  };
+
+  const groupedProducts = useMemo(() => {
+    const groups: Record<string, ProductModel[]> = {};
+    products.forEach(p => {
+      const sName = t(p.series);
+      if (!groups[sName]) groups[sName] = [];
+      groups[sName].push(p);
+    });
+    return groups;
+  }, [products, t]);
+
+  const filteredGroups = useMemo(() => {
+    const filtered: Record<string, ProductModel[]> = {};
+    (Object.entries(groupedProducts) as [string, ProductModel[]][]).forEach(([sName, items]) => {
+      const matches = items.filter(p => 
+        t(p.modelName).toLowerCase().includes(searchTerm.toLowerCase()) || 
+        p.sku.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        sName.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+      if (matches.length > 0) filtered[sName] = matches;
+    });
+    return filtered;
+  }, [groupedProducts, searchTerm, t]);
+
+  const handleBulkToggleSeriesModule = (sName: string, module: 'design' | 'ergo' | 'durability') => {
+    const targetSkus = groupedProducts[sName] || [];
+    if (targetSkus.length === 0) return;
+    const isModuleAllEnabled = targetSkus.every(p => skuPermissions[p.sku]?.[module]);
+    const newStateValue = !isModuleAllEnabled;
+    setSkuPermissions(prev => {
+      const next = { ...prev };
+      targetSkus.forEach(p => {
+        const current = next[p.sku] || { design: false, ergo: false, durability: false };
+        next[p.sku] = { ...current, [module]: newStateValue };
+      });
+      return next;
+    });
+  };
+
+  return (
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md animate-fade-in">
+      <div className="bg-white rounded-[2.5rem] shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col animate-slide-up border border-white/20">
+        <header className="p-8 border-b border-slate-100 flex justify-between items-center bg-white sticky top-0 z-10">
+          <div>
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-indigo-600 text-white rounded-xl shadow-lg shadow-indigo-600/20"><Shield size={24} /></div>
+              <h2 className="text-2xl font-black text-slate-900 tracking-tight uppercase">Granular Permissions</h2>
+            </div>
+            <p className="text-slate-400 text-xs font-bold mt-1 uppercase tracking-widest">Managing access for: {user.username}</p>
+          </div>
+          <button onClick={onClose} className="p-3 bg-slate-50 text-slate-500 rounded-full hover:bg-slate-100 transition-colors"><X size={24} /></button>
+        </header>
+        <div className="flex-1 overflow-y-auto p-8 space-y-12 custom-scrollbar">
+          <section>
+            <div className="flex items-center gap-2 mb-4"><Layers className="text-indigo-500" size={18} /><h3 className="text-sm font-black text-slate-900 uppercase tracking-widest">Series Level Authorization (Full Access)</h3></div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {seriesList.map(s => {
+                const sName = t(s);
+                const isSelected = allowedSeries.includes(sName);
+                return (
+                  <button key={sName} onClick={() => handleToggleSeriesBase(sName)} className={`flex items-center justify-between p-4 rounded-2xl border-2 transition-all ${isSelected ? 'bg-indigo-50 border-indigo-500 text-indigo-700 shadow-md' : 'bg-slate-50 border-slate-50 text-slate-500 hover:border-slate-200'}`}>
+                    <span className="font-bold text-xs uppercase">{sName}</span>
+                    <div className={`w-5 h-5 rounded-full flex items-center justify-center border ${isSelected ? 'bg-indigo-500 border-indigo-400 text-white' : 'border-slate-200'}`}>{isSelected && <CheckCircle size={12} strokeWidth={4} />}</div>
+                  </button>
+                );
+              })}
+            </div>
+          </section>
+          <section>
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6"><div className="flex items-center gap-2"><Settings2 className="text-slate-900" size={18} /><h3 className="text-sm font-black text-slate-900 uppercase tracking-widest">Specific SKU & Module Control</h3></div><div className="relative w-full md:w-64"><Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={14} /><input type="text" placeholder="Filter SKUs..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="w-full pl-10 pr-4 py-2 bg-slate-100 border-none rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-indigo-500/20" /></div></div>
+            <div className="border border-slate-100 rounded-3xl overflow-hidden shadow-sm bg-slate-50/50">
+              <table className="w-full text-left">
+                <thead><tr className="bg-white text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] border-b border-slate-100"><th className="px-6 py-4">Product Detail</th><th className="px-6 py-4 text-center">Design / ECO</th><th className="px-6 py-4 text-center">Ergonomics</th><th className="px-6 py-4 text-center">Durability</th></tr></thead>
+                <tbody className="divide-y divide-slate-100">
+                  {(Object.entries(filteredGroups) as [string, ProductModel[]][]).map(([sName, groupItems]) => {
+                    const allDesign = groupItems.every(p => skuPermissions[p.sku]?.design);
+                    const allErgo = groupItems.every(p => skuPermissions[p.sku]?.ergo);
+                    const allDura = groupItems.every(p => skuPermissions[p.sku]?.durability);
+                    return (
+                      <React.Fragment key={sName}>
+                        <tr className="bg-slate-100/80 border-y border-slate-200">
+                          <td className="px-6 py-3"><div className="flex items-center gap-2"><CheckSquare size={14} className="text-slate-900" /><span className="text-[11px] font-black text-slate-900 uppercase tracking-widest">{sName}</span></div></td>
+                          <td className="px-6 py-3 text-center"><BulkSeriesToggle active={allDesign} onClick={() => handleBulkToggleSeriesModule(sName, 'design')} color="indigo" /></td>
+                          <td className="px-6 py-3 text-center"><BulkSeriesToggle active={allErgo} onClick={() => handleBulkToggleSeriesModule(sName, 'ergo')} color="emerald" /></td>
+                          <td className="px-6 py-3 text-center"><BulkSeriesToggle active={allDura} onClick={() => handleBulkToggleSeriesModule(sName, 'durability')} color="rose" /></td>
+                        </tr>
+                        {groupItems.map(p => {
+                          const perms = skuPermissions[p.sku] || { design: false, ergo: false, durability: false };
+                          return (
+                            <tr key={p.id} className="hover:bg-white transition-colors">
+                              <td className="px-6 py-4 pl-10"><div className="flex items-center gap-3"><div className="w-8 h-8 rounded-lg bg-white border border-slate-100 flex items-center justify-center overflow-hidden">{p.imageUrl ? <img src={p.imageUrl} className="w-full h-full object-contain" /> : <ImageIcon size={14} className="text-slate-200" />}</div><div><div className="text-xs font-black text-slate-900 leading-none">{t(p.modelName)}</div><div className="text-[10px] font-bold text-slate-400 mt-1 uppercase tracking-tighter">{p.sku}</div></div></div></td>
+                              <td className="px-6 py-4 text-center"><ModuleToggle active={perms.design} onClick={() => handleToggleModule(p.sku, 'design')} icon={<GitCommit size={14} />} color="indigo" /></td>
+                              <td className="px-6 py-4 text-center"><ModuleToggle active={perms.ergo} onClick={() => handleToggleModule(p.sku, 'ergo')} icon={<UserCheck size={14} />} color="emerald" /></td>
+                              <td className="px-6 py-4 text-center"><ModuleToggle active={perms.durability} onClick={() => handleToggleModule(p.sku, 'durability')} icon={<Activity size={14} />} color="rose" /></td>
+                            </tr>
+                          );
+                        })}
+                      </React.Fragment>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </section>
+        </div>
+        <footer className="p-8 border-t border-slate-100 bg-white flex gap-4">
+          <button onClick={onClose} className="flex-1 py-4 text-slate-400 font-black uppercase tracking-widest hover:bg-slate-50 rounded-2xl transition-all">Cancel</button>
+          <button onClick={() => onSave({ allowedSeries, skuPermissions })} className="flex-1 py-4 bg-slate-900 text-white font-black uppercase tracking-widest rounded-2xl hover:bg-slate-800 transition-all shadow-xl shadow-slate-900/20 active:scale-[0.98]">Save Permissions</button>
+        </footer>
+      </div>
+    </div>
+  );
+};
+
+const ModuleToggle = ({ active, onClick, icon, color }: any) => {
+  const colors: Record<string, string> = {
+    indigo: active ? 'bg-indigo-600 text-white shadow-indigo-600/20' : 'bg-white text-slate-300 border-slate-100',
+    emerald: active ? 'bg-emerald-600 text-white shadow-emerald-600/20' : 'bg-white text-slate-300 border-slate-100',
+    rose: active ? 'bg-rose-600 text-white shadow-rose-600/20' : 'bg-white text-slate-300 border-slate-100',
+  };
+  return <button type="button" onClick={onClick} className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all shadow-sm border ${colors[color]} hover:scale-110 active:scale-95 mx-auto`}>{icon}</button>;
+};
+
+const BulkSeriesToggle = ({ active, onClick, color }: any) => {
+  const colors: Record<string, string> = {
+    indigo: active ? 'bg-indigo-600 text-white' : 'bg-white text-slate-400 border-slate-300 hover:border-indigo-400',
+    emerald: active ? 'bg-emerald-600 text-white' : 'bg-white text-slate-400 border-slate-300 hover:border-emerald-400',
+    rose: active ? 'bg-rose-600 text-white' : 'bg-white text-slate-400 border-slate-300 hover:border-rose-400',
+  };
+  return <button type="button" onClick={onClick} className={`px-3 py-1.5 rounded-lg border text-[9px] font-black uppercase tracking-tighter transition-all flex items-center gap-1.5 mx-auto ${colors[color]}`}>{active ? <CheckSquare size={12} /> : <Square size={12} />} {active ? 'Deselect All' : 'Select All'}</button>;
+};
+
 const AuditLogBrowserModal: React.FC<{ isOpen: boolean; onClose: () => void; logs: AuditLog[]; onDeleteAll: () => void; onDeleteLog: (id: string) => void; onExport: () => void; }> = ({ isOpen, onClose, logs, onDeleteAll, onDeleteLog, onExport }) => {
-    // Inject t from LanguageContext to resolve "Cannot find name 't'"
-    const { t } = useContext(LanguageContext);
     const [searchTerm, setSearchTerm] = useState('');
     const [filterStatus, setFilterStatus] = useState<'ALL' | 'ACTIVE' | 'COMPLETED'>('ALL');
-    const [selectedUser, setSelectedUser] = useState('ALL');
-    const [expandedLogId, setExpandedLogId] = useState<string | null>(null);
     
-    const uniqueUsernames = useMemo(() => {
-        return Array.from(new Set(logs.map(l => l.username))).sort();
-    }, [logs]);
-
+    // Logic to identify only the absolute newest session as 'Live' per user to prevent duplicates
     const latestActiveSessionMap = useMemo(() => {
-        const map = new Map<string, string>();
+        const map = new Map<string, string>(); // username -> latest active session ID
         [...logs].forEach(l => {
             if (!l.logoutTime) {
+                // Since logs are processed chronologically, later entries with same username overwrite
                 map.set(l.username, l.id);
             }
         });
         return map;
     }, [logs]);
 
-    // Define activeSessions to resolve "Cannot find name 'activeSessions'"
-    const activeSessions = latestActiveSessionMap.size;
-
     const filteredLogs = useMemo(() => {
         return [...logs].reverse().filter(log => {
-                const isActuallyLive = !log.logoutTime && latestActiveSessionMap.get(log.username) === log.id;
                 const matchesSearch = log.username.toLowerCase().includes(searchTerm.toLowerCase());
-                const matchesUser = selectedUser === 'ALL' || log.username === selectedUser;
+                const isActuallyLive = !log.logoutTime && latestActiveSessionMap.get(log.username) === log.id;
                 const matchesFilter = filterStatus === 'ALL' || 
                                      (filterStatus === 'ACTIVE' && isActuallyLive) || 
                                      (filterStatus === 'COMPLETED' && (log.logoutTime || !isActuallyLive));
-                return matchesSearch && matchesFilter && matchesUser;
+                return matchesSearch && matchesFilter;
         });
-    }, [logs, searchTerm, filterStatus, selectedUser, latestActiveSessionMap]);
+    }, [logs, searchTerm, filterStatus, latestActiveSessionMap]);
+
+    // Active sessions should reflect unique online users
+    const uniqueActiveUsersCount = useMemo(() => latestActiveSessionMap.size, [latestActiveSessionMap]);
 
     if (!isOpen) return null;
     return (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-0 md:p-8 bg-slate-900/60 backdrop-blur-md animate-fade-in">
             <div className="bg-white md:rounded-[2.5rem] shadow-2xl w-full h-full max-w-6xl overflow-hidden flex flex-col animate-slide-up">
                 <header className="p-8 border-b border-slate-100 flex flex-col md:flex-row md:items-center justify-between gap-6 bg-white sticky top-0 z-10">
-                    <div>
-                        <div className="flex items-center gap-3 mb-1">
-                            <div className="p-2 bg-indigo-600 text-white rounded-xl shadow-lg shadow-indigo-600/20"><History size={24} /></div>
-                            <h2 className="text-2xl font-black text-slate-900 tracking-tight uppercase">操作日誌管理系統</h2>
-                        </div>
-                        <p className="text-slate-400 font-bold text-xs uppercase tracking-widest">{filteredLogs.length} Records Found</p>
-                    </div>
-                    <div className="flex items-center gap-4">
-                        <div className="flex gap-2">
-                            <button onClick={onExport} className="p-2.5 bg-slate-50 hover:bg-slate-100 text-slate-600 rounded-xl transition-all" title="Export CSV"><Download size={20}/></button>
-                            <button onClick={onDeleteAll} className="p-2.5 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded-xl transition-all" title="Clear All"><Trash2 size={20}/></button>
-                        </div>
-                        <div className="h-8 w-px bg-slate-100" />
-                        <button onClick={onClose} className="p-2 bg-slate-900 text-white rounded-xl hover:bg-slate-800 transition-all"><X size={24} strokeWidth={3} /></button>
-                    </div>
+                    <div><div className="flex items-center gap-3 mb-1"><div className="p-2 bg-indigo-600 text-white rounded-xl shadow-lg shadow-indigo-600/20"><History size={24} /></div><h2 className="text-3xl font-black text-slate-900 tracking-tight uppercase">操作日誌管理系統</h2></div><p className="text-slate-400 font-bold text-xs uppercase tracking-[0.2em]">{logs.length} Total Sessions Recorded</p></div>
+                    <div className="flex items-center gap-4"><div className="flex gap-2"><button onClick={onExport} className="p-3 bg-slate-50 hover:bg-slate-100 text-slate-600 rounded-2xl transition-all border border-slate-100"><Download size={20}/></button><button onClick={onDeleteAll} className="p-3 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded-2xl transition-all border border-rose-100"><Trash2 size={20}/></button></div><div className="h-10 w-px bg-slate-100 hidden md:block mx-2" /><button onClick={onClose} className="p-3 bg-slate-900 text-white rounded-2xl hover:bg-slate-800 transition-all shadow-xl shadow-slate-900/20"><X size={24} strokeWidth={3} /></button></div>
                 </header>
-
-                <div className="px-8 py-6 bg-slate-50/50 border-b border-slate-100 space-y-4">
-                    <div className="flex flex-col md:flex-row items-center gap-4">
-                        <div className="relative flex-1 w-full">
-                            <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
-                            <input 
-                                type="text" 
-                                placeholder="搜尋帳號名稱..." 
-                                value={searchTerm} 
-                                onChange={(e) => setSearchTerm(e.target.value)} 
-                                className="w-full pl-11 pr-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-bold focus:border-indigo-500 outline-none shadow-sm transition-all" 
-                            />
-                        </div>
-                        <div className="flex items-center gap-2 bg-white p-1 rounded-xl border border-slate-200 shadow-sm w-full md:w-auto overflow-x-auto no-scrollbar">
-                            {['ALL', 'ACTIVE', 'COMPLETED'].map((status) => (
-                                <button 
-                                    key={status} 
-                                    onClick={() => setFilterStatus(status as any)} 
-                                    className={`px-4 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${filterStatus === status ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-400 hover:text-slate-600 whitespace-nowrap'}`}
-                                >
-                                    {status}
-                                </button>
-                            ))}
-                        </div>
-                    </div>
-                    <div className="flex items-center gap-3">
-                         <div className="flex items-center gap-2 text-[10px] font-black text-slate-400 uppercase tracking-widest shrink-0">
-                            <UserSearch size={14} /> 篩選特定用戶:
-                         </div>
-                         <div className="flex-1 overflow-x-auto no-scrollbar py-1">
-                            <div className="flex gap-2">
-                                <button 
-                                    onClick={() => setSelectedUser('ALL')}
-                                    className={`px-3 py-1 rounded-full text-[10px] font-bold border transition-all whitespace-nowrap ${selectedUser === 'ALL' ? 'bg-slate-900 text-white border-slate-900 shadow-md' : 'bg-white text-slate-500 border-slate-200 hover:border-slate-400'}`}
-                                >
-                                    所有用戶
-                                </button>
-                                {uniqueUsernames.map(uname => (
+                <div className="px-8 py-6 bg-slate-50/50 border-b border-slate-100 flex flex-col md:flex-row items-center gap-6">
+                    <div className="relative flex-1 w-full"><Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" /><input type="text" placeholder="搜尋帳號名稱..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="w-full pl-12 pr-4 py-3 bg-white border-2 border-slate-100 rounded-2xl text-sm font-bold focus:border-indigo-500 outline-none shadow-sm" /></div>
+                    <div className="flex bg-white p-1.5 rounded-2xl shadow-sm border border-slate-100 shrink-0">{['ALL', 'ACTIVE', 'COMPLETED'].map((status) => (<button key={status} onClick={() => setFilterStatus(status as any)} className={`px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${filterStatus === status ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-400 hover:text-slate-600'}`}>{status}</button>))}</div>
+                </div>
+                <div className="flex-1 overflow-y-auto custom-scrollbar p-8 bg-slate-50/30">
+                    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                        {filteredLogs.map((log) => {
+                            const isActuallyLive = !log.logoutTime && latestActiveSessionMap.get(log.username) === log.id;
+                            const isStaleSession = !log.logoutTime && !isActuallyLive;
+                            
+                            return (
+                                <div key={log.id} className="bg-white rounded-3xl border-2 border-slate-50 p-6 hover:border-indigo-100 hover:shadow-xl transition-all group relative overflow-hidden flex flex-col">
                                     <button 
-                                        key={uname}
-                                        onClick={() => setSelectedUser(uname)}
-                                        className={`px-3 py-1 rounded-full text-[10px] font-bold border transition-all whitespace-nowrap ${selectedUser === uname ? 'bg-indigo-600 text-white border-indigo-600 shadow-md' : 'bg-white text-slate-500 border-slate-200 hover:border-slate-400'}`}
+                                        onClick={() => onDeleteLog(log.id)}
+                                        className="absolute top-4 right-4 p-2 text-slate-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all z-10"
                                     >
-                                        {uname}
+                                        <Trash2 size={16} />
                                     </button>
-                                ))}
-                            </div>
-                         </div>
-                    </div>
-                </div>
-
-                <div className="flex-1 overflow-y-auto custom-scrollbar">
-                    <table className="w-full text-left border-collapse">
-                        <thead className="bg-slate-50/80 sticky top-0 z-20 backdrop-blur-md">
-                            <tr className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] border-b border-slate-100">
-                                <th className="px-8 py-4 w-12"></th>
-                                <th className="px-4 py-4">{t({ en: 'User Account', zh: '操作帳號' })}</th>
-                                <th className="px-4 py-4 text-center">{t({ en: 'Status', zh: '當前狀態' })}</th>
-                                <th className="px-4 py-4">{t({ en: 'Login Time', zh: '登入時間' })}</th>
-                                <th className="px-4 py-4">{t({ en: 'Logout Time', zh: '登出時間' })}</th>
-                                <th className="px-4 py-4 text-center">{t({ en: 'Duration', zh: '停留時間' })}</th>
-                                <th className="px-4 py-4 text-right">{t({ en: 'Actions', zh: '紀錄數' })}</th>
-                                <th className="px-8 py-4 w-12"></th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-slate-50">
-                            {filteredLogs.length > 0 ? filteredLogs.map((log) => {
-                                const isActuallyLive = !log.logoutTime && latestActiveSessionMap.get(log.username) === log.id;
-                                const isStale = !log.logoutTime && !isActuallyLive;
-                                const isExpanded = expandedLogId === log.id;
-                                
-                                return (
-                                    <React.Fragment key={log.id}>
-                                        <tr 
-                                            className={`group hover:bg-slate-50/50 transition-colors cursor-pointer ${isExpanded ? 'bg-slate-50/80 shadow-inner' : ''}`}
-                                            onClick={() => setExpandedLogId(isExpanded ? null : log.id)}
-                                        >
-                                            <td className="px-8 py-4">
-                                                <div className={`w-2 h-2 rounded-full ${isActuallyLive ? 'bg-emerald-500 animate-pulse-slow shadow-[0_0_8px_rgba(16,185,129,0.5)]' : isStale ? 'bg-amber-400' : 'bg-slate-200'}`} />
-                                            </td>
-                                            <td className="px-4 py-4">
-                                                <div className="flex items-center gap-3">
-                                                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold ${isActuallyLive ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-100 text-slate-400'}`}>
-                                                        <UserRound size={16} />
-                                                    </div>
-                                                    <span className="text-sm font-black text-slate-900 tracking-tight">{log.username}</span>
-                                                </div>
-                                            </td>
-                                            <td className="px-4 py-4 text-center">
-                                                {isActuallyLive ? (
-                                                    <span className="px-2 py-0.5 rounded-md text-[9px] font-black bg-emerald-50 text-emerald-600 uppercase">Live</span>
-                                                ) : isStale ? (
-                                                    <span className="px-2 py-0.5 rounded-md text-[9px] font-black bg-amber-50 text-amber-500 uppercase">Stale</span>
-                                                ) : (
-                                                    <span className="px-2 py-0.5 rounded-md text-[9px] font-black bg-slate-100 text-slate-400 uppercase">Ended</span>
-                                                )}
-                                            </td>
-                                            <td className="px-4 py-4 text-xs font-bold text-slate-600 font-mono">{log.loginTime}</td>
-                                            <td className="px-4 py-4 text-xs font-bold text-slate-600 font-mono">{log.logoutTime || '-'}</td>
-                                            <td className="px-4 py-4 text-center">
-                                                <span className="text-xs font-black text-indigo-600 font-mono">{log.durationMinutes ? `${log.durationMinutes}m` : (isActuallyLive ? '...' : '<1m')}</span>
-                                            </td>
-                                            <td className="px-4 py-4 text-right">
-                                                <div className="flex items-center justify-end gap-2">
-                                                    <span className="text-[10px] font-black text-slate-300 bg-slate-50 px-1.5 py-0.5 rounded-md uppercase">{log.activities?.length || 0} Events</span>
-                                                    <ChevronRight size={14} className={`text-slate-300 transition-transform ${isExpanded ? 'rotate-90 text-indigo-500' : ''}`} />
-                                                </div>
-                                            </td>
-                                            <td className="px-8 py-4">
-                                                <button 
-                                                    onClick={(e) => { e.stopPropagation(); onDeleteLog(log.id); }}
-                                                    className="p-1.5 text-slate-200 hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100"
-                                                >
-                                                    <Trash2 size={16} />
-                                                </button>
-                                            </td>
-                                        </tr>
-                                        {isExpanded && (
-                                            <tr className="bg-slate-50/80 animate-fade-in">
-                                                <td colSpan={8} className="px-12 py-6">
-                                                    <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-xl">
-                                                        <div className="flex items-center gap-2 mb-4 border-b border-slate-100 pb-3">
-                                                            <Activity size={16} className="text-indigo-500" />
-                                                            <h4 className="text-xs font-black text-slate-900 uppercase tracking-widest">Behavior Logs (用戶行為細節回溯)</h4>
-                                                        </div>
-                                                        <div className="space-y-2 max-h-60 overflow-y-auto custom-scrollbar pr-4">
-                                                            {log.activities && log.activities.length > 0 ? (
-                                                                log.activities.map((act, i) => (
-                                                                    <div key={i} className="flex items-start gap-4 p-3 hover:bg-slate-50 rounded-xl transition-all border border-transparent hover:border-slate-100">
-                                                                        <div className="text-[10px] font-black text-indigo-500 font-mono shrink-0 w-24">{act.timestamp.split(' ')[1]}</div>
-                                                                        <div className="w-2 h-2 rounded-full bg-slate-200 mt-1.5" />
-                                                                        <div className="text-xs font-bold text-slate-700 leading-relaxed">{act.action}</div>
-                                                                    </div>
-                                                                ))
-                                                            ) : (
-                                                                <div className="text-center py-8 opacity-30 italic text-xs">No specific activities logged for this session.</div>
-                                                            )}
-                                                        </div>
-                                                    </div>
-                                                </td>
-                                            </tr>
+                                    <div className={`absolute top-0 left-0 w-1 h-full bg-gradient-to-b ${isActuallyLive ? 'from-emerald-500 to-emerald-300' : 'from-slate-200 to-slate-100'}`} />
+                                    <div className="flex items-center gap-4 mb-6"><div className={`w-12 h-12 rounded-2xl flex items-center justify-center shadow-sm ${isActuallyLive ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-100 text-slate-400'}`}><UserRound size={24} /></div><div><h3 className="font-black text-slate-900 uppercase tracking-tight text-lg">{log.username}</h3><div className="flex items-center gap-1.5 mt-0.5">
+                                        {isActuallyLive ? (
+                                            <span className="flex items-center gap-1 text-[10px] font-black text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-md uppercase"><div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />Currently Active</span>
+                                        ) : isStaleSession ? (
+                                            <span className="text-[10px] font-black text-amber-600 bg-amber-50 px-2 py-0.5 rounded-md uppercase flex items-center gap-1"><AlertTriangle size={10} />Session Terminated (Stale)</span>
+                                        ) : (
+                                            <span className="text-[10px] font-black text-slate-400 bg-slate-50 px-2 py-0.5 rounded-md uppercase">Session Ended</span>
                                         )}
-                                    </React.Fragment>
-                                );
-                            }) : (
-                                <tr>
-                                    <td colSpan={8} className="py-20 text-center text-slate-400">
-                                        <div className="flex flex-col items-center gap-3">
-                                            <Search size={48} className="opacity-10" />
-                                            <p className="font-bold text-sm uppercase tracking-widest">No matching logs found.</p>
-                                        </div>
-                                    </td>
-                                </tr>
-                            )}
-                        </tbody>
-                    </table>
-                </div>
+                                    </div></div></div>
+                                    
+                                    <div className="space-y-4 mb-6">
+                                        <div className="grid grid-cols-2 gap-4 border-t border-slate-50 pt-4"><div><span className="block text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">Login Time</span><span className="text-[11px] font-bold text-slate-700">{log.loginTime}</span></div><div><span className="block text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">Logout Time</span><span className="text-[11px] font-bold text-slate-700">{log.logoutTime || '-'}</span></div></div>
+                                        <div className="bg-slate-50 rounded-2xl p-4 flex items-center justify-between border border-slate-100 shadow-inner"><div className="flex items-center gap-2"><Clock size={16} className="text-indigo-400" /><span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Duration</span></div><span className="text-sm font-black text-indigo-600 font-mono">{log.durationMinutes ? `${log.durationMinutes}m` : (isActuallyLive ? 'Live' : '< 1m')}</span></div>
+                                    </div>
 
-                <footer className="p-6 bg-slate-900 text-white flex items-center justify-between">
-                    <div className="flex items-center gap-6">
-                        <div className="flex items-center gap-2">
-                            <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.6)] animate-pulse" />
-                            <span className="text-xs font-black uppercase tracking-tighter">{activeSessions} Active Online Users</span>
-                        </div>
-                        <div className="h-4 w-px bg-white/10" />
-                        <div className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Audit Trail: {logs.length} Total Sessions</div>
+                                    <div className="flex-1 space-y-3">
+                                        <div className="flex items-center gap-2 mb-2 border-b border-slate-50 pb-2">
+                                            <Activity size={12} className="text-slate-400" />
+                                            <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">操作詳細內容 (Activities)</span>
+                                        </div>
+                                        <div className="space-y-2 max-h-40 overflow-y-auto custom-scrollbar pr-2">
+                                            {log.activities && log.activities.length > 0 ? (
+                                                log.activities.map((act, i) => (
+                                                    <div key={i} className="bg-slate-50/50 p-2.5 rounded-xl border border-slate-100">
+                                                        <div className="text-[8px] font-bold text-slate-300 mb-1">{act.timestamp}</div>
+                                                        <div className="text-[10px] font-bold text-slate-600 leading-relaxed">{act.action}</div>
+                                                    </div>
+                                                ))
+                                            ) : (
+                                                <div className="text-center py-4 opacity-30 italic text-[10px]">No activities recorded.</div>
+                                            )}
+                                        </div>
+                                    </div>
+                                </div>
+                            );
+                        })}
                     </div>
-                    <div className="text-[10px] font-bold text-slate-500 uppercase italic tracking-[0.2em] flex items-center gap-2">
-                        <Shield size={12} /> Secured Operation Database
-                    </div>
-                </footer>
+                </div>
+                <footer className="p-6 bg-slate-900 text-white flex items-center justify-between"><div className="flex items-center gap-4"><div className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Operation Audit Database</div><div className="flex gap-4"><div className="flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]" /><span className="text-xs font-bold">{uniqueActiveUsersCount} Unique Active Users</span></div><div className="flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-indigo-500" /><span className="text-xs font-bold">{logs.length} Total Sessions</span></div></div></div><div className="text-[10px] font-bold text-slate-500 uppercase italic tracking-widest">Secured Audit Trail</div></footer>
             </div>
         </div>
     );
