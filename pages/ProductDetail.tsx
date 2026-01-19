@@ -1,3 +1,4 @@
+
 import React, { useState, useMemo, useEffect, useContext, useRef } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { 
@@ -1305,7 +1306,8 @@ const EcoModal = ({ isOpen, onClose, onSave, eco, productVersions }: any) => {
     description: { en: '', zh: '' },
     status: EcoStatus.EVALUATING,
     implementationDate: '',
-    imageUrls: [] as string[]
+    imageUrls: [] as string[],
+    imageCaptions: [] as string[]
   });
   const [isUploading, setIsUploading] = useState(false);
 
@@ -1318,7 +1320,8 @@ const EcoModal = ({ isOpen, onClose, onSave, eco, productVersions }: any) => {
         description: eco.description || { en: '', zh: '' },
         status: eco.status || EcoStatus.EVALUATING,
         implementationDate: eco.implementationDate || '',
-        imageUrls: eco.imageUrls || []
+        imageUrls: eco.imageUrls || [],
+        imageCaptions: eco.imageCaptions || []
       });
     }
   }, [eco]);
@@ -1334,12 +1337,24 @@ const EcoModal = ({ isOpen, onClose, onSave, eco, productVersions }: any) => {
     setIsUploading(true);
     try {
       const urls = await Promise.all(Array.from(files).map(file => api.uploadImage(file as File)));
-      setFormData({ ...formData, imageUrls: [...formData.imageUrls, ...urls] });
+      setFormData({ 
+        ...formData, 
+        imageUrls: [...formData.imageUrls, ...urls],
+        imageCaptions: [...(formData.imageCaptions || []), ...urls.map(() => '')]
+      });
     } catch (err) {
       alert('Upload failed');
     } finally {
       setIsUploading(false);
     }
+  };
+
+  const removeImage = (index: number) => {
+    const nextUrls = [...formData.imageUrls];
+    const nextCaptions = [...(formData.imageCaptions || [])];
+    nextUrls.splice(index, 1);
+    if (nextCaptions.length > index) nextCaptions.splice(index, 1);
+    setFormData({ ...formData, imageUrls: nextUrls, imageCaptions: nextCaptions });
   };
 
   if (!isOpen) return null;
@@ -1394,7 +1409,10 @@ const EcoModal = ({ isOpen, onClose, onSave, eco, productVersions }: any) => {
             <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Evidence</label>
             <div className="flex flex-wrap gap-2">
               {formData.imageUrls.map((url, i) => (
-                <img key={i} src={url} className="w-20 h-20 rounded-lg object-cover border border-slate-200" />
+                <div key={i} className="relative group">
+                  <img src={url} className="w-20 h-20 rounded-lg object-cover border border-slate-200" />
+                  <button type="button" onClick={() => removeImage(i)} className="absolute -top-2 -right-2 bg-rose-500 text-white rounded-full p-0.5 shadow-md opacity-0 group-hover:opacity-100 transition-opacity"><X size={14}/></button>
+                </div>
               ))}
               <label className="w-20 h-20 rounded-lg border-2 border-dashed border-slate-200 flex items-center justify-center cursor-pointer hover:bg-slate-50">
                 {isUploading ? <Loader2 size={20} className="animate-spin text-slate-400" /> : <Plus size={20} className="text-slate-400" />}
@@ -1467,6 +1485,14 @@ const TestModal = ({ isOpen, onClose, onSave, test, productVersions }: any) => {
     } finally {
       setIsUploading(false);
     }
+  };
+
+  const removeImage = (index: number) => {
+    const nextUrls = [...formData.attachmentUrls];
+    const nextCaptions = [...formData.attachmentCaptions];
+    nextUrls.splice(index, 1);
+    nextCaptions.splice(index, 1);
+    setFormData({ ...formData, attachmentUrls: nextUrls, attachmentCaptions: nextCaptions });
   };
 
   const handleCaptionChange = (idx: number, val: string) => {
@@ -1569,8 +1595,9 @@ const TestModal = ({ isOpen, onClose, onSave, test, productVersions }: any) => {
             <div className="space-y-4">
               <div className="flex flex-wrap gap-2">
                 {formData.attachmentUrls.map((url, i) => (
-                  <div key={i} className="space-y-1">
+                  <div key={i} className="space-y-1 relative group">
                     <img src={url} className="w-20 h-20 rounded-lg object-cover border border-slate-200" />
+                    <button type="button" onClick={() => removeImage(i)} className="absolute -top-1 -right-1 bg-rose-500 text-white rounded-full p-0.5 shadow-md opacity-0 group-hover:opacity-100 transition-opacity"><X size={12}/></button>
                     <input type="text" value={formData.attachmentCaptions[i]} onChange={e => handleCaptionChange(i, e.target.value)} placeholder="Caption..." className="w-20 text-[8px] px-1 py-0.5 border border-slate-200 rounded" />
                   </div>
                 ))}
@@ -1752,6 +1779,15 @@ const SetPassNgModal = ({ onClose, onSet, existingReason }: any) => {
         }
     };
 
+    const removeImage = (index: number) => {
+        const nextUrls = [...imageUrls];
+        const nextCaptions = [...imageCaptions];
+        nextUrls.splice(index, 1);
+        nextCaptions.splice(index, 1);
+        setImageUrls(nextUrls);
+        setImageCaptions(nextCaptions);
+    };
+
     const handleCaptionChange = (idx: number, val: string) => {
         const next = [...imageCaptions];
         next[idx] = val;
@@ -1774,8 +1810,9 @@ const SetPassNgModal = ({ onClose, onSet, existingReason }: any) => {
                         <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-3">Evidence Photos & Captions</label>
                         <div className="flex flex-wrap gap-2 mb-2">
                             {imageUrls.map((url, i) => (
-                                <div key={i} className="space-y-1">
+                                <div key={i} className="space-y-1 relative group">
                                     <img src={url} className="w-20 h-20 rounded-lg object-cover border border-slate-200" />
+                                    <button type="button" onClick={() => removeImage(i)} className="absolute -top-1 -right-1 bg-rose-500 text-white rounded-full p-0.5 shadow-md opacity-0 group-hover:opacity-100 transition-opacity"><X size={12}/></button>
                                     <input type="text" value={imageCaptions[i]} onChange={e => handleCaptionChange(i, e.target.value)} placeholder="Caption..." className="w-20 text-[8px] px-1 py-0.5 border border-slate-200 rounded" />
                                 </div>
                             ))}
@@ -1848,6 +1885,15 @@ const FeedbackModal = ({ onClose, onSave, feedback }: any) => {
         }
     };
 
+    const removeImage = (index: number) => {
+        const nextUrls = [...imageUrls];
+        const nextCaptions = [...imageCaptions];
+        nextUrls.splice(index, 1);
+        nextCaptions.splice(index, 1);
+        setImageUrls(nextUrls);
+        setImageCaptions(nextCaptions);
+    };
+
     const handleCaptionChange = (idx: number, val: string) => {
         const next = [...imageCaptions];
         next[idx] = val;
@@ -1874,8 +1920,9 @@ const FeedbackModal = ({ onClose, onSave, feedback }: any) => {
                         <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-3">Visual Evidence & Captions</label>
                         <div className="flex flex-wrap gap-2">
                             {imageUrls.map((url, i) => (
-                                <div key={i} className="space-y-1">
+                                <div key={i} className="space-y-1 relative group">
                                     <img src={url} className="w-20 h-20 rounded-lg object-cover border border-slate-200" />
+                                    <button type="button" onClick={() => removeImage(i)} className="absolute -top-1 -right-1 bg-rose-500 text-white rounded-full p-0.5 shadow-md opacity-0 group-hover:opacity-100 transition-opacity"><X size={12}/></button>
                                     <input type="text" value={imageCaptions[i]} onChange={e => handleCaptionChange(i, e.target.value)} placeholder="Caption..." className="w-20 text-[8px] px-1 py-0.5 border border-slate-200 rounded" />
                                 </div>
                             ))}
