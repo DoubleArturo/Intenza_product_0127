@@ -7,7 +7,7 @@ import {
   ArrowLeft, PieChart as PieIcon, BarChart as BarIcon, Search, FileSpreadsheet, 
   Palette, Box, Activity, ChevronDown, 
   Image as ImageIcon, ClipboardList, User, ShieldCheck, Zap, ArrowRight,
-  CheckCircle, AlertCircle, Clock, Info
+  CheckCircle, AlertCircle, Clock, Info, Trash2
 } from 'lucide-react';
 import { ShipmentData, ChartViewType, ProductModel, Tester, TestStatus } from '../types';
 import GeminiInsight from '../components/GeminiInsight';
@@ -38,18 +38,20 @@ interface AnalyticsProps {
   onImportData: (data: ShipmentData[]) => void;
   onBatchAddProducts: (products: any[]) => void;
   showAiInsights: boolean;
-  userRole?: 'admin' | 'user' | 'uploader';
+  userRole?: 'admin' | 'user' | 'uploader' | 'viewer';
   chartColorStyle?: 'COLORFUL' | 'MONOCHROME' | 'SLATE';
   tooltipScale?: number;
   tooltipPosition?: 'TOP_LEFT' | 'TOP_RIGHT' | 'BOTTOM_LEFT' | 'BOTTOM_RIGHT' | 'FOLLOW';
+  onResetShipments?: () => void;
 }
 
-type DimensionFilter = 'DATA_DRILL' | 'BUYER' | 'COLOR';
+// Added missing type definitions for ViewMode and DimensionFilter
 type ViewMode = 'SHIPMENTS' | 'ERGONOMICS' | 'DURABILITY';
+type DimensionFilter = 'DATA_DRILL' | 'BUYER' | 'COLOR';
 
 const Analytics: React.FC<AnalyticsProps> = ({ 
   products, shipments, lastShipmentUpdate, onImportData, onBatchAddProducts, showAiInsights, userRole, chartColorStyle = 'COLORFUL',
-  tooltipScale = 2, tooltipPosition = 'TOP_LEFT'
+  tooltipScale = 2, tooltipPosition = 'TOP_LEFT', onResetShipments
 }) => {
   const { language, t } = useContext(LanguageContext);
   const navigate = useNavigate();
@@ -356,6 +358,20 @@ const Analytics: React.FC<AnalyticsProps> = ({
         </div>
         {canImport && (
           <div className="flex gap-3">
+            <button 
+              onClick={() => {
+                const confirmed = window.confirm(
+                  language === 'zh' 
+                    ? '⚠️ 警告：這將會清空所有出貨數據。此動作無法復原，您確定嗎？' 
+                    : '⚠️ WARNING: This will permanently delete all shipment data. This action cannot be undone. Are you sure?'
+                );
+                if (confirmed && onResetShipments) onResetShipments();
+              }}
+              className="p-3 bg-white border-2 border-slate-100 text-slate-400 hover:text-red-500 hover:border-red-500 rounded-2xl shadow-sm transition-all active:scale-95"
+              title="Clear All Shipment Data"
+            >
+              <Trash2 size={20} />
+            </button>
             <button onClick={() => fileInputRef.current?.click()} className="flex items-center gap-2 bg-white border-2 border-slate-100 text-slate-700 px-6 py-3 rounded-2xl font-black text-sm shadow-sm hover:border-slate-900 transition-all active:scale-95">
               <FileSpreadsheet size={20} className="text-emerald-500" /> Import Data
             </button>
@@ -363,7 +379,7 @@ const Analytics: React.FC<AnalyticsProps> = ({
           </div>
         )}
       </header>
-
+      {/* Rest of the component follows existing logic */}
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
         <div className="lg:col-span-3 space-y-8">
           <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm flex flex-wrap items-center justify-between gap-6">
@@ -388,7 +404,6 @@ const Analytics: React.FC<AnalyticsProps> = ({
               </div>
             </div>
 
-            {/* HEADER BUTTONS SWAPPED AS REQUESTED */}
             <div className="flex items-center gap-6">
               {viewMode === 'SHIPMENTS' && (
                 <div className="flex items-center gap-4">

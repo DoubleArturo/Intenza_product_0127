@@ -1,3 +1,4 @@
+
 import React, { useState, createContext, useCallback, useEffect, lazy, Suspense, useRef } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { MOCK_PRODUCTS, MOCK_SHIPMENTS, MOCK_TESTERS } from './services/mockData';
@@ -471,8 +472,13 @@ const App = () => {
                       setShipments([...shipments, ...data]);
                       setLastShipmentUpdate(new Date().toLocaleString());
                     }} 
-                    onBatchAddProducts={(newPs) => setProducts([...products, ...newPs])} showAiInsights={showAiInsights} userRole={currentUser?.role} chartColorStyle={chartColorStyle} 
-                    tooltipScale={analyticsTooltipScale} tooltipPosition={analyticsTooltipPosition}
+                    onBatchAddProducts={(newPs) => setProducts([...products, ...newPs])} 
+                    showAiInsights={showAiInsights} 
+                    userRole={currentUser?.role} 
+                    chartColorStyle={chartColorStyle} 
+                    tooltipScale={analyticsTooltipScale} 
+                    tooltipPosition={analyticsTooltipPosition}
+                    onResetShipments={handleResetShipments}
                   />
                 } />
                 <Route path="/settings" element={
