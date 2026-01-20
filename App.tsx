@@ -468,9 +468,25 @@ const App = () => {
                   <Analytics 
                     products={products} shipments={shipments} testers={testers} 
                     lastShipmentUpdate={lastShipmentUpdate}
-                    onImportData={(data) => {
-                      setShipments([...shipments, ...data]);
-                      setLastShipmentUpdate(new Date().toLocaleString());
+                    onImportData={(newData) => {
+                      // Deduplication Logic: Compare deliveryNo + sku + sn
+                      const existingKeys = new Set(shipments.map(s => `${s.deliveryNo}-${s.sku}-${s.sn}`));
+                      const uniqueNewData = newData.filter(s => !existingKeys.has(`${s.deliveryNo}-${s.sku}-${s.sn}`));
+                      
+                      if (uniqueNewData.length === 0 && newData.length > 0) {
+                        alert(language === 'zh' ? '所選資料皆已存在於系統中，未新增任何紀錄。' : 'All selected records already exist in the system. No new data added.');
+                        return;
+                      }
+
+                      if (uniqueNewData.length > 0) {
+                        setShipments([...shipments, ...uniqueNewData]);
+                        setLastShipmentUpdate(new Date().toLocaleString());
+                        if (uniqueNewData.length < newData.length) {
+                           alert(language === 'zh' 
+                             ? `已跳過 ${newData.length - uniqueNewData.length} 筆重複資料，成功匯入 ${uniqueNewData.length} 筆新紀錄。` 
+                             : `Skipped ${newData.length - uniqueNewData.length} duplicates. Successfully imported ${uniqueNewData.length} new records.`);
+                        }
+                      }
                     }} 
                     onBatchAddProducts={(newPs) => setProducts([...products, ...newPs])} 
                     showAiInsights={showAiInsights} 
