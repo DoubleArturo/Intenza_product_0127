@@ -1,4 +1,3 @@
-
 {
   "name": "intenza-ergonomic-quality-tracker",
   "private": true,
@@ -7,29 +6,31 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "wrangler": "wrangler",
+    "pages:dev": "wrangler pages dev dist",
+    "pages:deploy": "wrangler pages deploy dist"
   },
   "dependencies": {
-    "react": "^19.0.0",
     "lucide-react": "latest",
+    "react": "^19.0.0",
     "react-dom": "^19.0.0",
-    "@google/genai": "^1.30.0",
     "react-router-dom": "^7.9.6",
     "recharts": "^3.5.0",
-    "xlsx": "latest",
-    "@vercel/postgres": "latest",
-    "@vercel/blob": "latest"
+    "xlsx": "latest"
   },
   "devDependencies": {
-    "@vercel/node": "^5.5.16",
+    "@cloudflare/workers-types": "^4.20260128.0",
     "@types/node": "^22.14.0",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
     "@vitejs/plugin-react": "^5.0.0",
-    "typescript": "latest",
-    "vite": "latest",
     "autoprefixer": "latest",
+    "hono": "^4.11.7",
     "postcss": "latest",
     "tailwindcss": "latest",
-    "@types/react": "^19.0.0",
-    "@types/react-dom": "^19.0.0"
+    "typescript": "latest",
+    "vite": "latest",
+    "wrangler": "^4.61.0"
   }
 }

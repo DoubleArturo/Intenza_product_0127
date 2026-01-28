@@ -11,6 +11,8 @@
     ],
     "skipLibCheck": true,
     "types": [
+      "@cloudflare/workers-types",
+      "vite/client",
       "node"
     ],
     "moduleResolution": "bundler",

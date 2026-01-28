@@ -1,0 +1,25 @@
+{
+    "$schema": "node_modules/wrangler/config-schema.json",
+    "name": "intenza-product-migration",
+    "compatibility_date": "2024-09-23",
+    "compatibility_flags": [
+        "nodejs_compat"
+    ],
+    "pages_build_output_dir": "dist",
+    "d1_databases": [
+        {
+            "binding": "DB",
+            "database_name": "intenza-db",
+            "database_id": "xxxx-xxxx-xxxx-xxxx"
+        }
+    ],
+    "r2_buckets": [
+        {
+            "binding": "BUCKET",
+            "bucket_name": "intenza-storage"
+        }
+    ],
+    "observability": {
+        "enabled": true
+    }
+}
